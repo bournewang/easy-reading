@@ -1,0 +1,20 @@
+{
+  "name": "easy-reading",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"pnpm dev:extension\" \"pnpm dev:website\"",
+    "dev:extension": "pnpm --filter @easy-reading/chrome-extension dev",
+    "dev:website": "pnpm --filter @easy-reading/website dev",
+    "build": "pnpm --filter './packages/*' build",
+    "clean": "rm -rf node_modules && pnpm --filter './packages/*' clean"
+  },
+  "devDependencies": {
+    "chokidar-cli": "^3.0.0",
+    "concurrently": "^8.0.0",
+    "esbuild": "^0.18.11",
+    "typescript": "^5.0.0"
+  }
+}

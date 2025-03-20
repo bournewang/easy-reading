@@ -1,0 +1,25 @@
+{
+  "name": "@easy-reading/extension",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "prebuild": "node prebuild.js",
+    "build": "pnpm prebuild && vite build",
+    "dev": "pnpm prebuild && vite build --watch",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@easy-reading/shared": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.18",
+    "@types/chrome": "^0.0.246",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.4",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.9"
+  }
+}
