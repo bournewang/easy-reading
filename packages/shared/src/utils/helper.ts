@@ -107,9 +107,12 @@ export function fetchArticle(): Omit<Article, 'id'> {
         .map(p => p.content)
         .join('\n');
 
+    const wordCount = textContent.split(/\s+/).filter(word => word.length > 0).length;
+    const readingTime = Math.ceil(wordCount / 150);
     return {
         ...info,
-        word_count: textContent.split(/\s+/).filter(word => word.length > 0).length,
+        word_count: wordCount,
+        reading_time: readingTime,
         created_at: new Date().toISOString(),
         paragraphs,
         unfamiliar_words: []

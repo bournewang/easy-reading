@@ -10,6 +10,7 @@ import type { Article } from '../types';
 import { cleanWord } from '../utils/helper';
 import { ChatWindow } from './ChatWindow';
 import { InteractiveText } from './InteractiveText';
+import { BookIcon, ClockIcon } from './icons/ReaderIcons';
 import '../styles/tailwind.css';
 
 export interface ReaderProps {
@@ -20,35 +21,9 @@ const spinAnimation = `
   .animate-spin-slow {animation: spin-slow 2s linear infinite;}`;
 
 const Reader: React.FC<ReaderProps> = ({ article }) => {
-  const [translations, setTranslations] = useState<Record<string, string>>({});
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
-  const [speakingPid, setSpeakingPid] = useState<string | null>(null);
-  const { speak, speaking } = useTTS();
-  const [translatingPid, setTranslatingPid] = useState<number | null>(null);
-  const { translating, translate } = useTranslation();
   const { words, addWord, removeWord } = useWordList();
   const [showChat, setShowChat] = useState(false);
-  const [showDictionary, setShowDictionary] = useState(false);
-
-  const handleTranslate = async (paragraphId: number) => {
-    if (translations[paragraphId]) return;
-
-    setTranslatingPid(paragraphId);
-    const paragraph = article.paragraphs[paragraphId];
-    const translation = await translate(paragraph.content);
-    setTranslatingPid(null);
-
-    setTranslations(prev => ({
-      ...prev,
-      [paragraphId]: translation
-    }));
-  };
-
-  const handleSpeak = async (text: string, id: string) => {
-    setSpeakingPid(id);
-    await speak(text);
-    setSpeakingPid(null);
-  };
 
   const handleWordClick = (word: string) => {
     console.log('Clicked word:', word);
@@ -71,7 +46,7 @@ const Reader: React.FC<ReaderProps> = ({ article }) => {
       <style>{spinAnimation}</style>
       <div className="flex flex-col md:flex-row gap-1 relative min-h-screen w-full">
         <div className="flex-1 p-0 sm:p-4">
-          <h1 className="text-2xl font-bold text-center mb-6 px-2">
+          <h1 className="text-2xl font-bold text-center mb-2 px-2">
             <InteractiveText
               text={article.title}
               isMarkdown={false}
@@ -79,7 +54,33 @@ const Reader: React.FC<ReaderProps> = ({ article }) => {
               onWordClick={handleWordClick}
             />
           </h1>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-center gap-4 py-2 border-b border-gray-200 dark:border-gray-700 mb-2">
+            {/* Reading stats */}
+            <div className="flex items-center justify-center gap-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                <BookIcon className="w-4 h-4" />
+                <span>{article.word_count.toLocaleString()} words</span>
+              </div>
+              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                <ClockIcon className="w-4 h-4" />
+                <span>{article.reading_time} min read</span>
+              </div>
 
+              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                <a
+                href={article.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  View original &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   
+                </a>
+              </div>
+            </div>
+
+            {/* Source link */}
+            
+          </div>
           {!showChat ? (
             <div className="space-y-4 p-2">
               {Object.entries(article.paragraphs || {}).map(([id, paragraph]) => (
@@ -97,7 +98,7 @@ const Reader: React.FC<ReaderProps> = ({ article }) => {
                   ) : paragraph.type === 'image' ? (
                     <figure className="text-center">
                       <img
-                        src={paragraph.content}
+                        src={`${process.env.NEXT_PUBLIC_IMAGE_LOADER_URL}?url=${paragraph.content}`}
                         alt={paragraph.description || ''}
                         className="w-full h-auto rounded-lg"
                         loading="lazy"
@@ -133,7 +134,7 @@ const Reader: React.FC<ReaderProps> = ({ article }) => {
           onClick={handleChatClick}
           className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2"
         >
-          <span>{showChat ? 'Back to Article' : 'Practice English'}</span>
+          <span>{showChat ? 'Close Chat' : 'Practice'}</span>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>

@@ -94,7 +94,7 @@ export function InteractiveText({ text, id, isMarkdown, onWordClick }: Interacti
             <div className="absolute right-0 top-0 flex flex-col">
                 <button
                     onClick={handleSpeak}
-                    className="w-9 h-9 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
+                    className="w-8 h-8 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
                     title="Text to Speech"
                 >
                     <span className={speaking && speakingId === id ? 'inline-block animate-spin-slow' : ''}>
@@ -103,7 +103,7 @@ export function InteractiveText({ text, id, isMarkdown, onWordClick }: Interacti
                 </button>
                 <button
                     onClick={handleTranslate}
-                    className="w-9 h-9 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
+                    className="w-8 h-8 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
                     title="Translate"
                 >
                     <span className={translating ? 'inline-block animate-spin-slow' : ''}>

@@ -16,13 +16,14 @@ const testArticle: Article = {
     "3": {"type": "text", "content": "Moreover, regular reading improves vocabulary, writing skills, and critical thinking abilities. It's an essential tool for lifelong learning and personal development."}
   },
   unfamiliar_words: [],
+  reading_time: 2,  
   created_at: new Date().toISOString(),
   // translations: {}
 };
 
 export default function ReaderTestPage() {
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-2">
         <Reader article={testArticle} />
     </div>
   );

@@ -2,26 +2,34 @@
   "name": "@easy-reading/website",
   "version": "1.0.0",
   "scripts": {
-    "build": "next build",
-    "export": "next build && next export",
     "dev": "next dev",
-    "clean": "rm -rf .next out",
-    "static": "next build"
+    "build": "next build",
+    "start": "next start",
+    "clean": "rm -rf .next dist",
+    "rebuild": "pnpm clean && pnpm build",
+    "export": "next build && next export",
+    "static": "next build",
+    "fetch-articles": "cross-env NODE_OPTIONS='--loader ts-node/esm' ts-node --project scripts/tsconfig.json scripts/fetch-articles.ts"
   },
   "dependencies": {
     "@easy-reading/shared": "workspace:*",
     "@types/chrome": "^0.0.309",
-    "axios": "^1.8.3",
+    "heroicons": "^2.2.0",
     "next": "^14.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.17.24",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "autoprefixer": "^10.4.16",
+    "axios": "^1.8.3",
+    "cheerio": "^1.0.0",
+    "cross-env": "^7.0.3",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
-    "typescript": "^5.0.0"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   }
 }

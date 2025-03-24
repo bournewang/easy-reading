@@ -24,8 +24,12 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@easy-reading/shared": ["../shared/src"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@easy-reading/shared": [
+        "../shared/src"
+      ]
     }
   },
   "include": [
@@ -33,7 +37,8 @@
     "next-env.d.ts",
     ".next/types/**/*.ts",
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "dist/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

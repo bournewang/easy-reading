@@ -5,6 +5,7 @@
   "scripts": {
     "prebuild": "node prebuild.js",
     "build": "pnpm prebuild && vite build",
+    "build:icons": "node copy-icons.js",
     "dev": "pnpm prebuild && vite build --watch",
     "preview": "vite preview"
   },

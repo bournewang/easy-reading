@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWordList } from '../hooks/useWordList';
 import Dictionary from './Dictionary';
-import Paginator from './Paginator';
+import {Paginator} from './Paginator';
 import '../styles/tailwind.css';
 
 function WordList() {

@@ -1,7 +1,0 @@
-{
-  "/_not-found/page": "app/_not-found/page.js",
-  "/dictionary/page": "app/dictionary/page.js",
-  "/extract/page": "app/extract/page.js",
-  "/reader/page": "app/reader/page.js",
-  "/wordlist/page": "app/wordlist/page.js"
-}

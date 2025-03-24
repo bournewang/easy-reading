@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Easy Reading - Wordlist</title>
+  <link rel="stylesheet" href="/assets/reader.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>My Wordlist</h1>
+      <button id="backButton">← Back</button>
+    </header>
+    
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Search words...">
+      <button id="clearSearchButton">Clear</button>
+    </div>
+    
+    <div class="wordlist-container">
+      <ul id="wordlist">
+        <!-- Words will be populated here via JavaScript -->
+      </ul>
+      
+      <div id="emptyState" class="empty-state">
+        <p>Your wordlist is empty. Words you look up will appear here.</p>
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button id="exportButton">Export Wordlist</button>
+      <button id="clearAllButton" class="danger">Clear All</button>
+    </div>
+  </div>
+  
+  <script type="module" src="./index.ts"></script>
+</body>
+</html> 

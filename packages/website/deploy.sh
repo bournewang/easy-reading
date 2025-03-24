@@ -4,7 +4,7 @@
 SERVER_USER="root"
 SERVER_HOST="47.103.218.95"
 SERVER_PATH="/var/www/html/english-reader/front"  # Your server's web root directory
-SOURCE_PATH="out/"  # The local dist directory to deploy
+SOURCE_PATH="dist/"  # The local dist directory to deploy
 
 # Build the project
 # echo "🏗️  Building project..."

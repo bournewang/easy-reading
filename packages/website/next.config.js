@@ -1,16 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  // Fix image optimization issues with static export
+  output: 'export',  // Enable static HTML export
+  distDir: 'dist',   // Change output directory to 'dist'
   images: {
-    unoptimized: true,
-  },
-  // Disable server features for static export
-  typescript: {
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    ignoreBuildErrors: true,
+    unoptimized: true  // Required for static export
   }
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig; 

@@ -14,13 +14,13 @@ export const UrlForm: React.FC<UrlFormProps> = ({
   onUrlChange,
   onSubmit,
   loading
-}) => {
+}) => { 
   return (
     <div className="flex flex-col items-center gap-8">
-      <div className="text-center">
+      {/* <div className="text-center">
         <h1 className="text-4xl font-bold text-gray-800 mb-3">English Reader</h1>
         <p className="text-gray-600 text-lg">Improve your English reading skills with any article</p>
-      </div>
+      </div> */}
       <form onSubmit={onSubmit} className="w-full max-w-[800px]">
         <div className="flex flex-col md:flex-row gap-3 w-full">
           <input
@@ -42,7 +42,11 @@ export const UrlForm: React.FC<UrlFormProps> = ({
                 Loading...
               </span>
             ) : (
-              'Read'
+              <span className="flex items-center justify-center gap-2">
+                Read
+                {/* replace with a book emoji */}
+                <span className="text-2xl">📖</span>
+              </span>
             )}
           </button>
         </div>

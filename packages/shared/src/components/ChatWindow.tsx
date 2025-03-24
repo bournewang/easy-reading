@@ -17,6 +17,13 @@ interface ChatWindowProps {
     onWordClick: (word: string) => void;  // Make it optional
 }
 
+type ChatStreamMessage = {
+    content?: string;
+    message?: string;
+    session_id?: string;
+    done?: boolean;
+};
+
 export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
@@ -26,6 +33,7 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
     const [sessionId, setSessionId] = useState<string | null>(null);
     const { speak, speaking } = useTTS();
     const [lastMessageId, setLastMessageId] = useState<string | null>(null);
+    const [streamingMessage, setStreamingMessage] = useState('');
 
     useEffect(() => {
         if (!article) return;
@@ -56,6 +64,53 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
         // console.log("article text: ", text)
         return text
     }; 
+
+    const handleChatStream = async (response: Response, isInitializing: boolean = false) => {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullMessage = '';
+
+        try {
+            while (reader) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data: ChatStreamMessage = JSON.parse(line.slice(6));
+                            
+                            if (data.content) {
+                                fullMessage += data.content;
+                                setStreamingMessage(prev => prev + data.content);
+                            }
+
+                            if (data.done) {
+                                const finalMessage = data.message || fullMessage;
+                                if (isInitializing && data.session_id) {
+                                    setSessionId(data.session_id);
+                                }
+                                setMessages(prev => [...prev, {
+                                    role: 'assistant',
+                                    content: finalMessage,
+                                    timestamp: Date.now()
+                                }]);
+                                setStreamingMessage('');
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE message:', e);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            onError?.(error as Error);
+        }
+    };
+
     const initializeChat = async () => {
         const chatUrl = process.env.NEXT_PUBLIC_AI_CHAT_URL || 'http://127.0.0.1:5000/ai/chat';
         if (!chatUrl) {
@@ -74,14 +129,8 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
             });
 
             if (!response.ok) throw new Error('Failed to initialize chat');
-
-            const data = await response.json();
-            setMessages([{
-                role: 'assistant',
-                content: data.message,
-                timestamp: Date.now()
-            }]);
-            setSessionId(data.session_id);
+            
+            await handleChatStream(response, true);
         } catch (error) {
             onError?.(error as Error);
         }
@@ -146,12 +195,7 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
 
             if (!response.ok) throw new Error('Failed to get AI response');
 
-            const data = await response.json();
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: data.message,
-                timestamp: Date.now()
-            }]);
+            await handleChatStream(response);
         } catch (error) {
             onError?.(error as Error);
         } finally {
@@ -196,8 +240,24 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
                     </div>
                 ))}
                 
-                {/* Loading indicator with matching style */}
-                {isLoading && (
+                {/* Streaming message */}
+                {streamingMessage && (
+                    <div className="flex justify-start">
+                        <div className="max-w-[80%]">
+                            <div className="bg-white border border-gray-200 rounded-t-2xl rounded-r-2xl px-4 py-2">
+                                <InteractiveText 
+                                    text={streamingMessage} 
+                                    isMarkdown={true}
+                                    id="streaming-message"
+                                    onWordClick={onWordClick}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Loading indicator (you might want to remove this or show it only before streaming starts) */}
+                {isLoading && !streamingMessage && (
                     <div className="flex justify-start">
                         <div className="max-w-[80%]">
                             <div className="bg-white border border-gray-200 rounded-t-2xl rounded-r-2xl p-3">
@@ -213,7 +273,7 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
                 <div ref={chatEndRef} />
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 border-t mt-auto">
+            <form onSubmit={handleSubmit} className="p-4 mb-12 border-t mt-auto">
                 <div className="flex space-x-2">
                     <textarea
                         value={inputValue}

@@ -10,3 +10,5 @@ export type { ReaderProps } from './components/Reader';
 export * from './components/ChatWindow';
 export * from './types/chat';
 // export * from './components/ChatPage';
+export * from './components/icons/ReaderIcons';
+export * from './components/Paginator';

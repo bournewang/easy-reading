@@ -14,5 +14,6 @@ export interface Article {
   word_count: number;
   paragraphs: Record<number, Paragraph>;
   unfamiliar_words: string[];
+  reading_time: number;
   created_at: string;
 }
