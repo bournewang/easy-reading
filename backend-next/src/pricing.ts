@@ -1,0 +1,1 @@
+/Users/wangxiaopei/work/easy-reading/packages/shared/src/config/pricing.ts
