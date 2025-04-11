@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
     "start": "next start",
     "clean": "rm -rf .next dist",
     "rebuild": "pnpm clean && pnpm build",
     "export": "next build && next export",
     "static": "next build",
-    "fetch-articles": "cross-env NODE_OPTIONS='--loader ts-node/esm' ts-node --project scripts/tsconfig.json scripts/fetch-articles.ts"
+    "fetch-articles": "cross-env NODE_OPTIONS='--loader ts-node/esm' ts-node --project scripts/tsconfig.json scripts/fetch-articles.ts",
+    "deploy:preview": "./scripts/deploy.sh preview",
+    "deploy:prod": "./scripts/deploy.sh prod",
+    "deploy": "./scripts/deploy.sh prod"    
   },
   "dependencies": {
     "@easy-reading/shared": "workspace:*",
