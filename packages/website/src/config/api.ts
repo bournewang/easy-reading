@@ -5,6 +5,7 @@ export const API_URLS = {
   register: `${API_BASE_URL}/api/auth/register`,
   me: `${API_BASE_URL}/api/auth/me`,
   logout: `${API_BASE_URL}/api/auth/logout`,
+  payment: `${API_BASE_URL}/api/payment`,
 } as const;
 
 // Log the API URLs in development

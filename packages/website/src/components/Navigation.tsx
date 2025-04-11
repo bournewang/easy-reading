@@ -10,6 +10,42 @@ export default function Navigation() {
 
   const isActive = (path: string) => pathname === path;
 
+  const getSubscriptionBadge = () => {
+    if (!user) return null;
+    
+    const tier = user.subscriptionTier || 'free';
+    const expires = user.subscriptionExpires ? new Date(user.subscriptionExpires) : null;
+    const isExpired = expires && expires < new Date();
+
+    const badgeColors = {
+      free: 'bg-gray-100 text-gray-800',
+      pro: 'bg-blue-100 text-blue-800',
+      premium: 'bg-purple-100 text-purple-800'
+    };
+
+    return (
+      <div className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColors[tier as keyof typeof badgeColors]}`}>
+        {tier.charAt(0).toUpperCase() + tier.slice(1)}
+        {isExpired && ' (Expired)'}
+      </div>
+    );
+  };
+
+  const NavigationItem = ({ href, label }: { href: string, label: string}) => {
+    return (
+      <Link
+        href={href}
+        className={`px-4 py-2 rounded-full text-sm font-medium transition-all
+        ${isActive(href)
+          ? 'bg-blue-50 text-blue-600'
+          : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'
+        }`}
+      >
+        {label}
+      </Link>
+    )
+  }
+
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 w-full top-0 z-50">
       <div className="max-w-[1440px] mx-auto px-6">
@@ -22,52 +58,22 @@ export default function Navigation() {
           </Link>
           
           <div className="flex items-center gap-6">
-            <Link
-              href="/wordlist"
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all
-                ${isActive('/wordlist')
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'
-                }`}
-            >
-              Word List
-            </Link>
-
-            {user && (
-              <Link
-                href="/articles"
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all
-                  ${isActive('/articles')
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'
-                  }`}
-              >
-                History
-              </Link>
-            )}
+            <NavigationItem href="/books" label="Books" />
+            <NavigationItem href="/wordlist" label="Word List" />
+             
+            <NavigationItem href="/articles" label="History" />
+            <NavigationItem href="/pricing" label="Pricing" />
 
             {user ? (
-              <Link
-                href="/user"
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all
-                  ${isActive('/user')
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'
-                  }`}
-              >
-                {user.fullName || user.username}
-              </Link>
+              <>
+                {getSubscriptionBadge()}
+                <NavigationItem href="/user" label={user.username} />
+              </>
             ) : (
-              <Link
-                href="/login"
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all
-                  ${isActive('/login')
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'
-                  }`}
-              >
-                Login
-              </Link>
+              <>
+                <NavigationItem href="/login" label="Login" />
+                <NavigationItem href="/register" label="Register" />
+              </>
             )}
           </div>
         </div>

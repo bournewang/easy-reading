@@ -7,6 +7,8 @@ interface User {
   id: string;
   username: string;
   fullName?: string;
+  subscriptionTier?: string;
+  subscriptionExpires?: string;
 }
 
 interface AuthContextType {
@@ -40,10 +42,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        setUser({
+          ...data.user,
+          subscriptionTier: data.user.subscriptionTier || 'free',
+          subscriptionExpires: data.user.subscriptionExpires
+        });
+      } else if (response.status === 401) {
+        setUser(null);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -52,13 +61,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       console.log('Logging out at:', API_URLS.logout);
-      await fetch(API_URLS.logout, {
+      const response = await fetch(API_URLS.logout, {
         method: 'POST',
         credentials: 'include',
       });
-      setUser(null);
+      
+      if (response.ok) {
+        // Clear user state immediately
+        setUser(null);
+        // Force a new auth check to ensure we're logged out
+        await checkAuth();
+      }
     } catch (error) {
       console.error('Logout failed:', error);
+      // Even if the logout request fails, clear the user state
+      setUser(null);
     }
   };
 
