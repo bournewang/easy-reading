@@ -69,7 +69,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
 
   return (
     <>
-    <div className="sticky top-0 text-xs text-slate-500 text-center border-b border-t border-slate-200 py-1 bg-white z-10">
+    <div className="sticky top-0 text-xs text-slate-500 text-center border-b border-t border-slate-200 py-1 bg-white z-1">
         Dictionary
     </div>
     <div className="p-2 md:p-4 bg-slate-100 md:bg-slate-50 shadow-lg">
