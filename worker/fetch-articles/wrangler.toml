@@ -1,0 +1,16 @@
+name = "article-fetcher"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Create a KV namespace
+kv_namespaces = [
+  { binding = "ARTICLES", id = "345212251f764c16a466dcf95a4a5814" }
+]
+
+# Add your API token as a secret
+[vars]
+API_TOKEN = "f42b7001f3b02da3cc1aad1a950c90f0"
+
+# Configure the cron trigger (every 6 hours)
+[triggers]
+crons = ["0 */6 * * *"]

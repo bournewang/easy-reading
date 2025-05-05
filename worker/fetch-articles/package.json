@@ -1,0 +1,22 @@
+{
+	"name": "fetch-articles",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"build": "webpack",
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20250320.0",
+		"buffer": "^6.0.3",
+		"ts-loader": "^9.0.0",
+		"typescript": "^5.0.0",
+		"url": "^0.11.0",
+		"webpack": "^5.0.0",
+		"webpack-cli": "^5.0.0"
+	},
+	"dependencies": {
+		"cheerio": "^1.0.0-rc.12"
+	}
+}
