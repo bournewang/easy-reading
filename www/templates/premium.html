@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="premium bg-gradient-to-b from-indigo-50 to-purple-50 py-16">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all hover:shadow-2xl">
+            <div class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white p-10 text-center">
+                <h2 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-100">Premium Membership</h2>
+                <p class="text-2xl mt-4 font-semibold">Only 88¥ per year</p>
+                <p class="mt-3 text-lg text-purple-100">Enhance your English reading experience</p>
+                <p class="mt-2 text-purple-200">Unlock advanced features for effortless learning</p>
+            </div>
+            
+            <div class="p-10 bg-gradient-to-b from-white to-purple-50">            
+                <h3 class="text-2xl font-semibold mb-8 text-indigo-900">Premium Benefits:</h3>
+                <ul class="space-y-6">
+                    <li class="flex items-start transform transition-all hover:translate-x-2">
+                        <span class="text-violet-500 mr-3 text-xl">✦</span>
+                        <span class="text-lg text-gray-700">Complete reading history archive</span>
+                    </li>
+                    <li class="flex items-start transform transition-all hover:translate-x-2">
+                        <span class="text-violet-500 mr-3 text-xl">✦</span>
+                        <span class="text-lg text-gray-700">Advanced vocabulary management</span>
+                    </li>
+                    <li class="flex items-start transform transition-all hover:translate-x-2">
+                        <span class="text-violet-500 mr-3 text-xl">✦</span>
+                        <span class="text-lg text-gray-700">Enhanced translation features</span>
+                    </li>
+                    <li class="flex items-start transform transition-all hover:translate-x-2">
+                        <span class="text-violet-500 mr-3 text-xl">✦</span>
+                        <span class="text-lg text-gray-700">Priority customer support</span>
+                    </li>
+                    <li class="flex items-start transform transition-all hover:translate-x-2">
+                        <span class="text-violet-500 mr-3 text-xl">✦</span>
+                        <span class="text-lg text-gray-700">Ad-free experience</span>
+                    </li>
+                </ul>
+                
+                <div class="mt-12 text-center">
+                    <a href="payment.html" class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold py-4 px-10 rounded-xl transition-all duration-300 text-lg inline-block shadow-lg hover:shadow-2xl hover:scale-105 hover:from-violet-700 hover:to-indigo-700">
+                        Subscribe Now
+                    </a>
+                </div>
+                
+                <div class="mt-6 text-center text-sm text-indigo-600">
+                    <p>Secure payment processing · Cancel anytime</p>
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-b from-purple-50 to-indigo-50 p-10 border-t border-purple-100">
+                <h3 class="text-xl font-semibold mb-6 text-indigo-900">Frequently Asked Questions</h3>
+                <div class="space-y-6">
+                    <div class="transform transition-all hover:translate-x-2">
+                        <h4 class="font-medium text-lg text-indigo-800">How will I access premium features?</h4>
+                        <p class="text-gray-600 mt-2">After payment, your account will be upgraded immediately and you'll have access to all premium features.</p>
+                    </div>
+                    <div class="transform transition-all hover:translate-x-2">
+                        <h4 class="font-medium text-lg text-indigo-800">Can I cancel my subscription?</h4>
+                        <p class="text-gray-600 mt-2">Yes, you can cancel your subscription at any time from your account settings.</p>
+                    </div>
+                    <div class="transform transition-all hover:translate-x-2">
+                        <h4 class="font-medium text-lg text-indigo-800">Is there a refund policy?</h4>
+                        <p class="text-gray-600 mt-2">We offer a 7-day money-back guarantee if you're not satisfied with the premium features.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
