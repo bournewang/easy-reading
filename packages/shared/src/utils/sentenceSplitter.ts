@@ -7,8 +7,12 @@
  * - Company names
  */
 export function splitIntoSentences(text: string): string[] {
-    // First normalize newlines to spaces to prevent incorrect splits
-    const normalizedText = text.replace(/\s+/g, ' ');
+    // First normalize newlines to spaces and standardize quotes
+    const normalizedText = text
+        .replace(/\s+/g, ' ')
+        .replace(/[""]/g, '"')
+        .replace(/[“”]/g, '"')
+        .replace(/['']/g, "'");
 
     // Define states
     enum State {
@@ -50,7 +54,7 @@ export function splitIntoSentences(text: string): string[] {
     // Helper function to check if a character is uppercase
     const isUpperCase = (char: string) => /[A-Z]/.test(char);
 
-    const quotes = ['"', '"', "'", "\\u201C", "\\u201D", "\\u2018", "\\u2019"];
+    const quotes = ['"', '"', "'", "“", "\\u201C", "\\u201D", "\\u2018", "\\u2019"];
     
     function isEndOfSentence(pos: number, text: string, currentQuoteLevel: number): boolean {
         const char = text[pos];

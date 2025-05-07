@@ -247,18 +247,41 @@ describe('splitIntoSentences', () => {
         ]);
     });
 
-//     test('handles complex quotes and punctuation sequence', () => {
-//         const text = `" said Alice; "I must be shutting up like a telescope."
-// ".
-// "Come, there's no use in crying like that!" said Alice to herself, rather sharply; "I advise you to leave off this minute!" `;
-//         const result = splitIntoSentences(text);
-//         // console.log('\nComplex Quotes Punctuation Test:');
-//         // console.log('Input (normalized):', text.replace(/\s+/g, ' '));
-//         // console.log('Output:', result);
-//         expect(result).toEqual([
-//             `" said Alice; "I must be shutting up like a telescope." .`,
-//             `"Come, there's no use in crying like that!"`,
-//             `said Alice to herself, rather sharply; "I advise you to leave off this minute!"`
-//         ]);
-//     });
+    // test('handles complex quotes and punctuation sequence', () => {
+    //     const text = `said Alice; "I must be shutting up like a telescope.". "Come, there's no use in crying like that!" said Alice to herself, rather sharply; "I advise you to leave off this minute!"`;
+    //     const result = splitIntoSentences(text);
+    //     // console.log('Input (normalized):', text.replace(/\s+/g, ' '));
+    //     // console.log('Output:', result);
+    //     expect(result).toEqual([
+    //         `" said Alice; "I must be shutting up like a telescope.".`,
+    //         `"Come, there's no use in crying like that!"`,
+    //         `said Alice to herself, rather sharply; "I advise you to leave off this minute!"`
+    //     ]);
+    // });
+
+    test('handles punctuation immediately followed by quote', () => {
+        // Ensure ?", !" etc. are handled correctly without splitting the quote off.
+        const text = 'but it had no pictures or conversations in it, "and what is\nthe use of a book," thought Alice "without pictures or\nconversations?"';
+        const result = splitIntoSentences(text);
+        console.log('\nPunctuation+Quote Test:');
+        console.log('Input:', text);
+        console.log('Output:', result);
+        expect(result).toEqual([
+            'but it had no pictures or conversations in it, "and what is the use of a book," thought Alice "without pictures or conversations?"'
+        ]);
+    });
+
+    test('handles nested quotes with em dash', () => {
+        const text = '"Very true," said the Duchess: "flamingoes and mustard both\nbite. And the moral of that is—\'Birds of a feather flock\ntogether.\'"';
+        const result = splitIntoSentences(text);
+        console.log('\nNested Quotes Test:');
+        console.log('Input:', text);
+        console.log('Output:', result);
+        expect(result).toEqual([
+            '"Very true," said the Duchess: "flamingoes and mustard both bite. And the moral of that is—\'Birds of a feather flock together.\'"'
+        ]);
+    });
+
+    // "Alice was beginning to get very tired of sitting by her sister on the bank, and\nof having nothing to do: once or twice she had peeped into the book her sister\nwas reading, but it had no pictures or conversations in it, "and what is\nthe use of a book," thought Alice "without pictures or\nconversations?""
+
 }); 
