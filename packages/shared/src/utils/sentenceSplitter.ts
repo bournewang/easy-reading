@@ -11,8 +11,9 @@ export function splitIntoSentences(text: string): string[] {
     const normalizedText = text
         .replace(/\s+/g, ' ')
         .replace(/[""]/g, '"')
+        .replace(/['']/g, "'")
         .replace(/[“”]/g, '"')
-        .replace(/['']/g, "'");
+        .replace(/[‘’]/g, "'");
 
     // Define states
     enum State {

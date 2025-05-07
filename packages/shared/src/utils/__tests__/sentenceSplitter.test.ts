@@ -272,13 +272,14 @@ describe('splitIntoSentences', () => {
     });
 
     test('handles nested quotes with em dash', () => {
-        const text = '"Very true," said the Duchess: "flamingoes and mustard both\nbite. And the moral of that is—\'Birds of a feather flock\ntogether.\'"';
+        const text = '"Very true," said the Duchess: "flamingoes and mustard both\nbite. And the moral of that is—\‘Birds of a feather flock\ntogether.\‘"';
         const result = splitIntoSentences(text);
         console.log('\nNested Quotes Test:');
         console.log('Input:', text);
         console.log('Output:', result);
         expect(result).toEqual([
-            '"Very true," said the Duchess: "flamingoes and mustard both bite. And the moral of that is—\'Birds of a feather flock together.\'"'
+            '"Very true," said the Duchess: "flamingoes and mustard both bite.',
+            'And the moral of that is—\'Birds of a feather flock together.\'"'
         ]);
     });
 
