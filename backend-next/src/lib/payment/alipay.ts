@@ -1,11 +1,10 @@
 import {AlipaySdk} from 'alipay-sdk';
+import { createVerify } from 'crypto';
 
 // Debug SDK configuration
 console.log('=== Alipay SDK Configuration ===');
 console.log('App ID:', process.env.ALIPAY_APP_ID);
 console.log('Gateway URL:', process.env.ALIPAY_GATEWAY_URL);
-console.log('API Base URL:', process.env.API_BASE_URL);
-console.log('Frontend URL:', process.env.FRONTEND_URL);
 console.log('Private Key Length:', process.env.ALIPAY_PRIVATE_KEY?.length);
 console.log('Public Key Length:', process.env.ALIPAY_PUBLIC_KEY?.length);
 
@@ -66,11 +65,11 @@ export async function verifyAlipayCallback(params: Record<string, string>) {
       console.log('Accepting test notification in development mode');
       return true;
     }
-    
-    const result = await alipaySDK.checkNotifySign(params);
-    console.log('Verification result:', result);
-    
-    return result;
+
+    // Use Alipay SDK's built-in verification method
+    const isValid = await alipaySDK.checkNotifySign(params);
+    console.log('Signature verification result:', isValid);
+    return isValid;
   } catch (error) {
     console.error('=== Alipay Callback Verification Error ===');
     console.error('Error details:', error);

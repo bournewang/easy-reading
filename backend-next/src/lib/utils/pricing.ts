@@ -14,5 +14,5 @@ export function getPriceForTier(tierId: string, duration: number): number {
     throw new Error(`Invalid duration ${duration} for tier ${tierId}`);
   }
 
-  return durationOption.price / 100; // Convert from cents to yuan
+  return durationOption.price; // Convert from cents to yuan
 } 
