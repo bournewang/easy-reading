@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { DictResponse } from '../types';
-import { api } from '../utils/api';
+// import { api } from '../utils/api';
+import axios from 'axios';
 
 export const useDictionary = () => {
   const [loading, setLoading] = useState(false);
@@ -10,7 +11,8 @@ export const useDictionary = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get<DictResponse[]>(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      const DICT_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
+      const response = await axios.get<DictResponse[]>(`${DICT_URL}${word}`);
       return response.data[0];
     } catch (error) {
       const errorMessage = `Failed to lookup word: ${word}`;

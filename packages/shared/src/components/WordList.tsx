@@ -55,11 +55,13 @@ function WordList() {
         ))}
       </div>
       {totalPages > 1 && (
-        <Paginator
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+        <div className="flex justify-center mt-4">
+          <Paginator
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
       )}
     </>
   );
@@ -105,9 +107,9 @@ function WordList() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
-      <div className="container mx-auto p-2 max-w-5xl">
+      <div className="container mx-auto p-2">
         <header className="text-center py-2">
-          <h1 className="text-3xl font-bold text-indigo-900 mb-2">My Vocabulary Journal</h1>
+          <h1 className="text-3xl font-bold text-indigo-900 mb-2">Word Book</h1>
           <p className="text-gray-600">Track and review your learning progress</p>
         </header>
         

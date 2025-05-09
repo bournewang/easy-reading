@@ -129,7 +129,7 @@ const Reader: React.FC<ReaderProps> = ({ article }) => {
                 rel="noopener noreferrer"
                 className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                 >
-                  View original &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   
+                  View original
                 </a>
               </div>
             </div>

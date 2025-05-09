@@ -10,7 +10,7 @@ export const useTranslation = () => {
     try {
       setTranslating(true);
       // const response = await api.post<ApiResponse>('/translate/text', {
-      const response = await axios.post<ApiResponse>(TRANS_API, {
+      const response = await api.post<ApiResponse>('/api/translate', {
         text,
         target_lang: 'Chinese'
       });
