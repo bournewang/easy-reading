@@ -133,10 +133,11 @@ async function scrapeBBCPage(url: string, selector: string, category?: string): 
 				cards.each((cardIndex, card) => {
 					try {
 						const $card = $(card);
+						// console.log("Card HTML:", $card.html()); // Log the entire card HTML
 						const $anchor = $card.find('a[data-testid="internal-link"]');
 						const $headline = $card.find('[data-testid="card-headline"]');
 						const $description = $card.find('[data-testid="card-description"]');
-						const $image = $card.find('img');
+						const $image = $card.find('img[srcset]'); // Target image with srcset attribute
 
 						const title = $headline.text().trim();
 						const anchorUrl = $anchor.attr('href') || '';
