@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { API_URLS } from '@/config/api';
+// import { API_URLS } from '@/config/api';
+import { api } from '../utils/api';
 
 interface User {
   id: string;
@@ -35,17 +36,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      console.log('Checking auth at:', API_URLS.me);
-      const response = await fetch(API_URLS.me, {
-        credentials: 'include',
-      });
+      // console.log('Checking auth at:', API_URLS.me);
+      const response = await api.get('/auth/me');
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const userData = response.data;
+        console.log('User data:', userData);
         setUser({
-          ...data.user,
-          subscriptionTier: data.user.subscriptionTier || 'free',
-          subscriptionExpires: data.user.subscriptionExpires
+          ...userData.user,
+          // subscriptionTier: userData.subscriptionTier || 'free',
         });
       } else if (response.status === 401) {
         setUser(null);
@@ -60,13 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      console.log('Logging out at:', API_URLS.logout);
-      const response = await fetch(API_URLS.logout, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      
-      if (response.ok) {
+      // console.log('Logging out at:', API_URLS.logout);
+      const response = await api.post('/auth/logout');
+      console.log('Logout response:', response);
+      if (response.status === 200) {
         // Clear user state immediately
         setUser(null);
         // Force a new auth check to ensure we're logged out

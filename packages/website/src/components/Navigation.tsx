@@ -58,8 +58,9 @@ export default function Navigation() {
           </Link>
           
           <div className="flex items-center gap-6">
+            <NavigationItem href="/news" label="News" />
             <NavigationItem href="/books" label="Books" />
-            <NavigationItem href="/wordlist" label="Word List" />
+            <NavigationItem href="/wordlist" label="Word Book" />
              
             <NavigationItem href="/articles" label="History" />
             <NavigationItem href="/pricing" label="Pricing" />

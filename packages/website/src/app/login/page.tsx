@@ -1,31 +1,25 @@
 'use client';
 
 import { AuthForm } from '@/components/auth/AuthForm';
-import { API_URLS } from '@/config/api';
+// import { API_URLS } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { api } from '../../utils/api';
 
 export default function LoginPage() {
   const { checkAuth } = useAuth();
 
   const handleLogin = async (data: any) => {
-    console.log('Attempting login to:', API_URLS.login);
-    const response = await fetch(API_URLS.login, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    console.log('Attempting login to:');
+    const response = await api.post('/auth/login', data);
 
-    if (!response.ok) {
-      const error = await response.json();
+    if (response.status !== 200) {
+      const error = response.data;
       throw new Error(error.message || 'Login failed');
     }
 
     // Update auth context after successful login
     await checkAuth();
-    return response.json();
+    return response.data;
   };
 
   return <AuthForm mode="login" onSubmit={handleLogin} />;

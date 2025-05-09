@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import WeChatPayQR from '@/components/payment/WeChatPayQR';
 import { AlipayPayment } from '@/components/payment/AlipayPayment';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Client component that uses useSearchParams
 function CheckoutContent() {
@@ -13,7 +14,7 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const tierId = searchParams.get('tier');
   const durationMonths = searchParams.get('duration');
-  const userId = searchParams.get('userId');
+  const { user } = useAuth();
 
   // Initialize tier and duration from URL parameters
   const initialTier = tierId ? PRICING_TIERS.find((t) => t.id === tierId) : null;
@@ -25,13 +26,13 @@ function CheckoutContent() {
   const [selectedDuration, setSelectedDuration] = useState(initialDuration);
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>('alipay');
-  const [paymentStarted, setPaymentStarted] = useState(false);
+  const [paymentStarted, setPaymentStarted] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const tierId = searchParams.get('tier');
     const durationMonths = searchParams.get('duration');
-    const userId = searchParams.get('userId');
+    const userId = user?.id;
 
     if (tierId && durationMonths && userId) {
       const tier = PRICING_TIERS.find((t) => t.id === tierId);
@@ -112,6 +113,12 @@ function CheckoutContent() {
               <span className="text-gray-600">Total</span>
               <span className="text-xl font-bold text-blue-600">
                 {formatPrice(selectedDuration.price)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">User</span>
+              <span className="font-medium">
+                {user?.username} {user?.fullName}
               </span>
             </div>
           </div>

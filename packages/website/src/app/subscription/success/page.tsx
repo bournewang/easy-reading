@@ -2,8 +2,9 @@
 
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { API_URLS } from '@/config/api';
+// import { API_URLS } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/utils/api';
 
 // Client component that uses useSearchParams
 function SubscriptionSuccessContent() {
@@ -28,18 +29,13 @@ function SubscriptionSuccessContent() {
       }
       
       // Call backend to verify payment
-      const response = await fetch(`${API_URLS.payment}/query-order?orderId=${orderId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await api.get(`/payment/query-order?orderId=${orderId}`);
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error('Payment verification failed');
       }
 
-      const data = await response.json();
+      const data = response.data;
       
       if (data.status === 'completed') {
         setStatus('success');

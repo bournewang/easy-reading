@@ -1,6 +1,7 @@
 /**
  * API service for payment handling
  */
+import { api } from '../../utils/api';
 
 // Types
 export interface CreateOrderParams {
@@ -28,34 +29,18 @@ interface OrderStatus {
 
 // Create an order with WeChat Pay
 export async function createOrder(params: CreateOrderParams): Promise<PaymentResponse> {
-  const url = `${process.env.NEXT_PUBLIC_API_URL}/api/payment/wechat/create`;
-  console.log('=== Creating WeChat Pay Order ===');
-  console.log('API URL:', url);
-  console.log('Request params:', params);
-  console.log('Environment:', {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-    NODE_ENV: process.env.NODE_ENV
-  });
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify(params),
-  });
+  const response = await api.post('/payment/wechat/create', params);
 
   console.log('Response status:', response.status);
   console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-  if (!response.ok) {
-    const error = await response.json();
+  if (response.status !== 200) {
+    const error = response.data;
     console.error('Error response:', error);
-    throw new Error(error.error || 'Failed to create order');
+    throw new Error(error.message || 'Failed to create order');
   }
 
-  const data = await response.json();
+  const data = response.data;
   console.log('Success response:', data);
   return data;
 }
@@ -63,26 +48,19 @@ export async function createOrder(params: CreateOrderParams): Promise<PaymentRes
 // Create an order with Alipay
 export async function createAlipayOrder(params: CreateOrderParams): Promise<PaymentResponse> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payment/alipay/create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        amount: params.amount,
-        orderId: params.orderId,
-        tier: params.tier,
-        duration: params.duration,
-      }),
+    const response = await api.post(`/payment/alipay/create`, {
+      amount: params.amount,
+      orderId: params.orderId,
+      tier: params.tier,
+      duration: params.duration,
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to create Alipay order');
+    if (response.status !== 200) {
+      const error = response.data;
+      throw new Error(error.message || 'Failed to create Alipay order');
     }
 
-    const data = await response.json();
+    const data = response.data;
     return data;
   } catch (error) {
     console.error('Error creating Alipay order:', error);

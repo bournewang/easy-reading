@@ -106,6 +106,8 @@ const BooksIndex: React.FC = () => {
             data.reading_time = Math.ceil(data.word_count / 150);
           }          
           setArticle(data);
+          // Reset scroll position to top when chapter changes
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       });
     }
@@ -147,14 +149,7 @@ const BooksIndex: React.FC = () => {
         </div>
 
         <div 
-          className="w-full"
-          style={{
-            paddingBottom: `calc(${MOBILE_SELECTOR_HEIGHT} + 1rem)`,
-            '@media (minWidth: 640px)': {
-              paddingBottom: `calc(${DESKTOP_SELECTOR_HEIGHT} + 1rem)`
-            }
-          }}
-        >
+          className="mx-auto px-4 py-8 pb-[calc(120px+1rem)] sm:pb-[calc(144px+1rem)]">
           {article && <Reader article={article} />}
         </div>        
         

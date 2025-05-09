@@ -3,34 +3,16 @@
 import { useState, useEffect } from 'react';
 import { PRICING_TIERS, type PricingTier, type DurationOption, formatPrice, getSavingsText, getDefaultDurationOption, getPopularTier } from '@easy-reading/shared';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PricingPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const popularTier = getPopularTier();
   const defaultDuration = popularTier ? getDefaultDurationOption(popularTier) : null;
-  const [userId, setUserId] = useState<string | null>(null);
   
   const [selectedTier, setSelectedTier] = useState<PricingTier | null>(popularTier || null);
   const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(defaultDuration || null);
-
-  // Fetch user ID when component mounts
-  useEffect(() => {
-    const fetchUserId = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUserId(data.user.id);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user ID:', error);
-      }
-    };
-
-    fetchUserId();
-  }, []);
 
   const handleSelectPlan = (tier: PricingTier, duration?: DurationOption) => {
     setSelectedTier(tier);
@@ -46,8 +28,8 @@ export default function PricingPage() {
   };
 
   const handleProceedToCheckout = () => {
-    if (selectedTier && selectedDuration && userId) {
-      router.push(`/checkout?tier=${selectedTier.id}&duration=${selectedDuration.months}&userId=${userId}`);
+    if (selectedTier && selectedDuration && user?.id) {
+      router.push(`/checkout?tier=${selectedTier.id}&duration=${selectedDuration.months}&userId=${user.id}`);
     } else {
       // If no user ID, redirect to login
       router.push('/login');
