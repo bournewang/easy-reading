@@ -48,12 +48,21 @@ export async function POST(request: Request) {
       { status: 200 }
     );
 
-    // Set session cookie
+    // Determine if the cookie should be marked Secure.
+    // This relies on Nginx (or any upstream proxy) correctly setting the X-Forwarded-Proto header.
+    const requestProto = request.headers.get('x-forwarded-proto');
+    // console.log(`[Login Route] x-forwarded-proto header: ${requestProto}`);
+    // For dev proxy, isConnectionSecure will be false as dev server calls backend via HTTP
+    const isConnectionSecure = requestProto === 'https'; 
+    // console.log(`[Login Route] isConnectionSecure evaluated to: ${isConnectionSecure}`);
+
     response.cookies.set('session', sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 // 7 days
+      secure: isConnectionSecure,        // False, as the proxy connection to backend is HTTP
+      sameSite: 'lax',      // Lax is appropriate for same-origin (browser to /api-proxy)
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',           // Cookie path should be general
+      // domain: 'localhost' // Optional: explicitly for localhost if needed, usually omitting is fine for localhost
     });
 
     return response;

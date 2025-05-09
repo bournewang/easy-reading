@@ -1,7 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import OpenAI from 'openai';
-// import { HttpsProxyAgent } from 'https-proxy-agent';
 
 // Input validation schema
 const translateSchema = z.object({
@@ -10,27 +9,23 @@ const translateSchema = z.object({
 });
 
 // Initialize OpenAI client
+// Ensure your environment variables DASHSCOPE_API_KEY and DASHSCOPE_API_URL are set
 const openai = new OpenAI({
   apiKey: process.env.DASHSCOPE_API_KEY,
   baseURL: process.env.DASHSCOPE_API_URL,
   // httpAgent: new HttpsProxyAgent('http://127.0.0.1:7890'), // Optional: if you need proxy
 });
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export async function POST(request: Request) {
   try {
+    const body = await request.json();
+
     // Validate input
-    const { text, target_lang } = translateSchema.parse(req.body);
+    const { text, target_lang } = translateSchema.parse(body);
 
     // Create chat completion
     const completion = await openai.chat.completions.create({
-      model: "deepseek-v3",  // Using deepseek-v3 as specified in Python code
+      model: "deepseek-v3", // Using deepseek-v3 as specified in Python code
       messages: [
         {
           role: 'user',
@@ -43,7 +38,7 @@ export default async function handler(
     const translation = completion?.choices[0]?.message?.content?.trim() || '';
 
     // Return successful response
-    return res.json({
+    return NextResponse.json({
       data: translation,
       success: true
     });
@@ -52,15 +47,21 @@ export default async function handler(
     console.error('Translation error:', error);
 
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        success: false, 
-        error: error.errors 
-      });
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: error.errors 
+        },
+        { status: 400 }
+      );
     }
 
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Translation failed' 
-    });
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Translation failed' 
+      },
+      { status: 500 }
+    );
   }
 } 
