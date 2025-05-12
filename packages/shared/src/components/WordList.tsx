@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWordList } from '../hooks/useWordList';
 import { useWordPractice, WordPractice } from '../hooks/useWordPractice';
 import { useTTS } from '../hooks/useTTS';
+import { useTranslation } from '../hooks/useTranslation';
+import { splitIntoSentences } from '../utils/sentenceSplitter';
 import Dictionary from './Dictionary';
 import {Paginator} from './Paginator';
 import { api } from '../utils/api';
@@ -11,6 +13,7 @@ function WordList() {
   const { words, removeWord } = useWordList();
   const { practiceData, getPracticeStats, recordAttempt } = useWordPractice();
   const { speak, speaking: ttsSpeaking } = useTTS();
+  const { translate } = useTranslation();
   const practiceInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -31,6 +34,12 @@ function WordList() {
   const [storyContent, setStoryContent] = useState('');
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [storyError, setStoryError] = useState<string | null>(null);
+  const [storySentences, setStorySentences] = useState<string[]>([]);
+  const [sentenceStates, setSentenceStates] = useState<Record<number, {
+    translation: string;
+    speaking: boolean;
+    translating: boolean;
+  }>>({});
 
   const wordArray = Array.from(words);
   const totalPages = Math.ceil(wordArray.length / itemsPerPage);
@@ -482,7 +491,7 @@ function WordList() {
     setIsStoryModeActive(true);
     
     // For tracking accumulated content across progress events
-    let accumulatedContent = '';
+    // let accumulatedContent = '';
     
     // Determine which words to use
     const wordsToUse = useCurrentPageOnly ? currentWordsForDisplay : wordArray;
@@ -522,11 +531,13 @@ function WordList() {
             const newData = xhr.responseText;
             
             // Track previous length to find only new content
-            const prevProcessedLength = accumulatedContent.length;
+            // const prevProcessedLength = accumulatedContent.length;
+            console.log("progressEvent ", newData)
             
             // Process the SSE data
             const lines = newData.split('\n');
             let hasNewContent = false;
+            let accumulatedContent = '';
             
             for (const line of lines) {
               if (line.trim() && line.startsWith('data: ')) {
@@ -577,16 +588,88 @@ function WordList() {
     }
   };
 
-  // Format the story content by converting markdown to HTML
+  // Format the story content by converting markdown to HTML and splitting into sentences
   const formatStoryContent = (content: string) => {
     // Bold text (convert **word** to <strong>word</strong>)
-    return content.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-indigo-700">$1</strong>');
+    const formattedContent = content.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-indigo-700">$1</strong>');
+    
+    // Split into sentences after formatting
+    if (content && !isGeneratingStory) {
+      try {
+        const sentences = splitIntoSentences(content);
+        setStorySentences(sentences);
+      } catch (error) {
+        console.error('Failed to split story into sentences:', error);
+      }
+    }
+    
+    return formattedContent;
+  };
+
+  useEffect(() => {
+    if (storyContent && !isGeneratingStory) {
+      formatStoryContent(storyContent);
+    }
+  }, [storyContent, isGeneratingStory]);
+
+  const handleTranslateSentence = async (sentenceIndex: number, text: string) => {
+    if (sentenceStates[sentenceIndex]?.translation) return;
+    
+    setSentenceStates(prev => ({
+      ...prev,
+      [sentenceIndex]: {
+        ...prev[sentenceIndex],
+        translating: true
+      }
+    }));
+
+    try {
+      const result = await translate(text);
+      setSentenceStates(prev => ({
+        ...prev,
+        [sentenceIndex]: {
+          ...prev[sentenceIndex],
+          translation: result,
+          translating: false
+        }
+      }));
+    } catch (error) {
+      setSentenceStates(prev => ({
+        ...prev,
+        [sentenceIndex]: {
+          ...prev[sentenceIndex],
+          translating: false
+        }
+      }));
+    }
+  };
+
+  const handleSpeakSentence = async (sentenceIndex: number, text: string) => {
+    setSentenceStates(prev => ({
+      ...prev,
+      [sentenceIndex]: {
+        ...prev[sentenceIndex],
+        speaking: true
+      }
+    }));
+    
+    await speak(text);
+    
+    setSentenceStates(prev => ({
+      ...prev,
+      [sentenceIndex]: {
+        ...prev[sentenceIndex],
+        speaking: false
+      }
+    }));
   };
 
   const exitStoryMode = () => {
     setIsStoryModeActive(false);
     setStoryContent('');
     setStoryError(null);
+    setStorySentences([]);
+    setSentenceStates({});
   };
 
   // --- Story Mode View ---
@@ -598,12 +681,6 @@ function WordList() {
             <h3 className="text-lg font-bold text-indigo-700">
               Story with Your Words
             </h3>
-            {/* <button
-              onClick={exitStoryMode}
-              className="bg-red-400 hover:bg-red-600 text-white text-xs font-semibold py-1 px-2 rounded-lg transition-all duration-150"
-            >
-              Exit
-            </button> */}
           </div>
         </div>
         
@@ -627,6 +704,51 @@ function WordList() {
                 />
                 <p className="text-gray-600">...</p>
               </div>
+            ) : storySentences.length > 0 ? (
+              <div className="prose prose-sm prose-indigo max-w-none overflow-auto">
+                {storySentences.map((sentence, index) => {
+                  const state = sentenceStates[index] || { translation: '', speaking: false, translating: false };
+                  const formattedSentence = sentence.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-indigo-700">$1</strong>');
+                  
+                  return (
+                    <div key={index} className="group relative mb-4 last:mb-0">
+                      <div 
+                        className="text-slate-800 leading-relaxed prose prose-sm max-w-none pr-20"
+                        dangerouslySetInnerHTML={{ __html: formattedSentence.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-indigo-700">$1</strong>') }}
+                      />
+                      
+                      {state.translation && (
+                        <div className="mt-2 text-slate-600 bg-slate-50 p-2 rounded prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: state.translation.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-indigo-700">$1</strong>') }}
+                        />
+                      )}
+                      
+                      <div className="absolute right-0 top-0 flex flex-row gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleSpeakSentence(index, sentence)}
+                          className="w-7 h-7 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
+                          title="Text to Speech"
+                          disabled={state.speaking}
+                        >
+                          <span className={state.speaking ? 'inline-block animate-spin-slow' : ''}>
+                            {state.speaking ? '⏳' : '🔊'}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => handleTranslateSentence(index, sentence)}
+                          className="w-7 h-7 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
+                          title="Translate"
+                          disabled={state.translating}
+                        >
+                          <span className={state.translating ? 'inline-block animate-spin-slow' : ''}>
+                            {state.translating ? '⏳' : '🌐'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div 
                 className="prose prose-sm prose-indigo max-w-none overflow-auto"
@@ -635,30 +757,32 @@ function WordList() {
             )}
           </div>
 
-          <div className="p-4 border-t border-gray-100">
-            <button
-              onClick={() => speak(storyContent.replace(/\*\*([^*]+)\*\*/g, '$1'))}
-              disabled={!storyContent || ttsSpeaking || isGeneratingStory}
-              className="w-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium py-2 px-4 rounded-lg transition-all disabled:opacity-50"
-            >
-              {ttsSpeaking ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Speaking...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
-                  </svg>
-                  Read Aloud
-                </span>
-              )}
-            </button>
-          </div>
+          {storyContent && !isGeneratingStory && (
+            <div className="p-4 border-t border-gray-100">
+              <button
+                onClick={() => speak(storyContent.replace(/\*\*([^*]+)\*\*/g, '$1'))}
+                disabled={ttsSpeaking || isGeneratingStory}
+                className="w-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+              >
+                {ttsSpeaking ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Speaking...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+                    </svg>
+                    Read All Aloud
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
