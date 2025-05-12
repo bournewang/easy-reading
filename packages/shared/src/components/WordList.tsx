@@ -4,6 +4,7 @@ import { useWordPractice, WordPractice } from '../hooks/useWordPractice';
 import { useTTS } from '../hooks/useTTS';
 import Dictionary from './Dictionary';
 import {Paginator} from './Paginator';
+import { api } from '../utils/api';
 import '../styles/tailwind.css';
 
 function WordList() {
@@ -18,12 +19,18 @@ function WordList() {
   const itemsPerPage = 20;
 
   const [isPracticeModeActive, setIsPracticeModeActive] = useState(false);
+  const [isStoryModeActive, setIsStoryModeActive] = useState(false);
   const [practiceWords, setPracticeWords] = useState<string[]>([]);
   const [currentPracticeIndex, setCurrentPracticeIndex] = useState(0);
   const [practiceInputValue, setPracticeInputValue] = useState('');
   const [practiceFeedback, setPracticeFeedback] = useState('');
   const [isWordRevealed, setIsWordRevealed] = useState(false);
   const [practiceSessionSummary, setPracticeSessionSummary] = useState<{ correct: number, incorrect: number, wordsPracticed: number} | null>(null);
+  
+  // Story mode states
+  const [storyContent, setStoryContent] = useState('');
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [storyError, setStoryError] = useState<string | null>(null);
 
   const wordArray = Array.from(words);
   const totalPages = Math.ceil(wordArray.length / itemsPerPage);
@@ -466,6 +473,198 @@ function WordList() {
   };
   // ------------------------
 
+  // Generate story with current page words or all words
+  const generateStory = async (useCurrentPageOnly: boolean = true) => {
+    // Reset story states
+    setStoryContent('');
+    setStoryError(null);
+    setIsGeneratingStory(true);
+    setIsStoryModeActive(true);
+    
+    // For tracking accumulated content across progress events
+    let accumulatedContent = '';
+    
+    // Determine which words to use
+    const wordsToUse = useCurrentPageOnly ? currentWordsForDisplay : wordArray;
+    
+    if (wordsToUse.length === 0) {
+      setStoryError("No words available. Please add some words to your word list.");
+      setIsGeneratingStory(false);
+      return;
+    }
+    
+    // Limit to 20 words maximum for story generation
+    const selectedWords = wordsToUse.slice(0, 20);
+    
+    try {
+      console.log('Making API request with words:', selectedWords);
+      
+      // Create the request payload
+      const payload = {
+        words: selectedWords,
+        type: 'sentences',
+        theme: 'learning',
+        length: 'short',
+        level: 'intermediate'
+      };
+      
+      // Use the api utility without the problematic Cache-Control header
+      const response = await api.post('/api/ai/makeStory', payload, { 
+        responseType: 'text',
+        headers: {
+          'Accept': 'text/event-stream'
+        },
+        // Enable Axios response streaming by setting a custom onDownloadProgress handler
+        onDownloadProgress: (progressEvent) => {
+          // Access the partial text response
+          if (progressEvent.event && progressEvent.event.target) {
+            const xhr = progressEvent.event.target as XMLHttpRequest;
+            const newData = xhr.responseText;
+            
+            // Track previous length to find only new content
+            const prevProcessedLength = accumulatedContent.length;
+            
+            // Process the SSE data
+            const lines = newData.split('\n');
+            let hasNewContent = false;
+            
+            for (const line of lines) {
+              if (line.trim() && line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.substring(6));
+                  
+                  if (data.content) {
+                    accumulatedContent += data.content;
+                    hasNewContent = true;
+                  }
+                  
+                  if (data.message && data.done) {
+                    // If we receive a complete message, use that instead
+                    accumulatedContent = data.message;
+                    hasNewContent = true;
+                  }
+                } catch (e) {
+                  console.error('Error parsing line:', e);
+                }
+              }
+            }
+            
+            // Update the UI only if we have new content
+            if (hasNewContent) {
+              console.log('Updating story with new content, length:', accumulatedContent.length);
+              setStoryContent(accumulatedContent);
+            }
+          }
+        }
+      });
+      
+      // This will be called when the entire response is complete
+      console.log('Complete response received');
+      setIsGeneratingStory(false);
+    } catch (error: any) {
+      console.error('Failed to generate story:', error);
+      
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        setStoryError(`Error: ${error.response.data.message || error.response.statusText}`);
+      } else if (error.message) {
+        setStoryError(`Error: ${error.message}`);
+      } else {
+        setStoryError('Failed to generate the story. Please try again later.');
+      }
+      
+      setIsGeneratingStory(false);
+    }
+  };
+
+  // Format the story content by converting markdown to HTML
+  const formatStoryContent = (content: string) => {
+    // Bold text (convert **word** to <strong>word</strong>)
+    return content.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-indigo-700">$1</strong>');
+  };
+
+  const exitStoryMode = () => {
+    setIsStoryModeActive(false);
+    setStoryContent('');
+    setStoryError(null);
+  };
+
+  // --- Story Mode View ---
+  const renderStoryView = () => {
+    return (
+      <div className="mx-auto mt-4 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-md mb-4 p-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-lg font-bold text-indigo-700">
+              Story with Your Words
+            </h3>
+            {/* <button
+              onClick={exitStoryMode}
+              className="bg-red-400 hover:bg-red-600 text-white text-xs font-semibold py-1 px-2 rounded-lg transition-all duration-150"
+            >
+              Exit
+            </button> */}
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-indigo-200 p-3 text-center">
+            <h3 className="font-medium text-indigo-700">
+              {isGeneratingStory ? 'Generating a story with your words...' : 'Story Generated!'}
+            </h3>
+          </div>
+
+          <div className="p-6">
+            {storyError ? (
+              <div className="p-3 bg-red-100 text-red-800 rounded-lg">
+                {storyError}
+              </div>
+            ) : isGeneratingStory ? (
+              <div className="flex flex-col items-center justify-center p-8">
+                <div 
+                  className="prose prose-sm prose-indigo max-w-none overflow-auto"
+                  dangerouslySetInnerHTML={{ __html: formatStoryContent(storyContent) }}
+                />
+                <p className="text-gray-600">...</p>
+              </div>
+            ) : (
+              <div 
+                className="prose prose-sm prose-indigo max-w-none overflow-auto"
+                dangerouslySetInnerHTML={{ __html: formatStoryContent(storyContent) }}
+              />
+            )}
+          </div>
+
+          <div className="p-4 border-t border-gray-100">
+            <button
+              onClick={() => speak(storyContent.replace(/\*\*([^*]+)\*\*/g, '$1'))}
+              disabled={!storyContent || ttsSpeaking || isGeneratingStory}
+              className="w-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium py-2 px-4 rounded-lg transition-all disabled:opacity-50"
+            >
+              {ttsSpeaking ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Speaking...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+                  </svg>
+                  Read Aloud
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  // ------------------------
+
   const renderWordBook = () => {
     return (
       <div className={`bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-xl ${practiceSessionSummary ? 'mt-4' : ''}`}>
@@ -530,8 +729,15 @@ function WordList() {
         <div className="flex flex-col md:flex-row gap-4 relative min-h-screen w-full">
           <div className="flex-1 mb-4 md:mb-0">
             <div className="flex justify-end gap-2 mb-4">
-              {!isPracticeModeActive && (
+              {!isPracticeModeActive && !isStoryModeActive && (
                 <>
+                  <button 
+                    onClick={() => generateStory(true)}
+                    className="bg-purple-400 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"
+                    disabled={currentWordsForDisplay.length === 0}
+                  >
+                    Make a Story
+                  </button>
                   <button 
                     onClick={() => startPracticeSession(true)}
                     className="bg-blue-400 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"
@@ -539,12 +745,6 @@ function WordList() {
                   >
                     Practice
                   </button>
-                  {/* <button 
-                    onClick={() => startPracticeSession(false)}
-                    className="bg-green-400 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"
-                  >
-                    {practiceWords.length > 0 ? 'Continue Practice' : 'Start Practice'}
-                  </button> */}
                 </>
               )}
               {isPracticeModeActive && (
@@ -555,9 +755,19 @@ function WordList() {
                   Exit Practice
                 </button>
               )}
+              {isStoryModeActive && (
+                <button 
+                  onClick={exitStoryMode}
+                  className="bg-red-400 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"
+                >
+                  Exit Story
+                </button>
+              )}
             </div>
             
-            {isPracticeModeActive ? renderPracticeView() : renderWordBook()}
+            {isPracticeModeActive && renderPracticeView()}
+            {isStoryModeActive && renderStoryView()}
+            {!isPracticeModeActive && !isStoryModeActive && renderWordBook()}
           </div>
 
           <div className={`fixed md:sticky bottom-0 md:top-0 left-0 right-0 md:w-1/3 h-[200px] md:h-screen bg-white md:bg-slate-50 overflow-y-auto border-t border-slate-200 md:border-l md:border-t-0 shadow-lg md:shadow-none z-50`}>
