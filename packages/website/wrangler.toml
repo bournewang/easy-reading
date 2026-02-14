@@ -1,0 +1,4 @@
+# wrangler.toml
+name = "englishreader-www"
+pages_build_output_dir = "./dist"
+

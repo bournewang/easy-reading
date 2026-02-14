@@ -23,10 +23,10 @@ export default function ArticleListPage() {
   const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
+    // if (!user) {
+    //   router.push('/login');
+    //   return;
+    // }
 
     // Get read articles from localStorage
     const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]');
@@ -58,9 +58,9 @@ export default function ArticleListPage() {
     return articles.slice(startIndex, endIndex);
   };
 
-  if (!user) {
-    return null;
-  }
+  // if (!user) {
+  //   return null;
+  // }
 
   if (loading) {
     return (

@@ -5,10 +5,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"pnpm dev:extension\" \"pnpm dev:website\"",
+    "dev": "concurrently \"pnpm --filter @easy-reading/shared dev\" \"pnpm --filter @easy-reading/extension dev\" \"pnpm --filter @easy-reading/backend dev\"",
     "dev:extension": "pnpm --filter @easy-reading/chrome-extension dev",
     "dev:website": "pnpm --filter @easy-reading/website dev",
-    "build": "pnpm --filter './packages/*' build",
+    "build": "pnpm --filter \"@easy-reading/*\" build",
     "clean": "rm -rf node_modules && pnpm --filter './packages/*' clean"
   },
   "devDependencies": {

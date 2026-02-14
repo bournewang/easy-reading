@@ -855,13 +855,13 @@ function WordList() {
             <div className="flex justify-end gap-2 mb-4">
               {!isPracticeModeActive && !isStoryModeActive && (
                 <>
-                  <button 
+                  {/* <button 
                     onClick={() => generateStory(true)}
                     className="bg-purple-400 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"
                     disabled={currentWordsForDisplay.length === 0}
                   >
                     Make a Story
-                  </button>
+                  </button> */}
                   <button 
                     onClick={() => startPracticeSession(true)}
                     className="bg-blue-400 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"

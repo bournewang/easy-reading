@@ -1,0 +1,77 @@
+export const zh = {
+  wordList: {
+    title: "单词本",
+    subtitle: "跟踪和复习你的学习进度",
+    savedWords: "已保存的单词",
+    practiceAction: "练习",
+    storyAction: "创建故事",
+    exitPractice: "退出练习",
+    exitStory: "退出故事",
+    noWordsAvailable: "你的单词列表是空的。",
+    clickToAddWords: "阅读时点击单词将它们添加到列表中。",
+    proficiencyLevels: "熟练度级别：",
+    gridView: "网格视图",
+    cloudView: "云视图",
+    practiceSession: "练习会话",
+    practiceComplete: "练习完成！",
+    wordsPracticed: "已练习单词",
+    keepPracticing: "继续练习以提高熟练度",
+    backToWordList: "返回单词列表",
+    listen: "听取",
+    typeWhatYouHear: "输入你听到的内容：",
+    skipNext: "跳过 / 下一个",
+    readAloud: "朗读全文",
+    speaking: "正在说话...",
+    storyWithWords: "使用你的单词创建的故事",
+    generatingStory: "正在用你的单词生成故事...",
+    storyGenerated: "故事已生成！",
+    viewSummary: "查看摘要并退出",
+    errorFailed: "无法生成故事。请稍后再试。",
+  },
+  proficiency: {
+    novice: "初学者",
+    beginner: "入门",
+    intermediate: "中级",
+    advanced: "高级",
+    master: "精通",
+  },
+  website: {
+    navigation: {
+      home: "首页",
+      news: "新闻",
+      books: "图书",
+      wordBook: "单词本",
+      history: "历史记录",
+      pricing: "价格",
+      login: "登录",
+      register: "注册"
+    },
+    homePage: {
+      tagline: "将任何文章转换为清晰、无干扰的阅读体验。",
+      subtitle: "非常适合语言学习者和专注的读者。",
+      featuredArticles: "推荐文章",
+      viewAll: "查看所有文章",
+      backToHome: "返回首页",
+      markAsRead: "标记为已读",
+      articleRead: "文章已读"
+    },
+    newsPage: {
+      title: "新闻",
+      featuredArticles: "精选文章",
+      moreArticles: "更多文章",
+      searchPlaceholder: "搜索文章...",
+      back: "返回",
+    },
+    pricingPage: {
+      title: "选择你的计划",
+      subtitle: "为你的英语学习之旅选择最佳计划",
+      mostPopular: "最受欢迎",
+      month: "月",
+      months: "个月",
+      features: "功能特性",
+      selectedPlan: "已选择",
+      total: "总计",
+      proceedToCheckout: "前往结账"
+    }
+  }
+}; 

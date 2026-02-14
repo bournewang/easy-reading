@@ -1,0 +1,77 @@
+export const en = {
+  wordList: {
+    title: "Word Book",
+    subtitle: "Track and review your learning progress",
+    savedWords: "Saved Words",
+    practiceAction: "Practice",
+    storyAction: "Make a Story",
+    exitPractice: "Exit Practice",
+    exitStory: "Exit Story",
+    noWordsAvailable: "Your word list is empty.",
+    clickToAddWords: "Click on words while reading to add them to your list.",
+    proficiencyLevels: "Proficiency Levels:",
+    gridView: "Grid",
+    cloudView: "Cloud",
+    practiceSession: "Practice Session",
+    practiceComplete: "Practice Completed!",
+    wordsPracticed: "Words Practiced",
+    keepPracticing: "Keep practicing to improve your proficiency",
+    backToWordList: "Back to Word List",
+    listen: "Listen",
+    typeWhatYouHear: "Type what you hear:",
+    skipNext: "Skip / Next",
+    readAloud: "Read All Aloud",
+    speaking: "Speaking...",
+    storyWithWords: "Story with Your Words",
+    generatingStory: "Generating a story with your words...",
+    storyGenerated: "Story Generated!",
+    viewSummary: "View Summary & Exit",
+    errorFailed: "Failed to generate the story. Please try again later.",
+  },
+  proficiency: {
+    novice: "Novice",
+    beginner: "Beginner",
+    intermediate: "Intermediate",
+    advanced: "Advanced",
+    master: "Master",
+  },
+  website: {
+    navigation: {
+      home: "Home",
+      news: "News",
+      books: "Books",
+      wordBook: "Word Book",
+      history: "History",
+      pricing: "Pricing",
+      login: "Login",
+      register: "Register"
+    },
+    homePage: {
+      tagline: "Transform any article into a clean, distraction-free reading experience.",
+      subtitle: "Perfect for language learners and focused readers.",
+      featuredArticles: "Featured Articles",
+      viewAll: "View all articles",
+      backToHome: "Back to Home",
+      markAsRead: "Mark as Read",
+      articleRead: "Article Read"
+    },
+    newsPage: {
+      title: "News",
+      featuredArticles: "Featured Articles",
+      moreArticles: "More Articles",
+      searchPlaceholder: "Search articles...",
+      back: "Back",
+    },
+    pricingPage: {
+      title: "Choose Your Plan",
+      subtitle: "Select the perfect plan for your English learning journey",
+      mostPopular: "Most Popular",
+      month: "Month",
+      months: "Months",
+      features: "Features",
+      selectedPlan: "Selected",
+      total: "Total",
+      proceedToCheckout: "Proceed to Checkout"
+    }
+  }
+}; 

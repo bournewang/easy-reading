@@ -58,14 +58,15 @@ export default function Navigation() {
           </Link>
           
           <div className="flex items-center gap-6">
+            <NavigationItem href="/" label="Home" />
             <NavigationItem href="/news" label="News" />
-            <NavigationItem href="/books" label="Books" />
+            {/* <NavigationItem href="/books" label="Books" /> */}
             <NavigationItem href="/wordlist" label="Word Book" />
              
             <NavigationItem href="/articles" label="History" />
-            <NavigationItem href="/pricing" label="Pricing" />
+            {/* <NavigationItem href="/pricing" label="Pricing" /> */}
 
-            {user ? (
+            {/* {user ? (
               <>
                 {getSubscriptionBadge()}
                 <NavigationItem href="/user" label={user.username} />
@@ -75,7 +76,7 @@ export default function Navigation() {
                 <NavigationItem href="/login" label="Login" />
                 <NavigationItem href="/register" label="Register" />
               </>
-            )}
+            )} */}
           </div>
         </div>
       </div>
