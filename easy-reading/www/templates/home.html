@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="py-12 bg-gradient-to-br from-indigo-50 via-purple-50 to-white">
+    <div class="container mx-auto px-4">
+        <div class="flex flex-col lg:flex-row items-center justify-between">
+            <div class="lg:w-1/2 mb-10 lg:mb-0">
+                <h1 class="text-5xl font-bold text-indigo-900 mb-6">Make English Reading Natural and Effortless</h1>
+                <p class="text-xl text-gray-600 mb-8">Instantly translate, save vocabulary, and track your reading progress with our powerful Chrome extension.</p>
+                <div class="space-x-4">
+                    <!-- <a href="{{ extension_url }}" class="btn-primary">Add to Chrome</a> -->
+                    <a href="/static/easy-reading-0.6.zip" class="btn-primary">Download for Chrome</a>
+                    <!-- <a href="/features.html" class="btn-secondary">Learn More</a> -->
+                </div>
+            </div>
+            <div class="w-1/3" style="width:40%;">
+                <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80" alt="English Reader Screenshot" class="rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-500">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Try It Now Section -->
+<section class="py-20 bg-gradient-to-r from-violet-600 to-indigo-600 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml,...')] opacity-10"></div>
+    <div class="container mx-auto px-4 relative">
+        <h2 class="text-3xl font-bold text-center text-white mb-6">Try It Now</h2>
+        <p class="text-xl text-center text-purple-100 mb-12">Experience the Reader mode instantly - no installation required</p>
+        
+        <div class="max-w-2xl mx-auto">
+            <form action="{{reader_url}}" method="GET" target="_blank" class="flex flex-col md:flex-row gap-4">
+                <input 
+                    type="url" 
+                    name="url" 
+                    placeholder="Enter any English article URL" 
+                    class="flex-1 px-6 py-4 rounded-xl border-2 border-white/20 placeholder-purple-200 focus:border-white focus:ring-2 focus:ring-white/20 outline-none transition-all"
+                    required
+                >
+                <button type="submit" class="bg-white text-indigo-600 font-bold py-4 px-8 rounded-xl hover:bg-purple-50 hover:scale-105 transition-all duration-300">
+                    Read Now
+                </button>
+            </form>
+            <div class="mt-8">
+                <h3 class="text-white text-center mb-4 font-medium">Or try these sample articles:</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for article in sample_articles[:6] %}
+                    <a 
+                        href="{{reader_url}}?url={{article.url}}" 
+                        target="_blank"
+                        class="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all text-white text-sm hover:translate-y-[-2px] block"
+                    >
+                        {{article.title}}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-20 bg-gradient-to-tl from-white via-purple-50/30 to-indigo-50/30">
+    <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center text-indigo-900 mb-12">Why Choose English Reader?</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="card p-8 hover:translate-y-[-8px] transition-all duration-300">
+                <div class="text-violet-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-indigo-900 mb-3">Smart Translation</h3>
+                <p class="text-gray-600">Instant translation with context awareness and phrase detection.</p>
+            </div>
+            
+            <div class="card p-8 hover:translate-y-[-8px] transition-all duration-300">
+                <div class="text-violet-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-indigo-900 mb-3">Text to Speech</h3>
+                <p class="text-gray-600">Natural pronunciation with adjustable speed and multiple accents.</p>
+            </div>
+
+            <div class="card p-8 hover:translate-y-[-8px] transition-all duration-300">
+                <div class="text-violet-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-indigo-900 mb-3">Dictionary Lookup</h3>
+                <p class="text-gray-600">Comprehensive definitions, examples, and synonyms at your fingertips.</p>
+            </div>
+
+            <div class="card p-8 hover:translate-y-[-8px] transition-all duration-300">
+                <div class="text-violet-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-indigo-900 mb-3">Smart Vocabulary</h3>
+                <p class="text-gray-600">AI-powered vocabulary management with spaced repetition learning.</p>
+            </div>
+
+            <div class="card p-8 hover:translate-y-[-8px] transition-all duration-300">
+                <div class="text-violet-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-indigo-900 mb-3">Progress Tracking</h3>
+                <p class="text-gray-600">Detailed insights into your reading habits and vocabulary growth.</p>
+            </div>
+
+            <div class="card p-8 hover:translate-y-[-8px] transition-all duration-300">
+                <div class="text-violet-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-indigo-900 mb-3">Context Learning</h3>
+                <p class="text-gray-600">Learn words in context with example sentences from your readings.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Screenshot Showcase -->
+<!-- <section class="py-20 bg-gradient-to-b from-white to-purple-50">
+    <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center text-indigo-900 mb-12">See It in Action</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="transform hover:scale-105 transition-all duration-500">
+                <img src="https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80" alt="Student Reading" class="rounded-xl shadow-lg object-cover h-[400px] w-full">
+            </div>
+            <div class="transform hover:scale-105 transition-all duration-500">
+                <img src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80" alt="Learning English" class="rounded-xl shadow-lg object-cover h-[400px] w-full">
+            </div>
+        </div>
+    </div>
+</section> -->
+
+<!-- CTA Section -->
+<section class="py-20 bg-gradient-to-r from-violet-600 to-indigo-600 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml,...')] opacity-10"></div>
+    <div class="container mx-auto px-4 text-center">
+        <h2 class="text-3xl font-bold text-white mb-6">Ready to Enhance Your Reading Experience?</h2>
+        <p class="text-xl text-purple-100 mb-8">Join thousands of users who are already enjoying effortless English reading.</p>
+        <div class="space-x-4">
+            <!-- <a href="{{ extension_url }}" class="bg-white text-indigo-600 font-bold py-4 px-8 rounded-xl transition-all duration-300 hover:bg-purple-50 hover:scale-105 inline-block">
+                Install Now - It's Free
+            </a>
+            <a href="/premium.html" class="border-2 border-white text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 hover:bg-white/10 hover:scale-105 inline-block">
+                Explore Premium
+            </a> -->
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials Section -->
+<section class="py-20 bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50">
+    <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center text-indigo-900 mb-12">What Our Users Say</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="card p-6">
+                <div class="text-violet-600 mb-4">★★★★★</div>
+                <p class="text-gray-600 mb-4">"This extension has completely changed how I read English content online. The instant translations are incredibly helpful!"</p>
+                <p class="font-semibold text-indigo-900">- Sarah M.</p>
+            </div>
+            <div class="card p-6">
+                <div class="text-violet-600 mb-4">★★★★★</div>
+                <p class="text-gray-600 mb-4">"The vocabulary management feature is fantastic. I can finally keep track of new words I learn while reading."</p>
+                <p class="font-semibold text-indigo-900">- Michael L.</p>
+            </div>
+            <div class="card p-6">
+                <div class="text-violet-600 mb-4">★★★★★</div>
+                <p class="text-gray-600 mb-4">"Simple, fast, and effective. Exactly what I needed for reading English articles online."</p>
+                <p class="font-semibold text-indigo-900">- David K.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

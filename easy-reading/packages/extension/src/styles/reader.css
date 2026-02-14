@@ -1,0 +1,26 @@
+#reader-overlay {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+#reader-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+#reader-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+#reader-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+#reader-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+#reader-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

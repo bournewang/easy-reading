@@ -1,0 +1,16 @@
+name = "grok-query"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+# XAI_API_KEY will be set in the Cloudflare dashboard or via wrangler secret
+XAI_API_KEY = "xai-MUdwHzirDITD1ZiTSiUZk76FCj4DdIYlMcOx14ddhetvZV6j2TwquRfdhWsfa4NsmaEC1EUXQkj6ZimK"
+DASHSCOPE_API_KEY = 'sk-68ada9b0d2654e35bc94130d347550f6'
+
+[[rules]]
+type = "ESModule"
+globs = ["**/*.ts"]
+
+[[kv_namespaces]]
+binding = "GROK_CACHE"
+id = "f545d8eb136240219ca701dd40bba607"
