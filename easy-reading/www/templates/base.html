@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Reader - Make English Reading Natural and Effortless | Translate, Listen & Learn Vocabulary</title>
+    <meta name="description" content="English Reader helps you read English naturally with instant translation, text-to-speech, and vocabulary saving. Perfect for English learners at all levels.">
+    <meta name="keywords" content="English reader, English reading tool, learn English reading, translate English articles, English text to speech, vocabulary learning, Chrome extension for English learners">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://englishreader.org/">
+    <meta property="og:title" content="English Reader - Make English Reading Natural and Effortless">
+    <meta property="og:description" content="English Reader helps you read English naturally with instant translation, text-to-speech, and vocabulary saving.">
+    <meta property="og:image" content="https://englishreader.org/static/img/social-preview.jpg">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://englishreader.org/">
+    <meta property="twitter:title" content="English Reader - Make English Reading Natural and Effortless">
+    <meta property="twitter:description" content="English Reader helps you read English naturally with instant translation, text-to-speech, and vocabulary saving.">
+    <meta property="twitter:image" content="https://englishreader.org/static/img/social-preview.jpg">
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "English Reader",
+      "description": "Chrome extension that helps English learners read naturally with instant translation, text-to-speech, and vocabulary saving features.",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Chrome",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.7",
+        "ratingCount": "1250"
+      }
+    }
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <link rel="apple-touch-icon" sizes="57x57" href="/static/img/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/static/img/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/static/img/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/static/img/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/static/img/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/static/img/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/static/img/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/static/img/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/img/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/static/img/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/static/img/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon-16x16.png">
+    <link rel="manifest" href="/static/img/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/static/img/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <link rel="canonical" href="https://englishreader.org{{ request.path }}">
+    <meta name="google-site-verification" content="YOUR_GOOGLE_SITE_VERIFICATION_CODE">
+    
+    <link href="{{ url_for('static', filename='css/tailwind.css') }}" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-b from-indigo-50 to-purple-50 min-h-screen">
+    <nav class="bg-gradient-to-r from-violet-600 to-indigo-600 shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-5">
+                <a href="/" class="text-2xl font-bold text-white hover:text-purple-100 transition-colors">English Reader</a>
+                <div class="space-x-8">
+                    <!-- <a href="/features.html" class="text-white hover:text-purple-200 transition-colors">Features</a> -->
+                    <!-- <a href="/install.html" class="text-white hover:text-purple-200 transition-colors">Install</a> -->
+                    <!-- <a href="/premium.html" class="text-white hover:text-purple-200 transition-colors">Premium</a> -->
+                    <!-- <a href="/faq.html" class="text-white hover:text-purple-200 transition-colors">FAQ</a> -->
+                    <!-- <a href="/contact.html" class="text-white hover:text-purple-200 transition-colors">Contact</a> -->
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t border-purple-100 mt-16">
+        <div class="container mx-auto px-4 py-8">
+            <div class="flex justify-between items-center">
+                <div class="text-gray-600">
+                    © 2024 English Reader. All rights reserved.
+                </div>
+                <div class="space-x-4">
+                    <a href="/privacy-policy.html" class="text-indigo-600 hover:text-indigo-800">Privacy Policy</a>
+                    <a href="mailto:{{ email }}" class="text-indigo-600 hover:text-indigo-800">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Structured Data -->
+    {% include 'structured-data.html' %}
+    
+    <!-- Google Analytics (Optional) -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script> -->
+    
+</body>
+</html>

@@ -1,0 +1,100 @@
+{% if request.path == '/' %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "English Reader",
+  "url": "https://englishreader.org",
+  "description": "Make English reading natural and effortless with instant translation, text-to-speech, and vocabulary saving features.",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://englishreader.org/search?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "English Reader",
+  "url": "https://englishreader.org",
+  "logo": "https://englishreader.org/static/img/favicon-192x192.png",
+  "sameAs": [
+    "https://twitter.com/englishreader",
+    "https://facebook.com/englishreader"
+  ]
+}
+</script>
+{% endif %}
+
+{% if request.path == '/features.html' %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Instant Translation",
+      "description": "Translate any word or sentence instantly while reading English articles."
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Text-to-Speech",
+      "description": "Listen to articles with natural pronunciation to improve listening skills."
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Vocabulary Book",
+      "description": "Save new words and review them anytime to build your English vocabulary."
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Clean Reading Mode",
+      "description": "Remove clutter from articles for a focused and pleasant reading experience."
+    }
+  ]
+}
+</script>
+{% endif %}
+
+{% if request.path == '/faq.html' %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is English Reader free to use?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, English Reader is completely free with all core features including instant translation, text-to-speech, and vocabulary saving."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which browsers support English Reader?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "English Reader is available as a Chrome extension and works on all Chromium-based browsers including Google Chrome, Microsoft Edge, and Brave."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use English Reader on mobile devices?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Currently English Reader is available as a desktop Chrome extension. Mobile support is planned for future releases."
+      }
+    }
+  ]
+}
+</script>
+{% endif %}
