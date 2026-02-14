@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://read.english-reader.com/sitemap.xml
+
+# Crawl delay to respect server resources
+Crawl-delay: 2
+
+# Allow specific crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
