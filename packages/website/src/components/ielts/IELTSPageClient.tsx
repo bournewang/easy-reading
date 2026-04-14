@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { IELTSArticleListItem } from '@/lib/ielts-types';
 import {
   getIELTSTestReaderUrl,
@@ -9,6 +10,7 @@ import {
   ieltsMonthOrder,
   type IELTSMonthKey,
 } from '@/lib/ielts-paths';
+import { readLastIELTSTestRoute } from '@/lib/ielts-storage';
 
 type IELTSPageClientProps = {
   articles: IELTSArticleListItem[];
@@ -18,6 +20,7 @@ const yearsFromArticles = (articles: IELTSArticleListItem[]) =>
   Array.from(new Set(articles.map((article) => article.year)));
 
 export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
+  const router = useRouter();
   const years = useMemo(() => yearsFromArticles(articles), [articles]);
   const [selectedYear, setSelectedYear] = useState(years[0] || '');
   const [selectedMonth, setSelectedMonth] = useState<IELTSMonthKey | ''>('');
@@ -27,6 +30,32 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
   useEffect(() => {
     setReadArticles(JSON.parse(localStorage.getItem('readArticles') || '[]'));
   }, []);
+
+  useEffect(() => {
+    const savedRoute = readLastIELTSTestRoute();
+    if (!savedRoute) {
+      return;
+    }
+
+    const matched = savedRoute.match(/^\/ielts-reader\/([^/]+)\/([^/]+)\/([^/]+)$/);
+    if (!matched) {
+      return;
+    }
+
+    const [, year, month, test] = matched;
+    const exists = articles.some(
+      (article) =>
+        article.year === year &&
+        article.month === month &&
+        article.test === test,
+    );
+
+    if (!exists) {
+      return;
+    }
+
+    router.replace(savedRoute);
+  }, [articles, router]);
 
   const availableMonths = useMemo(() => {
     if (!selectedYear) {

@@ -9,6 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: ['/', '/news', '/books', '/pricing'],
         disallow: [
           '/articles',
+          '/history',
           '/checkout',
           '/home',
           '/login',

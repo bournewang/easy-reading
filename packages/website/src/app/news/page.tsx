@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useArticles } from '@/hooks/useArticles';
 import type { FeaturedArticle } from '@/data/articles';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 
 const backgroundColors = {
   general: '#3B82F6',
@@ -14,7 +15,7 @@ const backgroundColors = {
   earth: '#F59E0B'
 }
 
-function ArticleCard({ article, onClick }: { article: FeaturedArticle; onClick: () => void }) {
+function ArticleCard({ article, onClick, categoryLabel }: { article: FeaturedArticle; onClick: () => void; categoryLabel: string }) {
   const [isRead, setIsRead] = useState(false);
 
   useEffect(() => {
@@ -29,9 +30,9 @@ function ArticleCard({ article, onClick }: { article: FeaturedArticle; onClick: 
     >
       <div className="flex flex-col h-full">
         <div className="flex items-start justify-between mb-2">
-          <span className="inline-block px-2 py-1 text-sm font-semibold rounded-full text-white"
+            <span className="inline-block px-2 py-1 text-sm font-semibold rounded-full text-white"
                 style={{ backgroundColor: backgroundColors[article.category] }}>
-            {article.category}
+            {categoryLabel}
           </span>
         </div>
         <h3 className="text-xl font-bold mb-2">{article.title}</h3>
@@ -48,7 +49,7 @@ function ArticleCard({ article, onClick }: { article: FeaturedArticle; onClick: 
   );
 }
 
-function ArticleCardWithImage({ article, onClick }: { article: FeaturedArticle; onClick: () => void }) {
+function ArticleCardWithImage({ article, onClick, categoryLabel }: { article: FeaturedArticle; onClick: () => void; categoryLabel: string }) {
   const [isRead, setIsRead] = useState(false);
 
   useEffect(() => {
@@ -68,9 +69,9 @@ function ArticleCardWithImage({ article, onClick }: { article: FeaturedArticle; 
       />
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
-          <span className="inline-block px-2 py-1 text-sm font-semibold rounded-full text-white"
+            <span className="inline-block px-2 py-1 text-sm font-semibold rounded-full text-white"
                 style={{ backgroundColor: backgroundColors[article.category] }}>
-            {article.category}
+            {categoryLabel}
           </span>
         </div>
         <h3 className="text-xl font-bold mb-2">{article.title}</h3>
@@ -89,9 +90,15 @@ function ArticleCardWithImage({ article, onClick }: { article: FeaturedArticle; 
 
 function UrlReaderContent() {
   const { articles: featuredArticles, loading: articlesLoading, error: articlesError } = useArticles();
+  const { t } = useLocaleContext();
   const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const router = useRouter();
+  const news = (key: string) => t(`website.newsPage.${key}`);
+  const getCategoryLabel = (category: string) => {
+    const normalized = category.charAt(0).toUpperCase() + category.slice(1);
+    return news(`categories${normalized}`);
+  };
 
   // Extract unique categories from articles
   const categories = ['all', ...new Set(featuredArticles.map(article => article.category))];
@@ -127,7 +134,7 @@ function UrlReaderContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-center mb-8">BBC News</h1>
+        <h1 className="text-4xl font-bold text-center mb-8">{news('title')}</h1>
         {articlesLoading ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -150,7 +157,7 @@ function UrlReaderContent() {
                         : 'bg-white text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    {category}
+                    {category === 'all' ? news('categoriesAll') : getCategoryLabel(category)}
                   </button>
                 ))}
               </div>
@@ -158,7 +165,7 @@ function UrlReaderContent() {
               <div className="relative w-48">
                 <input
                   type="text"
-                  placeholder="Search articles..."
+                  placeholder={news('searchPlaceholder')}
                   value={searchParams.get('search') || ''}
                   onChange={(e) => {
                     const newUrl = new URL(window.location.href);
@@ -184,6 +191,7 @@ function UrlReaderContent() {
                   <ArticleCardWithImage
                     key={article.url}
                     article={article}
+                    categoryLabel={getCategoryLabel(article.category)}
                     onClick={() => handleArticleClick(article.url)}
                   />
                 ))}
@@ -192,12 +200,13 @@ function UrlReaderContent() {
 
             {remainingArticles.length > 0 && (
               <>
-                <h2 className="text-2xl font-semibold mb-4">More Articles</h2>
+                <h2 className="text-2xl font-semibold mb-4">{news('moreArticles')}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {remainingArticles.map(article => (
                     <ArticleCard
                       key={article.url}
                       article={article}
+                      categoryLabel={getCategoryLabel(article.category)}
                       onClick={() => handleArticleClick(article.url)}
                     />
                   ))}

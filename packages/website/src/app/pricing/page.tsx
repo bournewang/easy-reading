@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { PRICING_TIERS, type PricingTier, type DurationOption, formatPrice, getSavingsText, getDefaultDurationOption, getPopularTier } from '@easy-reading/shared';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 
 export default function PricingPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLocaleContext();
   const popularTier = getPopularTier();
   const defaultDuration = popularTier ? getDefaultDurationOption(popularTier) : null;
+  const pricing = (key: string) => t(`website.pricingPage.${key}`);
+  const common = (key: string) => t(`website.common.${key}`);
   
   const [selectedTier, setSelectedTier] = useState<PricingTier | null>(popularTier || null);
   const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(defaultDuration || null);
@@ -43,10 +47,10 @@ export default function PricingPage() {
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">
-            Choose Your Plan
+            {pricing('title')}
           </h1>
           <p className="mt-4 text-xl text-gray-600">
-            Select the perfect plan for your English learning journey
+            {pricing('subtitle')}
           </p>
         </div>
 
@@ -59,7 +63,7 @@ export default function PricingPage() {
               {tier.isPopular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                   <span className="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                    Most Popular
+                    {pricing('mostPopular')}
                   </span>
                 </div>
               )}
@@ -72,7 +76,7 @@ export default function PricingPage() {
                     <span className="text-4xl font-bold text-gray-900">
                       ¥{tier.monthlyPrice}
                     </span>
-                    <span className="text-gray-600">/month</span>
+                    <span className="text-gray-600">{pricing('perMonth')}</span>
                   </p>
                 )}
               </div>
@@ -92,13 +96,13 @@ export default function PricingPage() {
                     >
                       <div className="flex justify-between items-center">
                         <span>
-                          {duration.months} {duration.months === 1 ? 'Month' : 'Months'}
+                          {duration.months} {duration.months === 1 ? pricing('month') : pricing('months')}
                         </span>
                         <div className="flex items-center gap-2">
                           <span>{formatPrice(duration.price)}</span>
                           {duration.savings && (
                             <span className="text-green-600 text-xs">
-                              {getSavingsText(duration.savings)}
+                              {common('save')} {duration.savings}%
                             </span>
                           )}
                         </div>
@@ -137,18 +141,18 @@ export default function PricingPage() {
             <div className="max-w-7xl mx-auto flex justify-between items-center">
               <div>
                 <p className="text-sm text-gray-600">
-                  Selected: {selectedTier.name} - {selectedDuration.months}{' '}
-                  {selectedDuration.months === 1 ? 'Month' : 'Months'}
+                  {pricing('selectedPlan')}: {selectedTier.name} - {selectedDuration.months}{' '}
+                  {selectedDuration.months === 1 ? pricing('month') : pricing('months')}
                 </p>
                 <p className="text-lg font-semibold text-gray-900">
-                  Total: {formatPrice(selectedDuration.price)}
+                  {pricing('total')}: {formatPrice(selectedDuration.price)}
                 </p>
               </div>
               <button
                 onClick={handleProceedToCheckout}
                 className="bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-600"
               >
-                Proceed to Checkout
+                {pricing('proceedToCheckout')}
               </button>
             </div>
           </div>

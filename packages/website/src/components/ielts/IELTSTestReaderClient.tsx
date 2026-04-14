@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Reader, type Article } from '@easy-reading/shared';
 import type { IELTSArticleListItem, IELTSReaderTestSummary } from '@/lib/ielts-types';
 import { getIELTSTestReaderUrl, ieltsMonthLabels, ieltsMonthOrder } from '@/lib/ielts-paths';
+import { saveLastIELTSTestRoute } from '@/lib/ielts-storage';
 
 type IELTSTestReaderClientProps = {
   summary: IELTSReaderTestSummary;
@@ -27,6 +28,11 @@ export default function IELTSTestReaderClient({
   const router = useRouter();
   const [selectedPassageId, setSelectedPassageId] = useState(passages[0]?.id || '');
   const activeArticle = selectedPassageId ? articlesById[selectedPassageId] || null : null;
+
+  useEffect(() => {
+    saveLastIELTSTestRoute(getIELTSTestReaderUrl(summary.year, summary.month, summary.test));
+  }, [summary.month, summary.test, summary.year]);
+
   const availableYears = useMemo(
     () => Array.from(new Set(allTests.map((entry) => entry.year))).sort((a, b) => Number(a) - Number(b)),
     [allTests],

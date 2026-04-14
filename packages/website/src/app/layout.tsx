@@ -4,6 +4,7 @@ import Navigation from "../components/Navigation";
 import "./globals.css";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { absoluteUrl, siteConfig } from "@/lib/seo";
+import { LocaleProvider } from "@easy-reading/shared/contexts/LocaleContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -60,12 +61,14 @@ export default function RootLayout({
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7286645003075205" crossOrigin="anonymous"></script>
       </head>  
       <body className={inter.className}>
-        <AuthProvider>
-          <Navigation />
-          <main className="min-h-screen">
-            {children}
-          </main>
-        </AuthProvider>
+        <LocaleProvider>
+          <AuthProvider>
+            <Navigation />
+            <main className="min-h-screen">
+              {children}
+            </main>
+          </AuthProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

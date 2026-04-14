@@ -7,6 +7,7 @@ import WeChatPayQR from '@/components/payment/WeChatPayQR';
 import { AlipayPayment } from '@/components/payment/AlipayPayment';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 
 // Client component that uses useSearchParams
 function CheckoutContent() {
@@ -15,6 +16,9 @@ function CheckoutContent() {
   const tierId = searchParams.get('tier');
   const durationMonths = searchParams.get('duration');
   const { user } = useAuth();
+  const { t } = useLocaleContext();
+  const checkout = (key: string) => t(`website.checkoutPage.${key}`);
+  const pricing = (key: string) => t(`website.pricingPage.${key}`);
 
   // Initialize tier and duration from URL parameters
   const initialTier = tierId ? PRICING_TIERS.find((t) => t.id === tierId) : null;
@@ -46,7 +50,7 @@ function CheckoutContent() {
         }
       }
     } else {
-      setError('Missing required parameters. Please select a plan from the pricing page.');
+      setError(checkout('missingParams'));
     }
     setLoading(false);
   }, [searchParams]);
@@ -79,13 +83,13 @@ function CheckoutContent() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Invalid Subscription Plan</h1>
           <p className="mt-4 text-gray-600">
-            Please select a valid subscription plan from the pricing page.
+            {checkout('invalidBody')}
           </p>
           <button
             onClick={() => router.push('/pricing')}
             className="mt-4 bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-600"
           >
-            Go to Pricing
+            {checkout('goPricing')}
           </button>
         </div>
       </div>
@@ -96,27 +100,27 @@ function CheckoutContent() {
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-8">Checkout</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-8">{checkout('title')}</h1>
 
           {/* Order Summary */}
           <div className="border-b border-gray-200 pb-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{checkout('orderSummary')}</h2>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Plan</span>
+              <span className="text-gray-600">{pricing('planLabel')}</span>
               <span className="font-medium">{selectedTier.name}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Duration</span>
-              <span className="font-medium">{selectedDuration.months} months</span>
+              <span className="text-gray-600">{pricing('durationLabel')}</span>
+              <span className="font-medium">{selectedDuration.months} {pricing('months')}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total</span>
+              <span className="text-gray-600">{pricing('total')}</span>
               <span className="text-xl font-bold text-blue-600">
                 {formatPrice(selectedDuration.price)}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">User</span>
+              <span className="text-gray-600">{pricing('userLabel')}</span>
               <span className="font-medium">
                 {user?.username} {user?.fullName}
               </span>
@@ -125,7 +129,7 @@ function CheckoutContent() {
 
           {/* Payment Method Selection */}
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Method</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{checkout('paymentMethod')}</h2>
             <div className="flex space-x-4">
               <button
                 onClick={() => setPaymentMethod('alipay')}
@@ -168,7 +172,7 @@ function CheckoutContent() {
               onClick={handlePayment}
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700"
             >
-              Proceed to Payment
+              {checkout('proceedPayment')}
             </button>
           ) : (
             <div className="space-y-4">

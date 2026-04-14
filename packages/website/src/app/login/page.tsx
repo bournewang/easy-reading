@@ -4,23 +4,35 @@ import { AuthForm } from '@/components/auth/AuthForm';
 // import { API_URLS } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '../../utils/api';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
+
+function getErrorMessage(error: any, fallback: string) {
+  return (
+    error?.response?.data?.message ||
+    error?.response?.data?.detail?.message ||
+    error?.response?.data?.detail ||
+    error?.message ||
+    fallback
+  );
+}
 
 export default function LoginPage() {
   const { checkAuth } = useAuth();
+  const { t } = useLocaleContext();
 
   const handleLogin = async (data: any) => {
-    console.log('Attempting login to:');
-    const response = await api.post('/auth/login', data);
+    try {
+      const response = await api.post('/auth/login', data);
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error(response.data?.message || response.data?.detail || t('website.auth.loginFailed'));
+      }
 
-    if (response.status !== 200) {
-      const error = response.data;
-      throw new Error(error.message || 'Login failed');
+      await checkAuth();
+      return response.data;
+    } catch (error: any) {
+      throw new Error(getErrorMessage(error, t('website.auth.loginFailed')));
     }
-
-    // Update auth context after successful login
-    await checkAuth();
-    return response.data;
   };
 
   return <AuthForm mode="login" onSubmit={handleLogin} />;
-} 
+}
