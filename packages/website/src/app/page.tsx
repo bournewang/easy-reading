@@ -1,10 +1,62 @@
-'use client';
-
 import Link from 'next/link';
+import Script from 'next/script';
+import { absoluteUrl, createPageMetadata, siteConfig } from '@/lib/seo';
+
+export const metadata = createPageMetadata({
+  title: 'English Reader for Non-Native Speakers',
+  description:
+    'Read English with instant translation, text-to-speech, and a built-in dictionary. English Reader helps multilingual learners understand articles and books in one place.',
+  path: '/',
+  keywords: [
+    'english reader',
+    'english reading app',
+    'read english with translation',
+    'english reader for esl',
+    'english learning with tts',
+    'dictionary while reading',
+  ],
+});
 
 export default function LandingPage() {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        name: siteConfig.name,
+        url: absoluteUrl('/'),
+        description: siteConfig.description,
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: siteConfig.name,
+        applicationCategory: 'EducationalApplication',
+        operatingSystem: 'Web',
+        url: absoluteUrl('/'),
+        description: siteConfig.description,
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+        },
+        featureList: [
+          'Instant translation while reading',
+          'Text-to-speech for English articles',
+          'Built-in dictionary for unfamiliar words',
+          'Vocabulary saving and review',
+          'Distraction-free reading interface',
+        ],
+      },
+    ],
+  };
+
   return (
     <div className="flex flex-col">
+      <Script
+        id="home-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 text-white py-24">
         <div className="absolute inset-0 opacity-30 bg-[url('/hero.jpg')] bg-cover bg-center" />
@@ -42,6 +94,21 @@ export default function LandingPage() {
             <h3 className="font-semibold text-lg mb-2">Clean Layout</h3>
             <p className="text-gray-600">Remove clutter for a pleasant reading experience.</p>
           </div>
+        </div>
+      </section>
+
+      <section className="bg-slate-50 py-16">
+        <div className="max-w-4xl mx-auto px-4 prose prose-lg prose-slate">
+          <h2>Built for people who read English as a second language</h2>
+          <p>
+            English Reader combines article reading, word lookup, translation, and audio playback in one workflow.
+            Instead of switching between tabs and apps, learners can stay focused on the text and understand difficult
+            words or sentences in context.
+          </p>
+          <p>
+            The product is designed for readers who want to follow English news, practice vocabulary, and build reading
+            confidence with fewer interruptions.
+          </p>
         </div>
       </section>
 

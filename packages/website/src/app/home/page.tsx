@@ -1,6 +1,13 @@
-'use client';
-
 import Link from 'next/link';
+import { createPageMetadata } from '@/lib/seo';
+
+export const metadata = createPageMetadata({
+  title: 'Home',
+  description:
+    'English Reader helps non-native English speakers read with translation, text-to-speech, and vocabulary support.',
+  path: '/home',
+  noIndex: true,
+});
 
 export default function LandingPage() {
   return (

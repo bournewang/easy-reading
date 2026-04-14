@@ -1,7 +1,11 @@
 export { default as Dictionary } from './components/Dictionary';
 export { default as Reader } from './components/Reader';
 export { default as WordList } from './components/WordList';
+export { default as UrlReader } from './pages/UrlReader';
+export { SharedServicesProvider, useSharedServices } from './contexts/SharedServicesContext';
+export { defaultServices } from './services/defaultServices';
 export * from './types';
+export * from './types/services';
 export * from './utils/helper';
 export * from './hooks/useTranslation';
 export * from './hooks/useTTS';

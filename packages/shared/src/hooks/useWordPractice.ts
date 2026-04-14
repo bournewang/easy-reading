@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSharedServices } from '../contexts/SharedServicesContext';
 
 const PRACTICE_STORAGE_KEY = 'wordPracticeData';
 
@@ -50,23 +51,32 @@ export interface PracticeData {
 }
 
 export const useWordPractice = () => {
-  const [practiceData, setPracticeData] = useState<PracticeData>(() => {
-    try {
-      const storedData = localStorage.getItem(PRACTICE_STORAGE_KEY);
-      return storedData ? JSON.parse(storedData) : {};
-    } catch (error) {
-      console.error('Error loading practice data from localStorage:', error);
-      return {};
-    }
-  });
+  const [practiceData, setPracticeData] = useState<PracticeData>({});
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const { storage } = useSharedServices();
 
   useEffect(() => {
-    try {
-      localStorage.setItem(PRACTICE_STORAGE_KEY, JSON.stringify(practiceData));
-    } catch (error) {
-      console.error('Error saving practice data to localStorage:', error);
+    storage
+      .get<PracticeData>(PRACTICE_STORAGE_KEY, {})
+      .then(data => {
+        setPracticeData(data);
+        setHasLoaded(true);
+      })
+      .catch(error => {
+        console.error('Error loading practice data from storage:', error);
+        setHasLoaded(true);
+      });
+  }, [storage]);
+
+  useEffect(() => {
+    if (!hasLoaded) {
+      return;
     }
-  }, [practiceData]);
+
+    storage.set(PRACTICE_STORAGE_KEY, practiceData).catch(error => {
+      console.error('Error saving practice data to storage:', error);
+    });
+  }, [hasLoaded, practiceData, storage]);
 
   const getPracticeStats = useCallback((word: string): WordPractice => {
     if (practiceData[word]) {

@@ -7,9 +7,9 @@
     "start": "next start",
     "clean": "rm -rf .next dist",
     "rebuild": "pnpm clean && pnpm build",
-    "export": "next build && next export",
     "static": "next build",
     "fetch-articles": "cross-env NODE_OPTIONS='--loader ts-node/esm' ts-node --project scripts/tsconfig.json scripts/fetch-articles.ts",
+    "export-book-resources": "node ./scripts/export-book-resources.mjs",
     "deploy:preview": "./scripts/deploy.sh preview",
     "deploy:prod": "./scripts/deploy.sh prod",
     "deploy": "./scripts/deploy.sh prod"    

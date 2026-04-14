@@ -4,12 +4,21 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "translate-with-cache",
+	"name": "translate",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-03-12",
 	"observability": {
 		"enabled": true
-	}
+	},
+	"vars": {
+		"DASHSCOPE_API_KEY": "sk-68ada9b0d2654e35bc94130d347550f6"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "TRANSLATE_CACHE",
+			"id": "bd1cf0dd685146d8b991bed03c8a62f2"
+		}
+	]
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

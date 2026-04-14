@@ -1,4 +1,7 @@
+'use client';
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import type { AxiosProgressEvent } from 'axios';
 import { useWordList } from '../hooks/useWordList';
 import { useWordPractice, WordPractice } from '../hooks/useWordPractice';
 import { useTTS } from '../hooks/useTTS';
@@ -524,7 +527,7 @@ function WordList() {
           'Accept': 'text/event-stream'
         },
         // Enable Axios response streaming by setting a custom onDownloadProgress handler
-        onDownloadProgress: (progressEvent) => {
+        onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
           // Access the partial text response
           if (progressEvent.event && progressEvent.event.target) {
             const xhr = progressEvent.event.target as XMLHttpRequest;

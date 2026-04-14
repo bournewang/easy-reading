@@ -4,6 +4,7 @@ interface ChapterSelectorProps {
   currentChapter: number;
   totalChapters: number;
   onChapterChange: (index: number) => void;
+  showDesktop?: boolean;
 }
 
 export const MOBILE_SELECTOR_HEIGHT = '56px';  // height for mobile view
@@ -13,6 +14,7 @@ export const ChapterSelector: React.FC<ChapterSelectorProps> = ({
   currentChapter,
   totalChapters,
   onChapterChange,
+  showDesktop = true,
 }) => {
   const [showChapterGrid, setShowChapterGrid] = useState(false);
 
@@ -55,64 +57,63 @@ export const ChapterSelector: React.FC<ChapterSelectorProps> = ({
       </div>
 
       {/* Desktop Chapter Selector */}
-      <div 
-        className="hidden sm:block fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-lg"
-        style={{ height: DESKTOP_SELECTOR_HEIGHT }}
-      >
-        {/* Progress Bar */}
-        <div className="h-0.5 w-full bg-gray-100">
-          <div 
-            className="h-full bg-blue-500 transition-all duration-300"
-            style={{ width: `${((currentChapter + 1) / totalChapters) * 100}%` }}
-          />
-        </div>
+      {showDesktop && (
+        <div 
+          className="hidden sm:block fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-lg"
+          style={{ height: DESKTOP_SELECTOR_HEIGHT }}
+        >
+          <div className="h-0.5 w-full bg-gray-100">
+            <div 
+              className="h-full bg-blue-500 transition-all duration-300"
+              style={{ width: `${((currentChapter + 1) / totalChapters) * 100}%` }}
+            />
+          </div>
 
-        {/* Navigation Controls */}
-        <div className="flex items-center justify-between px-4 py-2 text-sm border-b border-gray-100">
-          <button
-            onClick={() => onChapterChange(Math.max(0, currentChapter - 1))}
-            disabled={currentChapter === 0}
-            className="px-3 py-1.5 text-sm font-medium rounded transition-all duration-200
-              disabled:opacity-50 disabled:cursor-not-allowed
-              enabled:hover:bg-blue-50 enabled:text-blue-600 enabled:hover:text-blue-700"
-          >
-            ← Previous
-          </button>
+          <div className="flex items-center justify-between px-4 py-2 text-sm border-b border-gray-100">
+            <button
+              onClick={() => onChapterChange(Math.max(0, currentChapter - 1))}
+              disabled={currentChapter === 0}
+              className="px-3 py-1.5 text-sm font-medium rounded transition-all duration-200
+                disabled:opacity-50 disabled:cursor-not-allowed
+                enabled:hover:bg-blue-50 enabled:text-blue-600 enabled:hover:text-blue-700"
+            >
+              ← Previous
+            </button>
 
-          <span className="text-sm text-gray-600">
-            Chapter {currentChapter + 1} of {totalChapters}
-          </span>
+            <span className="text-sm text-gray-600">
+              Chapter {currentChapter + 1} of {totalChapters}
+            </span>
 
-          <button
-            onClick={() => onChapterChange(Math.min(totalChapters - 1, currentChapter + 1))}
-            disabled={currentChapter === totalChapters - 1}
-            className="px-3 py-1.5 text-sm font-medium rounded transition-all duration-200
-              disabled:opacity-50 disabled:cursor-not-allowed
-              enabled:hover:bg-blue-50 enabled:text-blue-600 enabled:hover:text-blue-700"
-          >
-            Next →
-          </button>
-        </div>
+            <button
+              onClick={() => onChapterChange(Math.min(totalChapters - 1, currentChapter + 1))}
+              disabled={currentChapter === totalChapters - 1}
+              className="px-3 py-1.5 text-sm font-medium rounded transition-all duration-200
+                disabled:opacity-50 disabled:cursor-not-allowed
+                enabled:hover:bg-blue-50 enabled:text-blue-600 enabled:hover:text-blue-700"
+            >
+              Next →
+            </button>
+          </div>
 
-        {/* Chapter Grid */}
-        <div className="max-h-32 overflow-y-auto bg-white/80 backdrop-blur-sm">
-          <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1 p-2">
-            {Array.from({ length: totalChapters }, (_, index) => (
-              <button
-                key={`chapter-${index}`}
-                onClick={() => onChapterChange(index)}
-                className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
-                  currentChapter === index
-                    ? 'bg-blue-100 text-blue-700 font-medium'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Ch.{index + 1}
-              </button>
-            ))}
+          <div className="max-h-32 overflow-y-auto bg-white/80 backdrop-blur-sm">
+            <div className="grid grid-cols-6 gap-1 p-2 md:grid-cols-8 lg:grid-cols-12">
+              {Array.from({ length: totalChapters }, (_, index) => (
+                <button
+                  key={`chapter-${index}`}
+                  onClick={() => onChapterChange(index)}
+                  className={`px-2 py-1 text-xs rounded transition-all duration-200 ${
+                    currentChapter === index
+                      ? 'bg-blue-100 text-blue-700 font-medium'
+                      : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Ch.{index + 1}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

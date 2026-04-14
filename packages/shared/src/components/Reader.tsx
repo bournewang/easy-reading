@@ -100,7 +100,7 @@ const Reader: React.FC<ReaderProps> = ({ article }) => {
     <>
       <style>{spinAnimation}</style>
       <div className="flex flex-col md:flex-row gap-1 relative min-h-screen w-full">
-        <div className="flex-1 p-0 sm:p-4">
+        <div className="flex-1 p-0 sm:p-2">
           <h1 className="text-2xl font-bold text-center mb-2 px-2">
             <InteractiveText
               text={article.title}
@@ -138,7 +138,7 @@ const Reader: React.FC<ReaderProps> = ({ article }) => {
             
           </div>
           {!showChat ? (
-            <div ref={contentRef} className="space-y-4 p-2">
+            <div ref={contentRef} className="space-y-4 p-1 sm:p-2">
               {Object.entries(article.paragraphs || {}).map(([id, paragraph]) => (
                 <div
                   key={id}
@@ -186,18 +186,6 @@ const Reader: React.FC<ReaderProps> = ({ article }) => {
           <Dictionary selectedWord={selectedWord} />
           {!selectedWord && <div className='m-2'><Tips /></div>}
         </div>
-      </div>
-
-      <div className="fixed bottom-6 right-6 z-2">
-        <button
-          onClick={handleChatClick}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2"
-        >
-          <span>{showChat ? 'Close Chat' : 'Practice'}</span>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-        </button>
       </div>
     </>
   );

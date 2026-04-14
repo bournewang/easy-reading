@@ -1,9 +1,10 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
 import type { Article } from '../types';
 import { InteractiveText } from './InteractiveText';
-import { AssistantIcon, UserIcon } from './icons/ChatIcons';
 import { useTTS } from '../hooks/useTTS';
+import { useSharedServices } from '../contexts/SharedServicesContext';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -31,7 +32,8 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
     const chatEndRef = useRef<HTMLDivElement>(null);
     const [articleText, setArticleText] = useState('');
     const [sessionId, setSessionId] = useState<string | null>(null);
-    const { speak, speaking } = useTTS();
+    const { speak } = useTTS();
+    const { chat } = useSharedServices();
     const [lastMessageId, setLastMessageId] = useState<string | null>(null);
     const [streamingMessage, setStreamingMessage] = useState('');
 
@@ -112,24 +114,11 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
     };
 
     const initializeChat = async () => {
-        const chatUrl = process.env.NEXT_PUBLIC_AI_CHAT_URL || 'http://127.0.0.1:5000/ai/chat';
-        if (!chatUrl) {
-            throw new Error('Chat URL is not defined');
-        }
         try {
-            const response = await fetch(chatUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    article: articleText,
-                    type: 'initialize'
-                })
+            const response = await chat.streamChat({
+                article: articleText,
+                type: 'initialize'
             });
-
-            if (!response.ok) throw new Error('Failed to initialize chat');
-            
             await handleChatStream(response, true);
         } catch (error) {
             onError?.(error as Error);
@@ -176,25 +165,12 @@ export function ChatWindow({ article, onError, onWordClick }: ChatWindowProps) {
         setInputValue('');
         setIsLoading(true);
 
-        const chatUrl = process.env.NEXT_PUBLIC_AI_CHAT_URL || 'http://127.0.0.1:5000/ai/chat';
-        if (!chatUrl) {
-            throw new Error('Chat URL is not defined');
-        }
         try {
-            const response = await fetch(chatUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    session_id: sessionId,
-                    messages: [...messages, userMessage],
-                    type: 'chat'
-                })
+            const response = await chat.streamChat({
+                session_id: sessionId,
+                messages: [...messages, userMessage],
+                type: 'chat'
             });
-
-            if (!response.ok) throw new Error('Failed to get AI response');
-
             await handleChatStream(response);
         } catch (error) {
             onError?.(error as Error);

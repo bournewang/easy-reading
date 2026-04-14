@@ -5,51 +5,33 @@ import { useDictionary } from '../hooks/useDictionary';
 import type { DictResponse } from '../types/dictionary';
 import { useTTS } from '../hooks/useTTS';
 import '../styles/tailwind.css';
-import { useTranslation } from '../hooks/useTranslation';
 
 interface DictionaryProps {
   selectedWord?: string | null;
 }
 
+type DictionaryLanguage = 'en' | 'zh';
+
 const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
   const [word, setWord] = useState('');
   const [result, setResult] = useState<DictResponse | null>(null);
+  const [language, setLanguage] = useState<DictionaryLanguage>('en');
   const { lookupWord, loading, error } = useDictionary();
   const { speak } = useTTS();
-  const { translate, translateBatch } = useTranslation();
 
-  // Add effect to handle selectedWord changes
   useEffect(() => {
     if (selectedWord) {
       setWord(selectedWord);
       lookupWord(selectedWord)
         .then(async data => {
-          // Set result first for immediate display
           setResult(data);
-          
-          // Play audio
+
           const firstPhonetic = data.phonetics.find(p => p.text && p.audio);
           if (firstPhonetic?.audio) {
             new Audio(firstPhonetic.audio).play();
           } else {
             speak(data.word);
           }
-
-          // Handle translations asynchronously
-          const definitions = data.meanings.flatMap(meaning => 
-            meaning.definitions.map(def => def.definition)
-          );
-          
-          translateBatch(definitions).then(translations => {
-            let translationIndex = 0;
-            const updatedData = { ...data };
-            updatedData.meanings.forEach(meaning => {
-              meaning.definitions.forEach(def => {
-                def.translation = translations[translationIndex++];
-              });
-            });
-            setResult(updatedData);
-          });
         })
         .catch(err => console.error('Failed to look up word:', err));
     }
@@ -105,25 +87,48 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
 
       {result && (
         <div className="">
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mb-2 md:mb-4">
-            <h2 className="text-2xl font-bold text-slate-800 whitespace-nowrap">{result.word}</h2>
-            {/* Phonetics */}
-            {result.phonetics
-              .filter(phonetic => phonetic.text && phonetic.audio)
-              .map((phonetic, index) => (
-                <div key={index} className="flex items-center space-x-2 whitespace-nowrap">
-                  <span className="text-slate-600">{phonetic.text}</span>
-                  <button
-                    onClick={() => new Audio(phonetic.audio).play()}
-                    className="p-1 text-indigo-600 hover:text-indigo-700"
-                  >
-                    🔊
-                  </button>
-                </div>
-              ))}
+          <div className="mb-2 md:mb-4">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              <h2 className="text-2xl font-bold text-slate-800 whitespace-nowrap">{result.word}</h2>
+              {result.phonetics
+                .filter(phonetic => phonetic.text && phonetic.audio)
+                .map((phonetic, index) => (
+                  <div key={index} className="flex items-center space-x-2 whitespace-nowrap">
+                    <span className="text-slate-600">{phonetic.text}</span>
+                    <button
+                      onClick={() => new Audio(phonetic.audio).play()}
+                      className="p-1 text-indigo-600 hover:text-indigo-700"
+                    >
+                      🔊
+                    </button>
+                  </div>
+                ))}
+            </div>
+
+            <div className="mt-3 flex justify-center">
+              <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setLanguage('en')}
+                  className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                    language === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  English
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('zh')}
+                  className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                    language === 'zh' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Chinese
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Meanings */}
           {result.meanings.map((meaning, index) => (
             <div key={index} className="mb-2 md:mb-4 p-1 md:p-3 bg-white rounded-lg shadow-sm">
               <h3 className="text-lg font-semibold text-indigo-600 mb-1 md:mb-2">
@@ -134,10 +139,15 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
                 {meaning.definitions.map((def, defIndex) => (
                   <li key={defIndex} className="text-slate-700">
                     <div className="flex-1">
-                      <p className="inline">{defIndex+1}. {def.definition}</p>
-                      {def.translation && (
-                        <p className="mt-1 text-slate-600 bg-yellow-50 p-2 rounded-lg">
-                          {def.translation}
+                      {language === 'en' ? (
+                        <p>{defIndex + 1}. {def.definition}</p>
+                      ) : def.translation ? (
+                        <p className="text-slate-700">
+                          {defIndex + 1}. {def.translation}
+                        </p>
+                      ) : (
+                        <p className="rounded-lg bg-slate-50 p-2 text-slate-400">
+                          {defIndex + 1}. No Chinese definition available.
                         </p>
                       )}
                       {def.example && (

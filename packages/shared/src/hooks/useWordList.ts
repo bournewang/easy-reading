@@ -1,47 +1,32 @@
 import { useState, useCallback, useEffect } from 'react';
-
-// No need to redeclare chrome, just augment Window interface
-// declare global {
-//   interface Window {
-//     chrome: Chrome;
-//   }
-// }
+import { useSharedServices } from '../contexts/SharedServicesContext';
 
 const STORAGE_KEY = 'english_reader_wordlist';
 
-const saveToStorage = async (words: Set<string>) => {
-  const wordArray = Array.from(words);
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    await chrome.storage.local.set({ [STORAGE_KEY]: wordArray });
-  } else {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(wordArray));
-  }
-};
-
-const getFromStorage = async (): Promise<string[]> => {
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-    const result = await chrome.storage.local.get(STORAGE_KEY);
-    return result[STORAGE_KEY] || [];
-  } else {
-    const storedWords = localStorage.getItem(STORAGE_KEY);
-    return storedWords ? JSON.parse(storedWords) : [];
-  }
-};
-
 export const useWordList = () => {
   const [words, setWords] = useState<Set<string>>(new Set());
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const { storage } = useSharedServices();
 
   useEffect(() => {
-    getFromStorage().then(wordArray => {
+    storage.get<string[]>(STORAGE_KEY, []).then(wordArray => {
       setWords(new Set(wordArray));
+      setHasLoaded(true);
     });
-  }, []);
+  }, [storage]);
 
   useEffect(() => {
-    if (words.size > 0) {
-      saveToStorage(words);
+    if (!hasLoaded) {
+      return;
     }
-  }, [words]);
+
+    const wordArray = Array.from(words);
+    if (wordArray.length > 0) {
+      storage.set(STORAGE_KEY, wordArray);
+    } else {
+      storage.remove(STORAGE_KEY);
+    }
+  }, [hasLoaded, storage, words]);
 
   const addWord = useCallback(async (word: string) => {
     setWords(prev => new Set([...prev, word]));

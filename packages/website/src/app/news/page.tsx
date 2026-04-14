@@ -1,15 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { Reader } from '@easy-reading/shared';
-import type { Article } from '@easy-reading/shared';
-import { useArticleExtractor } from '@/hooks/useArticleExtractor';
-// import { UrlForm } from '@/components/UrlForm';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useArticles } from '@/hooks/useArticles';
 import type { FeaturedArticle } from '@/data/articles';
-import { getArticleStorageKey } from '@/utils/storage';
-import { BackIcon, CheckIcon } from '@easy-reading/shared';
 
 const backgroundColors = {
   general: '#3B82F6',
@@ -94,106 +88,16 @@ function ArticleCardWithImage({ article, onClick }: { article: FeaturedArticle; 
 }
 
 function UrlReaderContent() {
-  const [url, setUrl] = useState('');
-  const [article, setArticle] = useState<Article | null>(null);
-  const [showMarkAsRead, setShowMarkAsRead] = useState(false);
-  const { extractArticle, loading: extractLoading, error: extractError } = useArticleExtractor();
   const { articles: featuredArticles, loading: articlesLoading, error: articlesError } = useArticles();
   const searchParams = useSearchParams();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [isRead, setIsRead] = useState(false);
   const router = useRouter();
-
-  // Add scroll handler
-  useEffect(() => {
-    if (!article) return;
-
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-      
-      // Show button when user is near the bottom (within 100px)
-      setShowMarkAsRead(scrollPosition >= documentHeight - 100);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [article]);
 
   // Extract unique categories from articles
   const categories = ['all', ...new Set(featuredArticles.map(article => article.category))];
 
-  // Check if article is marked as read
-  useEffect(() => {
-    if (article?.url) {
-      const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]');
-      setIsRead(readArticles.includes(article.url));
-    }
-  }, [article?.url]);
-
-  // Handle marking article as read
-  const handleMarkAsRead = () => {
-    if (article?.url) {
-      const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]');
-      if (!readArticles.includes(article.url)) {
-        readArticles.push(article.url);
-        localStorage.setItem('readArticles', JSON.stringify(readArticles));
-        
-        localStorage.setItem(getArticleStorageKey(article.url), JSON.stringify({
-          title: article.title,
-          site_name: article.site_name,
-          url: article.url,
-          reading_time: article.reading_time,
-          word_count: article.word_count,
-          timestamp: Date.now(),
-        }));
-        setIsRead(true);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const urlParam = searchParams.get('url');
-    if (urlParam) {
-      setUrl(urlParam);
-      extractArticle(urlParam).then(data => {
-        if (data) {
-          if (data.reading_time == undefined || !data.reading_time) {
-            data.reading_time = Math.ceil(data.word_count / 150);
-          }          
-          setArticle(data);
-        }
-      });
-    }
-  }, [searchParams, extractArticle]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url.trim()) return;
-
-    const data = await extractArticle(url);
-    console.log("extractArticle data: ", data);
-    if (data) {
-      if (data.reading_time == undefined || !data.reading_time) {
-        data.reading_time = Math.ceil(data.word_count / 150);
-      }
-      console.log("data: ", data);
-      setArticle(data);
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('url', url);
-      window.history.pushState({}, '', newUrl.toString());      
-    }
-  };
-
   const handleArticleClick = async (articleUrl: string) => {
-    setUrl(articleUrl);
-    const data = await extractArticle(articleUrl);
-    if (data) {
-      setArticle(data);
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('url', articleUrl);
-      window.history.pushState({}, '', newUrl.toString());
-    }
+    router.push(`/reader?url=${encodeURIComponent(articleUrl)}`);
   };
 
   // Filter articles based on category and search query
@@ -222,140 +126,87 @@ function UrlReaderContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      {!article ? (
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-4xl font-bold text-center mb-8">BBC News</h1>
-          
-          {/* URL Input Form */}
-          {/* <div className="max-w-4xl mx-auto mb-6">
-            <UrlForm
-              url={url}
-              onUrlChange={setUrl}
-              onSubmit={handleSubmit}
-              loading={extractLoading}
-            />
-            {extractError && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                {extractError}
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-4xl font-bold text-center mb-8">BBC News</h1>
+        {articlesLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          </div>
+        ) : articlesError ? (
+          <div className="text-center py-8 text-red-600">
+            {articlesError}
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+              <div className="flex gap-2 flex-wrap">
+                {categories.map(category => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-4 py-2 rounded-full capitalize text-sm ${
+                      selectedCategory === category
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-48">
+                <input
+                  type="text"
+                  placeholder="Search articles..."
+                  value={searchParams.get('search') || ''}
+                  onChange={(e) => {
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('search', e.target.value);
+                    window.history.pushState({}, '', newUrl.toString());
+                  }}
+                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <svg
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+
+            {featuredWithImages.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                {featuredWithImages.map(article => (
+                  <ArticleCardWithImage
+                    key={article.url}
+                    article={article}
+                    onClick={() => handleArticleClick(article.url)}
+                  />
+                ))}
               </div>
             )}
-          </div> */}
 
-          {articlesLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            </div>
-          ) : articlesError ? (
-            <div className="text-center py-8 text-red-600">
-              {articlesError}
-            </div>
-          ) : (
-            <>
-              {/* Category Filter and Search Section */}
-              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                {/* Category Filter Buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  {categories.map(category => (
-                    <button
-                      key={category}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`px-4 py-2 rounded-full capitalize text-sm ${
-                        selectedCategory === category
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {category}
-                    </button>
+            {remainingArticles.length > 0 && (
+              <>
+                <h2 className="text-2xl font-semibold mb-4">More Articles</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {remainingArticles.map(article => (
+                    <ArticleCard
+                      key={article.url}
+                      article={article}
+                      onClick={() => handleArticleClick(article.url)}
+                    />
                   ))}
                 </div>
-
-                {/* Search Bar */}
-                <div className="relative w-48">
-                  <input
-                    type="text"
-                    placeholder="Search articles..."
-                    value={searchParams.get('search') || ''}
-                    onChange={(e) => {
-                      const newUrl = new URL(window.location.href);
-                      newUrl.searchParams.set('search', e.target.value);
-                      window.history.pushState({}, '', newUrl.toString());
-                    }}
-                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <svg 
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Featured Articles with Images */}
-              {featuredWithImages.length > 0 && (
-                <>
-                  {/* <h2 className="text-2xl font-semibold mb-4">Featured Articles</h2> */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                    {featuredWithImages.map(article => (
-                      <ArticleCardWithImage
-                        key={article.url}
-                        article={article}
-                        onClick={() => handleArticleClick(article.url)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* Remaining Articles */}
-              {remainingArticles.length > 0 && (
-                <>
-                  <h2 className="text-2xl font-semibold mb-4">More Articles</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {remainingArticles.map(article => (
-                      <ArticleCard
-                        key={article.url}
-                        article={article}
-                        onClick={() => handleArticleClick(article.url)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-        <>
-        <div className="container mx-auto pb-24"> {/* Add padding bottom to prevent content overlap */}
-          <Reader article={article} />
-          {/* Back button - bottom left */}
-          <button
-            onClick={() => setArticle(null)}
-            className="fixed bottom-6 left-6 flex items-center gap-2 py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 bg-gray-600 text-white hover:bg-gray-700 z-50"
-          >
-            <BackIcon className="w-4 h-4 stroke-white" />
-            <span className="text-sm">Back</span>
-          </button>
-          {/* Mark as Read button - bottom center, only shown when scrolled to bottom */}
-          {showMarkAsRead && (
-            <button
-              onClick={handleMarkAsRead}
-              className={`fixed bottom-6 left-1/2 flex items-center gap-2 transform -translate-x-1/2 py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 ${
-                isRead 
-                  ? 'bg-green-600 text-white hover:bg-green-700' 
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              {isRead ? <><CheckIcon className="w-4 h-4 stroke-white" /> Article Read</> : 'Mark as Read'}
-            </button>
-          )}
-        </div>
-        </>
-      )}
+              </>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

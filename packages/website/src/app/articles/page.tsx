@@ -97,7 +97,7 @@ export default function ArticleListPage() {
                     className="border-b border-gray-200 last:border-0 pb-4 last:pb-0"
                   >
                     <Link 
-                      href={`/?url=${encodeURIComponent(article.url)}`}
+                      href={`/reader?url=${encodeURIComponent(article.url)}`}
                       className="block hover:bg-gray-50 p-2 rounded-lg transition-colors"
                     >
                       <h2 className="text-lg font-semibold text-gray-900 mb-2">

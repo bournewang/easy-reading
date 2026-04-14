@@ -1,19 +1,17 @@
 import { useCallback, useState } from 'react';
 import type { DictResponse } from '../types';
-// import { api } from '../utils/api';
-import axios from 'axios';
+import { useSharedServices } from '../contexts/SharedServicesContext';
 
 export const useDictionary = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { dictionary } = useSharedServices();
 
   const lookupWord = useCallback(async (word: string): Promise<DictResponse> => {
     try {
       setLoading(true);
       setError(null);
-      const DICT_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
-      const response = await axios.get<DictResponse[]>(`${DICT_URL}${word}`);
-      return response.data[0];
+      return await dictionary.lookupWord(word);
     } catch (error) {
       const errorMessage = `Failed to lookup word: ${word}`;
       setError(errorMessage);
@@ -21,7 +19,7 @@ export const useDictionary = () => {
     } finally {
       setLoading(false);
     }
-  }, []); // Removed api from dependencies
+  }, [dictionary]);
 
   return {
     lookupWord,

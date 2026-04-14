@@ -3,12 +3,44 @@ import { Inter } from "next/font/google";
 import Navigation from "../components/Navigation";
 import "./globals.css";
 import { AuthProvider } from '@/contexts/AuthContext';
+import { absoluteUrl, siteConfig } from "@/lib/seo";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "English Reader",
-  description: "An interactive English reading platform"
+  metadataBase: new URL(siteConfig.siteUrl),
+  applicationName: siteConfig.name,
+  title: {
+    default: siteConfig.name,
+    template: `%s | ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  alternates: {
+    canonical: absoluteUrl("/"),
+  },
+  openGraph: {
+    type: "website",
+    url: absoluteUrl("/"),
+    title: siteConfig.name,
+    description: siteConfig.description,
+    siteName: siteConfig.name,
+  },
+  twitter: {
+    card: "summary",
+    title: siteConfig.name,
+    description: siteConfig.description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  }
 };
 
 export const viewport: Viewport = {
@@ -25,7 +57,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7286645003075205" crossOrigin="anonymous"></script>
       </head>  
       <body className={inter.className}>

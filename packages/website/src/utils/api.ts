@@ -9,8 +9,13 @@ const getBaseUrl = () => {
   return '/api-proxy';
 };
 
-console.log(`Frontend API calls will use proxy prefix: ${getBaseUrl()}. ` +
-            `Ensure next.config.js rewrites this to your target backend.`);
+if (process.env.NODE_ENV === 'production') {
+  console.log(`Frontend API calls will use base URL: ${getBaseUrl()}.`);
+} else {
+  console.log(
+    `Frontend API calls will use proxy prefix: ${getBaseUrl()}. Ensure next.config.js rewrites this to your target backend.`,
+  );
+}
 
 const apiClient = axios.create({
   // All client-side calls go to this relative path. 
