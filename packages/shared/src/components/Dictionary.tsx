@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useDictionary } from '../hooks/useDictionary';
 import type { DictResponse } from '../types/dictionary';
 import { useTTS } from '../hooks/useTTS';
+import { useLocaleContext } from '../contexts/LocaleContext';
 import '../styles/tailwind.css';
 
 interface DictionaryProps {
@@ -15,9 +16,10 @@ type DictionaryLanguage = 'en' | 'zh';
 const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
   const [word, setWord] = useState('');
   const [result, setResult] = useState<DictResponse | null>(null);
-  const [language, setLanguage] = useState<DictionaryLanguage>('en');
   const { lookupWord, loading, error } = useDictionary();
   const { speak } = useTTS();
+  const { locale } = useLocaleContext();
+  const language: DictionaryLanguage = locale === 'zh' ? 'zh' : 'en';
 
   useEffect(() => {
     if (selectedWord) {
@@ -52,7 +54,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
   return (
     <>
     <div className="sticky top-0 text-xs text-slate-500 text-center border-b border-t border-slate-200 py-1 bg-white z-1">
-        Dictionary
+        {locale === 'zh' ? '词典' : 'Dictionary'}
     </div>
     <div className="p-2 md:p-4 bg-slate-100 md:bg-slate-50 shadow-lg">
       <div className='hidden md:block'>
@@ -62,14 +64,14 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
               type="text"
               value={word}
               onChange={(e) => setWord(e.target.value)}
-              placeholder="Enter a word to look up"
+              placeholder={locale === 'zh' ? '输入要查询的单词' : 'Enter a word to look up'}
               className="flex-1 p-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
             />
             <button
               type="submit"
               className="px-3 py-2 text-white rounded-lg disabled:bg-slate-300 transition-colors duration-200"
               disabled={loading || !word.trim()}
-              title="Look up word"
+              title={locale === 'zh' ? '查询单词' : 'Look up word'}
             >
               <span className={loading ? 'inline-block animate-spin-slow' : ''}>
                 {loading ? '⏳' : '🔍'}
@@ -104,29 +106,6 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
                   </div>
                 ))}
             </div>
-
-            <div className="mt-3 flex justify-center">
-              <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setLanguage('en')}
-                  className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-                    language === 'en' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  English
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLanguage('zh')}
-                  className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-                    language === 'zh' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Chinese
-                </button>
-              </div>
-            </div>
           </div>
 
           {result.meanings.map((meaning, index) => (
@@ -147,7 +126,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
                         </p>
                       ) : (
                         <p className="rounded-lg bg-slate-50 p-2 text-slate-400">
-                          {defIndex + 1}. No Chinese definition available.
+                          {defIndex + 1}. {locale === 'zh' ? '暂无中文释义。' : 'No Chinese definition available.'}
                         </p>
                       )}
                       {def.example && (
@@ -156,7 +135,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
                           <button
                             onClick={() => def.example && speak(def.example)}
                             className="p-1 text-indigo-600 hover:text-indigo-700 ml-2"
-                            title="Listen to example"
+                            title={locale === 'zh' ? '朗读例句' : 'Listen to example'}
                           >
                             🔊
                           </button>
@@ -164,7 +143,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
                       )}
                       {def.synonyms.length > 0 && (
                         <p className="mt-1 text-slate-600">
-                          <span className="font-medium">Synonyms: </span>
+                          <span className="font-medium">{locale === 'zh' ? '近义词: ' : 'Synonyms: '}</span>
                           <span className="text-indigo-600">{def.synonyms.join(', ')}</span>
                         </p>
                       )}
@@ -175,7 +154,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
 
               {meaning.synonyms.length > 0 && (
                 <div className="mt-2 p-2 bg-slate-50 rounded-lg">
-                  <span className="font-medium text-slate-700">Synonyms: </span>
+                  <span className="font-medium text-slate-700">{locale === 'zh' ? '近义词: ' : 'Synonyms: '}</span>
                   <span className="text-indigo-600">{meaning.synonyms.join(', ')}</span>
                 </div>
               )}

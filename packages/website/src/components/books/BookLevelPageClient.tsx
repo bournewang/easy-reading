@@ -93,43 +93,39 @@ export function BookLevelPageClient({ levelData, levels }: { levelData: LevelDat
 
         <section className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {levelData.books.map((book) => (
-            <Link
+            <div
               key={book.slug}
-              href={`/books/${levelData.id}/${book.slug}`}
-              className="group flex h-full flex-col overflow-hidden rounded-[30px] border border-white/60 bg-white/88 p-4 shadow-[0_20px_60px_-36px_rgba(15,23,42,0.45)] transition-all duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_28px_80px_-36px_rgba(37,99,235,0.35)]"
+              className="group relative flex h-full flex-col overflow-hidden rounded-[32px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.96)_100%)] p-4 shadow-[0_20px_60px_-36px_rgba(15,23,42,0.45)] transition-all duration-300 hover:-translate-y-1.5 hover:border-sky-200 hover:shadow-[0_30px_90px_-40px_rgba(14,116,144,0.35)]"
             >
-              <div className="relative aspect-[3/4] overflow-hidden rounded-[24px] bg-gradient-to-br from-slate-100 to-slate-200">
-                {book.assetCoverImg ? (
-                  <img
-                    src={book.assetCoverImg}
-                    alt={`Cover of ${book.title}`}
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center px-6 text-center text-sm font-medium text-slate-400">
-                    {common('noCover')}
-                  </div>
-                )}
-              </div>
+              <div className="pointer-events-none absolute inset-x-5 top-0 h-24 rounded-b-[28px] bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_70%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">
-                  {levelData.shortLabel}
-                </span>
-                <span className="text-xs font-medium text-slate-500">{book.chapterCount} {common('chapter_other')}</span>
-              </div>
+              <Link href={`/books/${levelData.id}/${book.slug}`} className="block flex-1">
+                <div className="relative aspect-[3/4] overflow-hidden rounded-[26px] bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.45)] ring-1 ring-slate-200/70">
+                  {book.assetCoverImg ? (
+                    <img
+                      src={book.assetCoverImg}
+                      alt={`Cover of ${book.title}`}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-6 text-center text-sm font-medium text-slate-400">
+                      {common('noCover')}
+                    </div>
+                  )}
 
-              <h2 className="mt-4 text-xl font-semibold leading-7 text-slate-950">{book.title}</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                {formatMessage(levelText('byAuthor'), { author: book.author || common('unknownAuthor') })}
-              </p>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/25 via-slate-900/5 to-transparent opacity-80" />
+                </div>
 
-              <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-                {levelText('supportBody')}
-              </div>
-
-              <span className="mt-5 inline-flex text-sm font-semibold text-blue-600">{common('openBook')}</span>
-            </Link>
+                <h2 className="mt-4 line-clamp-2 text-xl font-semibold leading-7 tracking-tight text-slate-950 transition-colors group-hover:text-sky-800">
+                  {book.title}
+                </h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  {formatMessage(levelText('byAuthor'), { author: book.author || common('unknownAuthor') })}
+                  <span className="mx-2 text-slate-300">•</span>
+                  <span>{book.chapterCount} {common('chapter_other')}</span>
+                </p>
+              </Link>
+            </div>
           ))}
         </section>
       </div>

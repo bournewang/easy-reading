@@ -1,3 +1,5 @@
+import { getIELTSPassageReaderUrl, getIELTSTestReaderUrl } from '@/lib/reading-routes';
+
 export const ieltsMonthLabels: Record<string, string> = {
   january: 'January',
   february: 'February',
@@ -35,6 +37,4 @@ export function getIELTSReaderUrl(articleId: string) {
   return `/reader?articleId=${encodeURIComponent(articleId)}`;
 }
 
-export function getIELTSTestReaderUrl(year: string, month: string, test: string) {
-  return `/ielts-reader/${encodeURIComponent(year)}/${encodeURIComponent(month)}/${encodeURIComponent(test)}`;
-}
+export { getIELTSPassageReaderUrl, getIELTSTestReaderUrl };

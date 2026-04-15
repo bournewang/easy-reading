@@ -5,7 +5,12 @@ import { BackIcon, CheckIcon, Reader } from '@easy-reading/shared';
 import type { Article, Paragraph } from '@easy-reading/shared';
 import { useArticleExtractor } from '@/hooks/useArticleExtractor';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getArticleStorageKey } from '@/utils/storage';
+import {
+  createIELTSHistoryItem,
+  createNewsHistoryItem,
+  isRouteRead,
+  saveReadingHistoryItem,
+} from '@/utils/reading-history';
 
 type ReaderPageClientProps = {
   initialArticle?: Article | null;
@@ -165,36 +170,45 @@ function ReaderContent({
   }, [article]);
 
   useEffect(() => {
-    if (!article?.url) {
+    if (!article) {
       return;
     }
 
-    const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]');
-    setIsRead(readArticles.includes(article.url));
-  }, [article?.url]);
+    if (articleId) {
+      setIsRead(isRouteRead(`/reader?articleId=${encodeURIComponent(articleId)}`));
+      return;
+    }
+
+    if (urlParam) {
+      setIsRead(isRouteRead(`/reader?url=${encodeURIComponent(urlParam)}`));
+    }
+  }, [article, articleId, urlParam]);
 
   const handleMarkAsRead = () => {
-    if (!article?.url) {
+    if (!article) {
       return;
     }
 
-    const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]');
-    if (!readArticles.includes(article.url)) {
-      readArticles.push(article.url);
-      localStorage.setItem('readArticles', JSON.stringify(readArticles));
-      localStorage.setItem(
-        getArticleStorageKey(article.url),
-        JSON.stringify({
+    if (articleId) {
+      saveReadingHistoryItem(
+        createIELTSHistoryItem({
+          routeUrl: `/reader?articleId=${encodeURIComponent(articleId)}`,
           title: article.title,
-          site_name: article.site_name,
-          url: article.url,
-          reading_time: article.reading_time,
-          word_count: article.word_count,
-          timestamp: Date.now(),
+          subtitle: article.site_name,
+          wordCount: article.word_count,
+          readingTime: article.reading_time,
         }),
       );
       setIsRead(true);
+      return;
     }
+
+    if (!urlParam) {
+      return;
+    }
+
+    saveReadingHistoryItem(createNewsHistoryItem({ article }));
+    setIsRead(true);
   };
 
   if ((loading || queryLoading) && !article) {

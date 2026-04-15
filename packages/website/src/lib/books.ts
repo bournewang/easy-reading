@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { Article, Paragraph } from '@easy-reading/shared';
+import { getBookChapterReaderUrl } from '@/lib/reading-routes';
 
 export type BookLevel = {
   id: string;
@@ -63,64 +64,58 @@ export const BOOK_LEVELS: BookLevel[] = [
     label: 'A1 English Books',
     shortLabel: 'A1',
     file: 'index-a1.json',
-    description: 'Very simple English books for beginners who are building foundational vocabulary.',
+    description: 'Best for complete beginners who know basic everyday words and want very short, simple stories to build reading confidence.',
   },
   {
     id: 'a2',
     label: 'A2 English Books',
     shortLabel: 'A2',
     file: 'index-a2.json',
-    description: 'Easy English books for learners who can read short stories with familiar vocabulary.',
+    description: 'Best for early learners who can handle familiar sentences and want easy stories that grow everyday vocabulary and fluency.',
   },
   {
     id: 'b11',
     label: 'B1.1 English Books',
     shortLabel: 'B1.1',
     file: 'index-b11.json',
-    description: 'Lower-intermediate books for learners moving from simple texts to longer stories.',
+    description: 'Best for lower-intermediate readers who are moving beyond easy texts and want longer stories with manageable new vocabulary.',
   },
   {
     id: 'b12',
     label: 'B1.2 English Books',
     shortLabel: 'B1.2',
     file: 'index-b12.json',
-    description: 'Intermediate English books with broader vocabulary and more complex plots.',
+    description: 'Best for solid intermediate learners who want richer plots, more natural sentence patterns, and broader day-to-day vocabulary.',
   },
   {
     id: 'b21',
     label: 'B2.1 English Books',
     shortLabel: 'B2.1',
     file: 'index-b21.json',
-    description: 'Upper-intermediate books for readers who want richer language and longer narratives.',
+    description: 'Best for upper-intermediate readers who can read independently and want deeper narratives with more descriptive and abstract language.',
   },
   {
     id: 'b22',
     label: 'B2.2 English Books',
     shortLabel: 'B2.2',
     file: 'index-b22.json',
-    description: 'Advanced upper-intermediate books for readers practicing fluent comprehension.',
+    description: 'Best for strong upper-intermediate learners who want near-authentic reading practice and smoother comprehension across longer chapters.',
   },
   {
     id: 'c1',
     label: 'C1 English Books',
     shortLabel: 'C1',
     file: 'index-c1.json',
-    description: 'Advanced English books for confident readers who want authentic long-form texts.',
+    description: 'Best for advanced readers who want challenging, authentic-style books with nuanced vocabulary, complex structure, and mature themes.',
   },
 ];
 
 function getBooksBaseUrl() {
-  const configuredBaseUrl = (
+  return (
     process.env.NEXT_PUBLIC_BOOKS_URL ||
     process.env.BOOKS_URL ||
     DEFAULT_BOOKS_BASE_URL
   ).replace(/\/$/, '');
-
-  if (/\/books-json$/i.test(configuredBaseUrl)) {
-    return configuredBaseUrl.replace(/\/books-json$/i, '/books');
-  }
-
-  return configuredBaseUrl;
 }
 
 function getBooksJsonBaseUrl() {
@@ -172,16 +167,6 @@ function toBookAssetUrl(value: string | null | undefined) {
 
   const normalizedValue = value.startsWith('/') ? value : `/${value}`;
   const booksBaseUrl = getBooksBaseUrl();
-  const normalizedBasePath = new URL(`${booksBaseUrl}/`).pathname.replace(/\/$/, '');
-  const normalizedAssetPath = normalizedValue.replace(/^\/+/, '/');
-
-  if (
-    normalizedBasePath &&
-    normalizedBasePath !== '/' &&
-    normalizedAssetPath.startsWith(`${normalizedBasePath}/`)
-  ) {
-    return `${booksBaseUrl}${normalizedAssetPath.slice(normalizedBasePath.length)}`;
-  }
 
   return `${booksBaseUrl}${normalizedValue}`;
 }
@@ -248,11 +233,21 @@ async function readBooksJson<T>(relativePath: string): Promise<T> {
 }
 
 async function getBooksManifest(): Promise<BookManifestItem[]> {
-  return readBooksJson<BookManifestItem[]>('books.json');
+  try {
+    return await readBooksJson<BookManifestItem[]>('books.json');
+  } catch (error) {
+    console.error('Failed to load books manifest:', error);
+    return [];
+  }
 }
 
 async function getChaptersManifest(): Promise<BookChapterManifestItem[]> {
-  return readBooksJson<BookChapterManifestItem[]>('chapters.json');
+  try {
+    return await readBooksJson<BookChapterManifestItem[]>('chapters.json');
+  } catch (error) {
+    console.error('Failed to load chapters manifest:', error);
+    return [];
+  }
 }
 
 async function getChapterResource(chapterId: string): Promise<BookChapterResource | null> {
@@ -369,6 +364,32 @@ export async function getBookPageData(levelId: string, slug: string) {
     description,
   };
 }
+
+export async function getBookChapterPageData(levelId: string, slug: string, chapterNumber: number) {
+  const pageData = await getBookPageData(levelId, slug);
+
+  if (!pageData) {
+    return null;
+  }
+
+  const chapterMeta = pageData.chapters.find((chapter) => chapter.chapterNumber === chapterNumber);
+  if (!chapterMeta) {
+    return null;
+  }
+
+  const chapter = await getChapterResource(chapterMeta.id);
+  if (!chapter) {
+    return null;
+  }
+
+  return {
+    ...pageData,
+    chapterMeta,
+    chapter,
+  };
+}
+
+export { getBookChapterReaderUrl };
 
 export function buildBookArticle({
   book,

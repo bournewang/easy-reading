@@ -10,6 +10,7 @@
     "static": "next build",
     "fetch-articles": "cross-env NODE_OPTIONS='--loader ts-node/esm' ts-node --project scripts/tsconfig.json scripts/fetch-articles.ts",
     "export-book-resources": "node ./scripts/export-book-resources.mjs",
+    "sync-book-covers": "node ./scripts/sync-book-cover-images.mjs",
     "deploy:preview": "./scripts/deploy.sh preview",
     "deploy:prod": "./scripts/deploy.sh prod",
     "deploy": "./scripts/deploy.sh prod"    

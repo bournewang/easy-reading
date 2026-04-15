@@ -4,18 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { urlHash } from '@/utils/storage';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { formatMessage } from '@/lib/i18n';
-
-type StoredArticle = {
-  url: string;
-  title: string;
-  site_name: string;
-  reading_time: number;
-  word_count: number;
-  timestamp: number;
-};
+import { getReadingHistory, type ReadingHistoryItem } from '@/utils/reading-history';
 
 type ActivityStat = {
   label: string;
@@ -43,7 +34,7 @@ const getPlanStyles = (plan: string) => {
   }
 };
 
-const getLearningStreak = (articles: StoredArticle[]) => {
+const getLearningStreak = (articles: ReadingHistoryItem[]) => {
   const uniqueDays = new Set(
     articles
       .filter((article) => article.timestamp)
@@ -107,7 +98,7 @@ export default function UserCenterPage() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const { t } = useLocaleContext();
-  const [articles, setArticles] = useState<StoredArticle[]>([]);
+  const [articles, setArticles] = useState<ReadingHistoryItem[]>([]);
   const userText = (key: string) => t(`website.userPage.${key}`);
   const common = (key: string) => t(`website.common.${key}`);
 
@@ -122,22 +113,7 @@ export default function UserCenterPage() {
       return;
     }
 
-    const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]') as string[];
-    const articleDetails = readArticles
-      .map((url) => {
-        const details = JSON.parse(localStorage.getItem(`article_${urlHash(url)}`) || '{}');
-        return {
-          url,
-          title: details.title || 'Untitled Article',
-          site_name: details.site_name || 'Unknown Site',
-          reading_time: details.reading_time || 0,
-          word_count: details.word_count || 0,
-          timestamp: details.timestamp || 0,
-        };
-      })
-      .sort((a, b) => b.timestamp - a.timestamp);
-
-    setArticles(articleDetails);
+    setArticles(getReadingHistory());
   }, [user]);
 
   const handleLogout = async () => {
@@ -151,12 +127,12 @@ export default function UserCenterPage() {
   const planStyles = getPlanStyles(subscriptionStatus);
 
   const totalReadingMinutes = useMemo(
-    () => articles.reduce((sum, article) => sum + (article.reading_time || 0), 0),
+    () => articles.reduce((sum, article) => sum + (article.readingTime || 0), 0),
     [articles]
   );
 
   const totalWordsRead = useMemo(
-    () => articles.reduce((sum, article) => sum + (article.word_count || 0), 0),
+    () => articles.reduce((sum, article) => sum + (article.wordCount || 0), 0),
     [articles]
   );
 
@@ -416,17 +392,17 @@ export default function UserCenterPage() {
                 <div className="mt-6 space-y-3">
                   {recentArticles.map((article) => (
                     <Link
-                      key={article.url}
-                      href={`/reader?url=${encodeURIComponent(article.url)}`}
+                      key={article.key}
+                      href={article.routeUrl}
                       className="block rounded-[22px] border border-slate-200 px-4 py-4 transition-colors hover:border-blue-200 hover:bg-blue-50/40"
                     >
                       <p className="line-clamp-2 text-base font-semibold text-slate-900">
                         {article.title}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-500">
-                        <span>{article.site_name}</span>
-                        <span>{article.word_count.toLocaleString()} words</span>
-                        <span>{article.reading_time} {common('minute_other')}</span>
+                        <span>{article.subtitle}</span>
+                        <span>{article.wordCount.toLocaleString()} words</span>
+                        <span>{article.readingTime} {common('minute_other')}</span>
                       </div>
                     </Link>
                   ))}

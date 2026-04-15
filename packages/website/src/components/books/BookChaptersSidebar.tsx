@@ -18,15 +18,15 @@ export default function BookChaptersSidebar({
   const progress = Math.round(((currentChapter + 1) / totalChapters) * 100);
 
   return (
-    <aside className="hidden lg:block">
-      <div className="sticky top-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="border-b border-slate-100 pb-4">
+    <aside className="hidden h-full min-h-0 lg:block">
+      <div className="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="shrink-0 border-b border-slate-100 pb-3">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{levelLabel}</p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-900">{bookTitle}</h2>
-          <p className="mt-2 text-sm text-slate-600">
+          <h2 className="mt-1.5 text-lg font-semibold text-slate-900">{bookTitle}</h2>
+          <p className="mt-1.5 text-sm text-slate-600">
             Chapter {currentChapter + 1} of {totalChapters}
           </p>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-blue-500 transition-all duration-300"
               style={{ width: `${progress}%` }}
@@ -34,7 +34,7 @@ export default function BookChaptersSidebar({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="mt-3 flex shrink-0 items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => onChapterChange(currentChapter - 1)}
@@ -53,7 +53,7 @@ export default function BookChaptersSidebar({
           </button>
         </div>
 
-        <div className="mt-4 max-h-[calc(100vh-16rem)] overflow-y-auto pr-1">
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
           <div className="space-y-1">
             {Array.from({ length: totalChapters }, (_, index) => {
               const active = index === currentChapter;

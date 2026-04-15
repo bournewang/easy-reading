@@ -60,13 +60,15 @@ export default function RootLayout({
       <head>
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7286645003075205" crossOrigin="anonymous"></script>
       </head>  
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-screen`}>
         <LocaleProvider>
           <AuthProvider>
+            <div className="flex min-h-screen flex-col">
             <Navigation />
-            <main className="min-h-screen">
+            <main className="flex-1 min-h-0">
               {children}
             </main>
+            </div>
           </AuthProvider>
         </LocaleProvider>
       </body>

@@ -1,14 +1,15 @@
-import Script from 'next/script';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import BookReaderClient from '@/components/books/BookReaderClient';
 import { absoluteUrl } from '@/lib/seo';
-import { buildBookArticle, getAllBooks, getBookPageData, getBookLevel } from '@/lib/books';
+import { getAllBooks, getBookChapterReaderUrl, getBookPageData } from '@/lib/books';
 
 type Props = {
   params: {
     level: string;
     slug: string;
+  };
+  searchParams?: {
+    chapter?: string;
   };
 };
 
@@ -43,62 +44,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function BookDetailPage({ params }: Props) {
+export default async function BookDetailPage({ params, searchParams }: Props) {
   const data = await getBookPageData(params.level, params.slug);
-  const level = getBookLevel(params.level);
 
-  if (!data || !level || !data.firstChapter) {
+  if (!data || !data.firstChapter || data.chapters.length === 0) {
     notFound();
   }
 
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'Book',
-    name: data.book.title,
-    author: data.book.author
-      ? {
-          '@type': 'Person',
-          name: data.book.author,
-        }
-      : undefined,
-    image: data.book.assetCoverImg ? absoluteUrl(data.book.assetCoverImg) : undefined,
-    description: data.description,
-    url: absoluteUrl(`/books/${data.level.id}/${data.book.slug}`),
-    isPartOf: {
-      '@type': 'CollectionPage',
-      name: level.label,
-      url: absoluteUrl(`/books/${level.id}`),
-    },
-    numberOfPages: data.book.chapterCount,
-    educationalLevel: level.shortLabel,
-  };
-  const initialArticle = buildBookArticle({
-    book: data.book,
-    levelLabel: level.shortLabel,
-    chapter: {
-      id: data.chapters[0].id,
-      content: data.firstChapter.content,
-      chapterIndex: data.chapters[0].chapterIndex,
-      chapterTitle: data.firstChapter.chapterTitle,
-      readingTime: data.chapters[0].readingTime,
-      wordCount: data.chapters[0].wordCount,
-    },
-  });
+  const requestedChapter = Number(searchParams?.chapter || '');
+  const chapterNumber =
+    Number.isFinite(requestedChapter) && requestedChapter > 0
+      ? requestedChapter
+      : data.chapters[0].chapterNumber;
 
-  return (
-    <>
-      <Script
-        id={`book-schema-${data.book.slug}`}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-
-      <BookReaderClient
-        book={data.book}
-        chapters={data.chapters}
-        levelLabel={level.shortLabel}
-        initialArticle={initialArticle}
-      />
-    </>
+  redirect(
+    getBookChapterReaderUrl(
+      data.book.level,
+      data.book.slug,
+      chapterNumber,
+    ),
   );
 }

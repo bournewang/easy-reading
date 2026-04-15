@@ -29,6 +29,9 @@
       ],
       "@easy-reading/shared": [
         "../shared/src"
+      ],
+      "@easy-reading/shared/*": [
+        "../shared/src/*"
       ]
     }
   },

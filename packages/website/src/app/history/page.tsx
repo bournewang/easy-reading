@@ -2,20 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { Article } from '@easy-reading/shared';
 import { BookIcon, ClockIcon, Paginator } from '@easy-reading/shared';
-import { urlHash } from '@/utils/storage';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
-
-interface ReadArticle extends Article {
-  timestamp: number;
-}
+import { getReadingHistory, type ReadingHistoryItem } from '@/utils/reading-history';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function HistoryPage() {
   const { t } = useLocaleContext();
-  const [articles, setArticles] = useState<ReadArticle[]>([]);
+  const [articles, setArticles] = useState<ReadingHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE);
@@ -23,21 +18,7 @@ export default function HistoryPage() {
   const common = (key: string) => t(`website.common.${key}`);
 
   useEffect(() => {
-    const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]');
-    const articleDetails = readArticles.map((url: string) => {
-      const details = JSON.parse(localStorage.getItem(`article_${urlHash(url)}`) || '{}');
-      return {
-        url,
-        title: details.title || 'Untitled Article',
-        site_name: details.site_name || 'Unknown Site',
-        reading_time: details.reading_time || 0,
-        word_count: details.word_count || 0,
-        timestamp: details.timestamp || 0,
-      };
-    });
-
-    articleDetails.sort((a: ReadArticle, b: ReadArticle) => b.timestamp - a.timestamp);
-    setArticles(articleDetails);
+    setArticles(getReadingHistory());
     setLoading(false);
   }, []);
 
@@ -97,36 +78,36 @@ export default function HistoryPage() {
                   <div className="rounded-3xl bg-slate-50 px-5 py-4">
                     <p className="text-sm text-slate-500">{history('readingTime')}</p>
                     <p className="mt-2 text-3xl font-semibold text-slate-950">
-                      {articles.reduce((sum, article) => sum + article.reading_time, 0)} {common('minute_other')}
+                      {articles.reduce((sum, article) => sum + article.readingTime, 0)} {common('minute_other')}
                     </p>
                   </div>
                   <div className="rounded-3xl bg-slate-50 px-5 py-4">
                     <p className="text-sm text-slate-500">{history('wordsCovered')}</p>
                     <p className="mt-2 text-3xl font-semibold text-slate-950">
-                      {articles.reduce((sum, article) => sum + article.word_count, 0).toLocaleString()}
+                      {articles.reduce((sum, article) => sum + article.wordCount, 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   {getCurrentPageArticles().map((article) => (
-                    <div key={article.url} className="rounded-[26px] border border-slate-200 bg-white p-2 transition-colors hover:border-blue-200 hover:bg-blue-50/30">
-                      <Link href={`/reader?url=${encodeURIComponent(article.url)}`} className="block rounded-[20px] px-4 py-4">
+                    <div key={article.key} className="rounded-[26px] border border-slate-200 bg-white p-2 transition-colors hover:border-blue-200 hover:bg-blue-50/30">
+                      <Link href={article.routeUrl} className="block rounded-[20px] px-4 py-4">
                         <h2 className="text-lg font-semibold text-slate-900">{article.title}</h2>
                         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
                           <div className="flex items-center space-x-2">
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                             </svg>
-                            <span>{article.site_name}</span>
+                            <span>{article.subtitle}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <BookIcon className="h-4 w-4" />
-                            <span>{article.word_count.toLocaleString()} words</span>
+                            <span>{article.wordCount.toLocaleString()} words</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <ClockIcon className="h-4 w-4" />
-                            <span>{article.reading_time} {common('minute_other')}</span>
+                            <span>{article.readingTime} {common('minute_other')}</span>
                           </div>
                           <span>{history('readOn')} {new Date(article.timestamp).toLocaleDateString()}</span>
                         </div>

@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { IELTSArticleListItem } from '@/lib/ielts-types';
 import {
+  getIELTSPassageReaderUrl,
   getIELTSTestReaderUrl,
   ieltsMonthLabels,
   ieltsMonthOrder,
   type IELTSMonthKey,
 } from '@/lib/ielts-paths';
 import { readLastIELTSTestRoute } from '@/lib/ielts-storage';
+import { isRouteRead } from '@/utils/reading-history';
 
 type IELTSPageClientProps = {
   articles: IELTSArticleListItem[];
@@ -25,19 +27,20 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
   const [selectedYear, setSelectedYear] = useState(years[0] || '');
   const [selectedMonth, setSelectedMonth] = useState<IELTSMonthKey | ''>('');
   const [selectedTest, setSelectedTest] = useState('');
-  const [readArticles, setReadArticles] = useState<string[]>([]);
-
-  useEffect(() => {
-    setReadArticles(JSON.parse(localStorage.getItem('readArticles') || '[]'));
-  }, []);
-
   useEffect(() => {
     const savedRoute = readLastIELTSTestRoute();
     if (!savedRoute) {
       return;
     }
 
-    const matched = savedRoute.match(/^\/ielts-reader\/([^/]+)\/([^/]+)\/([^/]+)$/);
+    let parsed: URL;
+    try {
+      parsed = new URL(savedRoute, window.location.origin);
+    } catch {
+      return;
+    }
+
+    const matched = parsed.pathname.match(/^\/ielts-reader\/([^/]+)\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/);
     if (!matched) {
       return;
     }
@@ -54,7 +57,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
       return;
     }
 
-    router.replace(savedRoute);
+    router.replace(`${parsed.pathname}${parsed.search}`);
   }, [articles, router]);
 
   const availableMonths = useMemo(() => {
@@ -261,12 +264,18 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {visibleArticles.map((article) => {
-                const isRead = readArticles.includes(`ielts://${article.id}`);
+                const articleRoute = getIELTSPassageReaderUrl(
+                  article.year,
+                  article.month,
+                  article.test,
+                  article.passage,
+                );
+                const isRead = isRouteRead(articleRoute);
 
                 return (
                   <Link
                     key={article.id}
-                    href={getIELTSTestReaderUrl(article.year, article.month, article.test)}
+                    href={articleRoute}
                     className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white hover:shadow-md"
                   >
                     <div className="mb-3 flex items-center justify-between gap-3">

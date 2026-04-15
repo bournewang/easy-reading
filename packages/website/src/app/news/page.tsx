@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useArticles } from '@/hooks/useArticles';
 import type { FeaturedArticle } from '@/data/articles';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
+import { isSourceRead } from '@/utils/reading-history';
 
 const backgroundColors = {
   general: '#3B82F6',
@@ -19,8 +20,7 @@ function ArticleCard({ article, onClick, categoryLabel }: { article: FeaturedArt
   const [isRead, setIsRead] = useState(false);
 
   useEffect(() => {
-    const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]');
-    setIsRead(readArticles.includes(article.url));
+    setIsRead(isSourceRead(article.url));
   }, [article.url]);
 
   return (
@@ -53,8 +53,7 @@ function ArticleCardWithImage({ article, onClick, categoryLabel }: { article: Fe
   const [isRead, setIsRead] = useState(false);
 
   useEffect(() => {
-    const readArticles = JSON.parse(localStorage.getItem('readArticles') || '[]');
-    setIsRead(readArticles.includes(article.url));
+    setIsRead(isSourceRead(article.url));
   }, [article.url]);
 
   return (
