@@ -3,14 +3,13 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Request
 
 from .config import settings
-from .db import db_cursor, parse_dt, row_to_dict, utcnow_iso
+from .db import DBIntegrityError, db_cursor, parse_dt, row_to_dict, utcnow_iso
 
 
 def hash_password(password: str, salt: str | None = None) -> str:
@@ -69,7 +68,7 @@ def create_user(username: str, password: str, full_name: str | None) -> dict:
                 """,
                 (user_id, username, hash_password(password), full_name, now, now),
             )
-    except sqlite3.IntegrityError as exc:
+    except DBIntegrityError as exc:
         raise ValueError("Username already taken") from exc
     return get_user_by_id(user_id)
 

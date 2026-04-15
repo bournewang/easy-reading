@@ -47,6 +47,7 @@ Website auth/payment:
 
 ## Environment variables
 
+- `DATABASE_URL`: Use this to enable MySQL, for example `mysql://root:password@127.0.0.1:3306/easy_reading`
 - `DATABASE_PATH`: SQLite file path. Default: `backend-python/data/easy_reading.db`
 - `SESSION_COOKIE_NAME`: Default: `session`
 - `SESSION_TTL_DAYS`: Default: `7`
@@ -61,6 +62,8 @@ Website auth/payment:
 
 ## Notes
 
+- If `DATABASE_URL` is set to a MySQL URL, startup will initialize the `users`, `sessions`, and `orders` tables in MySQL automatically.
+- If `DATABASE_URL` is not set, the backend falls back to SQLite.
 - Payment creation is migration-ready but currently returns a generated payment URL / code URL instead of a full provider SDK integration.
 - Notify routes can be used to mark an order as paid and extend the user subscription while the real WeChat Pay / Alipay signature verification is ported.
 - TTS is still frontend-side today and can remain there until you decide to centralize audio generation.

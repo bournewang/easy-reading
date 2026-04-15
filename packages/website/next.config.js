@@ -1,4 +1,5 @@
 const isProduction = process.env.NODE_ENV === 'production';
+const localApiBase = process.env.BACKEND_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8010';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -14,7 +15,7 @@ if (!isProduction) {
   nextConfig.rewrites = async () => [
     {
       source: '/api-proxy/:path*',
-      destination: 'http://127.0.0.1:8000/api/:path*',
+      destination: `${localApiBase.replace(/\/$/, '')}/api/:path*`,
     },
   ];
 }

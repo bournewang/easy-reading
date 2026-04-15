@@ -40,6 +40,7 @@ load_dotenv_file(DEFAULT_ENV_PATH, override=True)
 
 @dataclass(frozen=True)
 class Settings:
+    database_url: str = os.getenv("DATABASE_URL", "")
     database_path: Path = Path(os.getenv("DATABASE_PATH", DEFAULT_DB_PATH))
     session_cookie_name: str = os.getenv("SESSION_COOKIE_NAME", "session")
     session_ttl_days: int = int(os.getenv("SESSION_TTL_DAYS", "7"))
@@ -70,5 +71,6 @@ class Settings:
 
 
 settings = Settings()
-settings.database_path.parent.mkdir(parents=True, exist_ok=True)
+if not settings.database_url:
+    settings.database_path.parent.mkdir(parents=True, exist_ok=True)
 settings.dictionary_cache_dir.mkdir(parents=True, exist_ok=True)
