@@ -43,6 +43,20 @@ def delete_session(token: str) -> None:
         cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
 
 
+def extract_bearer_token(request: Request) -> str | None:
+    authorization = request.headers.get("authorization", "").strip()
+    if authorization.lower().startswith("bearer "):
+        token = authorization[7:].strip()
+        if token:
+            return token
+
+    session_token = request.cookies.get(settings.session_cookie_name)
+    if session_token:
+        return session_token
+
+    return None
+
+
 def get_user_by_username(username: str) -> dict | None:
     with db_cursor() as cursor:
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
@@ -83,7 +97,7 @@ def authenticate_user(username: str, password: str) -> dict | None:
 
 
 def get_current_user(request: Request) -> dict | None:
-    session_token = request.cookies.get(settings.session_cookie_name)
+    session_token = extract_bearer_token(request)
     if not session_token:
         return None
 

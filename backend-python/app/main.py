@@ -10,6 +10,7 @@ from .auth import (
     create_session,
     create_user,
     delete_session,
+    extract_bearer_token,
     get_current_user,
     get_user_by_username,
 )
@@ -176,7 +177,7 @@ def register(payload: RegisterRequest, request: Request, response: Response) -> 
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     token = create_session(user["id"])
     set_session_cookie(request, response, token)
-    return AuthResponse(message="User created successfully", user=serialize_user(user))
+    return AuthResponse(message="User created successfully", user=serialize_user(user), token=token)
 
 
 @app.post("/api/auth/login", response_model=AuthResponse)
@@ -187,12 +188,12 @@ def login(payload: LoginRequest, request: Request, response: Response) -> AuthRe
 
     token = create_session(user["id"])
     set_session_cookie(request, response, token)
-    return AuthResponse(message="Logged in successfully", user=serialize_user(user))
+    return AuthResponse(message="Logged in successfully", user=serialize_user(user), token=token)
 
 
 @app.post("/api/auth/logout")
 def logout(request: Request, response: Response) -> dict:
-    session_token = request.cookies.get(settings.session_cookie_name)
+    session_token = extract_bearer_token(request)
     if session_token:
         delete_session(session_token)
     response.delete_cookie(settings.session_cookie_name, path="/")

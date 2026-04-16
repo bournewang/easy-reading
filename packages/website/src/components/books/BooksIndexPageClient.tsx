@@ -15,6 +15,7 @@ type Level = {
     title: string;
     author: string;
     chapterCount: number;
+    firstChapterNumber: number | null;
   }>;
 };
 
@@ -56,7 +57,7 @@ export function BooksIndexPageClient({ levels }: { levels: Level[] }) {
                 {level.books.slice(0, 3).map((book) => (
                   <Link
                     key={book.slug}
-                    href={`/books/${level.id}/${book.slug}`}
+                    href={`/books/${level.id}/${book.slug}/${book.firstChapterNumber ?? 1}`}
                     className="flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3 transition hover:border-blue-200 hover:bg-blue-50/40"
                   >
                     <div>

@@ -63,6 +63,7 @@ export default async function IELTSPassageReaderPage({ params }: IELTSPassageRea
           year: article.year,
           month: article.month,
           test: article.test,
+          firstPassage: article.passage,
         },
       ]),
     ).values(),

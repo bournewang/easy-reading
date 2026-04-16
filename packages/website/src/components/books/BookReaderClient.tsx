@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ChapterSelector } from '@/components/ChapterSelector';
 import BookChaptersSidebar from '@/components/books/BookChaptersSidebar';
 import type { BookChapterManifestItem, BookRecord } from '@/lib/books';
 import { getBookChapterReaderUrl } from '@/lib/reading-routes';
-import { Reader, type Article, type Paragraph } from '@easy-reading/shared';
+import { Reader, type Article } from '@easy-reading/shared';
 import {
   createBookHistoryItem,
   isRouteRead,
@@ -25,34 +26,6 @@ type BookChapterResource = BookChapterManifestItem & {
   content: string;
 };
 
-const DEFAULT_BOOKS_BASE_URL = 'http://localhost:3000/books';
-
-function getBooksBaseUrl() {
-  const configuredBaseUrl = (process.env.NEXT_PUBLIC_BOOKS_URL || DEFAULT_BOOKS_BASE_URL).replace(/\/$/, '');
-
-  if (/\/books-json$/i.test(configuredBaseUrl)) {
-    return configuredBaseUrl.replace(/\/books-json$/i, '/books');
-  }
-
-  return configuredBaseUrl;
-}
-
-function getBooksJsonBaseUrl() {
-  const configuredBaseUrl = (process.env.NEXT_PUBLIC_BOOKS_URL || DEFAULT_BOOKS_BASE_URL).replace(/\/$/, '');
-
-  if (/\/books-json$/i.test(configuredBaseUrl)) {
-    return configuredBaseUrl;
-  }
-
-  const booksBaseUrl = getBooksBaseUrl();
-
-  if (/\/books$/i.test(booksBaseUrl)) {
-    return booksBaseUrl.replace(/\/books$/i, '/books-json');
-  }
-
-  return `${booksBaseUrl}/books-json`;
-}
-
 export default function BookReaderClient({
   book,
   chapters,
@@ -60,6 +33,7 @@ export default function BookReaderClient({
   initialArticle,
   initialChapterNumber,
 }: BookReaderClientProps) {
+  const router = useRouter();
   const articleScrollRef = useRef<HTMLDivElement>(null);
   const initialChapterIndex = Math.max(
     0,
@@ -76,88 +50,24 @@ export default function BookReaderClient({
     ? getBookChapterReaderUrl(book.level, book.slug, currentChapterMeta.chapterNumber)
     : getBookChapterReaderUrl(book.level, book.slug, initialChapterNumber);
 
-  const buildClientArticleFromChapter = (chapter: BookChapterResource): Article => {
-    const paragraphs: Record<number, Paragraph> = {};
-
-    chapter.content
-      .split(/\n\s*\n/)
-      .map((paragraph) => paragraph.trim())
-      .filter(Boolean)
-      .forEach((paragraph, index) => {
-        paragraphs[index] = {
-          type: 'text',
-          content: paragraph,
-        };
-      });
-
-    if (Object.keys(paragraphs).length === 0) {
-      paragraphs[0] = {
-        type: 'text',
-        content: '',
-      };
-    }
-
-    const plainText = Object.values(paragraphs)
-      .filter((paragraph) => paragraph.type === 'text')
-      .map((paragraph) => paragraph.content)
-      .join(' ');
-    const wordCount =
-      chapter.wordCount ||
-      plainText
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean).length;
-
-    return {
-      title: `${book.title} · Chapter ${chapter.chapterIndex + 1}/${book.chapterCount}`,
-      site_name: `${book.author || 'Unknown author'} · ${levelLabel}`,
-      url: `book://${book.id}/${chapter.id}`,
-      word_count: wordCount,
-      paragraphs,
-      unfamiliar_words: [],
-      reading_time: chapter.readingTime || Math.max(1, Math.ceil(wordCount / 150)),
-      created_at: new Date().toISOString(),
-    };
-  };
-
   const changeChapter = async (index: number) => {
     if (index === currentChapter || index < 0 || index >= chapters.length) {
       return;
     }
 
-    setLoading(true);
     setError(null);
-
-    try {
-      const chapterMeta = chapters[index];
-      const booksJsonBaseUrl = getBooksJsonBaseUrl();
-      const response = await fetch(
-        `${booksJsonBaseUrl}/chapters/${encodeURIComponent(chapterMeta.id)}.json`,
-        {
-          cache: 'no-store',
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to load chapter ${index + 1}`);
-      }
-
-      const chapter = (await response.json()) as BookChapterResource;
-
-      setCurrentChapter(index);
-      setArticle(buildClientArticleFromChapter(chapter));
-      articleScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-      window.history.replaceState(
-        window.history.state,
-        '',
-        getBookChapterReaderUrl(book.level, book.slug, chapterMeta.chapterNumber),
-      );
-    } catch (chapterError) {
-      setError(chapterError instanceof Error ? chapterError.message : 'Failed to load chapter.');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    const chapterMeta = chapters[index];
+    router.replace(getBookChapterReaderUrl(book.level, book.slug, chapterMeta.chapterNumber));
   };
+
+  useEffect(() => {
+    setCurrentChapter(initialChapterIndex);
+    setArticle(initialArticle);
+    setLoading(false);
+    setError(null);
+    articleScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [initialArticle, initialChapterIndex]);
 
   useEffect(() => {
     const handleScroll = () => {

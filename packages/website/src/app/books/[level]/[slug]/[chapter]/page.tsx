@@ -6,10 +6,10 @@ import { absoluteUrl } from '@/lib/seo';
 import {
   buildBookArticle,
   getAllBooks,
+  getBookChapters,
   getBookChapterPageData,
   getBookChapterReaderUrl,
   getBookLevel,
-  getBookPageData,
 } from '@/lib/books';
 
 type Props = {
@@ -24,8 +24,7 @@ export async function generateStaticParams() {
   const books = await getAllBooks();
   const params = await Promise.all(
     books.map(async (book) => {
-      const data = await getBookPageData(book.level, book.slug);
-      const chapters = data?.chapters || [];
+      const chapters = await getBookChapters(book.level, book.slug);
 
       return chapters.map((chapter) => ({
         level: book.level,

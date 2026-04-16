@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { absoluteUrl } from '@/lib/seo';
+import { getBookChapterReaderUrl } from '@/lib/reading-routes';
 import { getAllBooks, BOOK_LEVELS } from '@/lib/books';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -32,7 +33,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     })),
     ...books.map((book) => ({
-      url: absoluteUrl(`/books/${book.level}/${book.slug}`),
+      url: absoluteUrl(
+        getBookChapterReaderUrl(book.level, book.slug, book.firstChapterNumber ?? 1),
+      ),
       lastModified: now,
       changeFrequency: 'monthly' as const,
       priority: 0.6,

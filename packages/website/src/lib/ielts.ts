@@ -1,10 +1,11 @@
 import 'server-only';
 
+import fsSync from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { cache } from 'react';
 import type { Article, Paragraph } from '@easy-reading/shared';
-import { getIELTSReaderUrl, getIELTSTestReaderUrl, ieltsMonthOrder } from '@/lib/ielts-paths';
+import { getIELTSReaderUrl, getIELTSPassageReaderUrl, ieltsMonthOrder } from '@/lib/ielts-paths';
 import type {
   IELTSArticleListItem,
   IELTSArticleManifestItem,
@@ -13,6 +14,16 @@ import type {
 } from '@/lib/ielts-types';
 
 const DEFAULT_IELTS_ARTICLE_BASE_URL = '/ielts-articles';
+
+function getWebsiteRootDir() {
+  const workspaceWebsiteDir = path.resolve(process.cwd(), 'packages/website');
+
+  if (fsSync.existsSync(workspaceWebsiteDir)) {
+    return workspaceWebsiteDir;
+  }
+
+  return process.cwd();
+}
 
 function countWords(text: string) {
   return text
@@ -53,7 +64,24 @@ function getIELTSArticleBaseUrl() {
   );
 }
 
+function getIELTSArticleDir() {
+  const configuredDir = process.env.IELTS_ARTICLE_DIR?.trim();
+
+  if (!configuredDir) {
+    return null;
+  }
+
+  return path.isAbsolute(configuredDir)
+    ? configuredDir
+    : path.resolve(getWebsiteRootDir(), configuredDir);
+}
+
 function getLocalResourceFile(relativePath: string) {
+  const localResourceDir = getIELTSArticleDir();
+  if (localResourceDir) {
+    return path.join(localResourceDir, relativePath);
+  }
+
   const baseUrl = getIELTSArticleBaseUrl();
   if (!baseUrl.startsWith('/')) {
     return null;
@@ -185,6 +213,6 @@ export async function getIELTSTestSummary(
     test,
     source: articles[0].source,
     articleCount: articles.length,
-    url: getIELTSTestReaderUrl(year, month, test),
+    url: getIELTSPassageReaderUrl(year, month, test, articles[0].passage),
   };
 }

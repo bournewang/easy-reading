@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import type { IELTSArticleListItem } from '@/lib/ielts-types';
 import {
   getIELTSPassageReaderUrl,
-  getIELTSTestReaderUrl,
   ieltsMonthLabels,
   ieltsMonthOrder,
   type IELTSMonthKey,
@@ -249,7 +248,16 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
           {selectedYear && selectedMonth && selectedTest && (
             <div className="mb-5">
               <Link
-                href={getIELTSTestReaderUrl(selectedYear, selectedMonth, selectedTest)}
+                href={
+                  visibleArticles[0]
+                    ? getIELTSPassageReaderUrl(
+                        visibleArticles[0].year,
+                        visibleArticles[0].month,
+                        visibleArticles[0].test,
+                        visibleArticles[0].passage,
+                      )
+                    : '#'
+                }
                 className="inline-flex items-center rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
               >
                 Open Full Test Reader

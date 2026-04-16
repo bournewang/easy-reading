@@ -17,7 +17,7 @@ function getErrorMessage(error: any, fallback: string) {
 }
 
 export default function RegisterPage() {
-  const { checkAuth } = useAuth();
+  const { checkAuth, setAuthToken } = useAuth();
   const { t } = useLocaleContext();
 
   const handleRegister = async (data: any) => {
@@ -28,6 +28,7 @@ export default function RegisterPage() {
         throw new Error(response.data?.message || response.data?.detail || t('website.auth.registerFailed'));
       }
 
+      setAuthToken(response.data?.token || null);
       await checkAuth();
       return response.data;
     } catch (error: any) {

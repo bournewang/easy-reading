@@ -1,27 +1,20 @@
 import axios from 'axios';
+import { clearStoredAuthToken, getStoredAuthToken } from './auth-token';
 
-// In development, use the proxy prefix
-// In production, use the actual API URL
 const getBaseUrl = () => {
-  if (process.env.NODE_ENV === 'production') {
-    return 'https://api.english-reader.com/api';
+  const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+
+  if (configuredApiUrl) {
+    return `${configuredApiUrl}/api`;
   }
+
   return '/api-proxy';
 };
 
-if (process.env.NODE_ENV === 'production') {
-  console.log(`Frontend API calls will use base URL: ${getBaseUrl()}.`);
-} else {
-  console.log(
-    `Frontend API calls will use proxy prefix: ${getBaseUrl()}. Ensure next.config.js rewrites this to your target backend.`,
-  );
-}
+console.log(`Frontend API calls will use base URL: ${getBaseUrl()}.`);
 
 const apiClient = axios.create({
-  // All client-side calls go to this relative path. 
-  // e.g., http://localhost:3000/api-proxy/auth/login
-  baseURL: getBaseUrl(), 
-  withCredentials: true, // Important for sending cookies with proxied requests
+  baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -30,6 +23,12 @@ const apiClient = axios.create({
 // Optional: Request Interceptor (Example: for logging)
 apiClient.interceptors.request.use(
   (config) => {
+    const token = getStoredAuthToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else if (config.headers?.Authorization) {
+      delete config.headers.Authorization;
+    }
     // console.log(`Starting API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     return config;
   },
@@ -53,6 +52,7 @@ apiClient.interceptors.response.use(
     console.error('API Response Error Data:', error.response?.data);
 
     if (status === 401) {
+      clearStoredAuthToken();
       console.warn('Received 401 Unauthorized response. Consider global logout or redirect.');
       // Example: window.location.href = '/login'; // or dispatch an event
     }

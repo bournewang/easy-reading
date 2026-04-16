@@ -1,3 +1,4 @@
+import fsSync from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import type { Article, Paragraph } from '@easy-reading/shared';
@@ -47,6 +48,7 @@ export type BookChapterResource = BookChapterManifestItem & {
 export type BookRecord = BookManifestItem & {
   levelLabel: string;
   assetCoverImg: string | null;
+  firstChapterNumber: number | null;
 };
 
 type BookChapterContent = {
@@ -55,8 +57,17 @@ type BookChapterContent = {
   chapterTitle: string;
 };
 
-const booksJsonRoot = path.join(process.cwd(), 'public', 'books-json');
 const DEFAULT_BOOKS_BASE_URL = 'http://localhost:3000/books';
+
+function getWebsiteRootDir() {
+  const workspaceWebsiteDir = path.resolve(process.cwd(), 'packages/website');
+
+  if (fsSync.existsSync(workspaceWebsiteDir)) {
+    return workspaceWebsiteDir;
+  }
+
+  return process.cwd();
+}
 
 export const BOOK_LEVELS: BookLevel[] = [
   {
@@ -138,7 +149,24 @@ function getBooksJsonBaseUrl() {
   return `${booksBaseUrl}/books-json`;
 }
 
+function getBooksJsonDir() {
+  const configuredDir = process.env.BOOKS_JSON_DIR?.trim();
+
+  if (!configuredDir) {
+    return null;
+  }
+
+  return path.isAbsolute(configuredDir)
+    ? configuredDir
+    : path.resolve(getWebsiteRootDir(), configuredDir);
+}
+
 function getLocalBooksJsonFile(relativePath: string) {
+  const booksJsonDir = getBooksJsonDir();
+  if (booksJsonDir) {
+    return path.join(booksJsonDir, relativePath);
+  }
+
   const booksJsonBaseUrl = getBooksJsonBaseUrl();
   if (!booksJsonBaseUrl.startsWith('/')) {
     return null;
@@ -258,11 +286,16 @@ async function getChapterResource(chapterId: string): Promise<BookChapterResourc
   }
 }
 
-function toBookRecord(book: BookManifestItem, levelLabel: string): BookRecord {
+function toBookRecord(
+  book: BookManifestItem,
+  levelLabel: string,
+  firstChapterNumber: number | null,
+): BookRecord {
   return {
     ...book,
     levelLabel,
     assetCoverImg: toBookAssetUrl(book.coverImg),
+    firstChapterNumber,
   };
 }
 
@@ -278,12 +311,25 @@ export async function getBooksForLevel(levelId: string) {
   }
 
   const books = await getBooksManifest();
+  const chapters = await getChaptersManifest();
   const levelBooks = books.filter((book) => book.level === level.id);
+  const firstChapterNumbers = new Map<string, number>();
+
+  chapters
+    .filter((chapter) => chapter.level === level.id)
+    .sort((a, b) => a.chapterIndex - b.chapterIndex)
+    .forEach((chapter) => {
+      if (!firstChapterNumbers.has(chapter.slug)) {
+        firstChapterNumbers.set(chapter.slug, chapter.chapterNumber);
+      }
+    });
 
   return {
     ...level,
     total: levelBooks.length,
-    books: levelBooks.map((book) => toBookRecord(book, level.shortLabel)),
+    books: levelBooks.map((book) =>
+      toBookRecord(book, level.shortLabel, firstChapterNumbers.get(book.slug) ?? null),
+    ),
   };
 }
 
@@ -366,13 +412,13 @@ export async function getBookPageData(levelId: string, slug: string) {
 }
 
 export async function getBookChapterPageData(levelId: string, slug: string, chapterNumber: number) {
-  const pageData = await getBookPageData(levelId, slug);
-
-  if (!pageData) {
+  const result = await getBook(levelId, slug);
+  if (!result) {
     return null;
   }
 
-  const chapterMeta = pageData.chapters.find((chapter) => chapter.chapterNumber === chapterNumber);
+  const chapters = await getBookChapters(levelId, slug);
+  const chapterMeta = chapters.find((chapter) => chapter.chapterNumber === chapterNumber);
   if (!chapterMeta) {
     return null;
   }
@@ -383,9 +429,11 @@ export async function getBookChapterPageData(levelId: string, slug: string, chap
   }
 
   return {
-    ...pageData,
+    ...result,
+    chapters,
     chapterMeta,
     chapter,
+    description: getBookDescription(result.book, chapter.content),
   };
 }
 

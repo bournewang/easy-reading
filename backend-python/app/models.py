@@ -38,6 +38,8 @@ class UserPayload(BaseModel):
 class AuthResponse(BaseModel):
     message: str
     user: UserPayload
+    token: str
+    tokenType: str = "Bearer"
 
 
 class DefinitionModel(BaseModel):

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Reader, type Article } from '@easy-reading/shared';
 import type { IELTSArticleListItem, IELTSReaderTestSummary } from '@/lib/ielts-types';
-import { getIELTSPassageReaderUrl, getIELTSTestReaderUrl, ieltsMonthLabels, ieltsMonthOrder } from '@/lib/ielts-paths';
+import { getIELTSPassageReaderUrl, ieltsMonthLabels, ieltsMonthOrder } from '@/lib/ielts-paths';
 import { saveLastIELTSTestRoute } from '@/lib/ielts-storage';
 import {
   createIELTSHistoryItem,
@@ -21,6 +21,7 @@ type IELTSTestReaderClientProps = {
     year: string;
     month: string;
     test: string;
+    firstPassage: string;
   }>;
   initialPassage: string;
 };
@@ -42,7 +43,7 @@ export default function IELTSTestReaderClient({
   const activeArticle = activePassage ? articlesById[activePassage.id] || null : null;
   const activeRouteUrl = activePassage
     ? getIELTSPassageReaderUrl(summary.year, summary.month, summary.test, activePassage.passage)
-    : getIELTSTestReaderUrl(summary.year, summary.month, summary.test);
+    : '';
 
   useEffect(() => {
     if (!activePassage) {
@@ -120,7 +121,14 @@ export default function IELTSTestReaderClient({
       return;
     }
 
-    router.push(getIELTSTestReaderUrl(year, nextMonth, nextTest));
+    const targetTest = allTests.find(
+      (entry) => entry.year === year && entry.month === nextMonth && entry.test === nextTest,
+    );
+    if (!targetTest) {
+      return;
+    }
+
+    router.push(getIELTSPassageReaderUrl(year, nextMonth, nextTest, targetTest.firstPassage));
   };
 
   const handleMonthChange = (month: string) => {
@@ -137,11 +145,27 @@ export default function IELTSTestReaderClient({
       return;
     }
 
-    router.push(getIELTSTestReaderUrl(summary.year, month, nextTest));
+    const targetTest = allTests.find(
+      (entry) => entry.year === summary.year && entry.month === month && entry.test === nextTest,
+    );
+    if (!targetTest) {
+      return;
+    }
+
+    router.push(getIELTSPassageReaderUrl(summary.year, month, nextTest, targetTest.firstPassage));
   };
 
   const handleTestChange = (test: string) => {
-    router.push(getIELTSTestReaderUrl(summary.year, summary.month, test));
+    const targetTest = allTests.find(
+      (entry) => entry.year === summary.year && entry.month === summary.month && entry.test === test,
+    );
+    if (!targetTest) {
+      return;
+    }
+
+    router.push(
+      getIELTSPassageReaderUrl(summary.year, summary.month, test, targetTest.firstPassage),
+    );
   };
 
   const handleMarkAsRead = () => {

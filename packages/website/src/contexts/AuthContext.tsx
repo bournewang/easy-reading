@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 // import { API_URLS } from '@/config/api';
 import { api } from '../utils/api';
+import { clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '@/utils/auth-token';
 
 interface User {
   id: string;
@@ -17,6 +18,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  setAuthToken: (token: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: async () => {},
   checkAuth: async () => {},
+  setAuthToken: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -31,8 +34,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!getStoredAuthToken()) {
+      setLoading(false);
+      return;
+    }
+
     checkAuth();
   }, []);
+
+  const setAuthToken = (token: string | null) => {
+    if (token) {
+      setStoredAuthToken(token);
+      return;
+    }
+
+    clearStoredAuthToken();
+  };
 
   const checkAuth = async () => {
     try {
@@ -51,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Auth check failed:', error);
+      clearStoredAuthToken();
       setUser(null);
     } finally {
       setLoading(false);
@@ -64,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Logout response:', response);
       if (response.status === 200) {
         // Clear user state immediately
+        clearStoredAuthToken();
         setUser(null);
         // Force a new auth check to ensure we're logged out
         await checkAuth();
@@ -71,12 +90,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Logout failed:', error);
       // Even if the logout request fails, clear the user state
+      clearStoredAuthToken();
       setUser(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, logout, checkAuth, setAuthToken }}>
       {children}
     </AuthContext.Provider>
   );

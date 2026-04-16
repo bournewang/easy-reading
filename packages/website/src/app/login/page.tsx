@@ -17,7 +17,7 @@ function getErrorMessage(error: any, fallback: string) {
 }
 
 export default function LoginPage() {
-  const { checkAuth } = useAuth();
+  const { checkAuth, setAuthToken } = useAuth();
   const { t } = useLocaleContext();
 
   const handleLogin = async (data: any) => {
@@ -27,6 +27,7 @@ export default function LoginPage() {
         throw new Error(response.data?.message || response.data?.detail || t('website.auth.loginFailed'));
       }
 
+      setAuthToken(response.data?.token || null);
       await checkAuth();
       return response.data;
     } catch (error: any) {
