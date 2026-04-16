@@ -194,6 +194,10 @@ function toBookAssetUrl(value: string | null | undefined) {
   }
 
   const normalizedValue = value.startsWith('/') ? value : `/${value}`;
+  if (normalizedValue.startsWith('/covers/')) {
+    return normalizedValue;
+  }
+
   const booksBaseUrl = getBooksBaseUrl();
 
   return `${booksBaseUrl}${normalizedValue}`;
