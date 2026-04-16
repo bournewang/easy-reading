@@ -5,14 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 // import { API_URLS } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/utils/api';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 
 // Client component that uses useSearchParams
 function SubscriptionSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { checkAuth } = useAuth();
+  const { t } = useLocaleContext();
+  const checkout = (key: string) => t(`website.checkoutPage.${key}`);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Verifying payment...');
+  const [message, setMessage] = useState(checkout('verifyingPayment'));
   const [isVerifying, setIsVerifying] = useState(false);
 
   const verifyPayment = useCallback(async () => {
@@ -22,10 +25,17 @@ function SubscriptionSuccessContent() {
       setIsVerifying(true);
       // Get all query parameters
       const params = Object.fromEntries(searchParams.entries());
-      const orderId = params.out_trade_no;
+      const orderId = params.orderId || params.out_trade_no;
+      const returnedStatus = params.status;
       
       if (!orderId) {
         throw new Error('No order ID found in URL parameters');
+      }
+
+      if (returnedStatus === 'cancelled') {
+        setStatus('error');
+        setMessage(checkout('paymentCancelled'));
+        return;
       }
       
       // Call backend to verify payment
@@ -37,9 +47,9 @@ function SubscriptionSuccessContent() {
 
       const data = response.data;
       
-      if (data.status === 'completed') {
+      if (data.status === 'success') {
         setStatus('success');
-        setMessage('Payment successful! Your subscription has been activated.');
+        setMessage(checkout('paymentSuccessBody'));
         
         // Update auth context to get new subscription status
         await checkAuth();
@@ -55,11 +65,11 @@ function SubscriptionSuccessContent() {
     } catch (error) {
       console.error('Payment verification error:', error);
       setStatus('error');
-      setMessage('An error occurred while verifying your payment. Please contact support.');
+      setMessage(checkout('paymentVerifyError'));
     } finally {
       setIsVerifying(false);
     }
-  }, [router, searchParams, checkAuth, isVerifying]);
+  }, [router, searchParams, checkAuth, isVerifying, checkout]);
 
   useEffect(() => {
     verifyPayment();
@@ -90,9 +100,9 @@ function SubscriptionSuccessContent() {
           )}
 
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            {status === 'loading' && 'Verifying Payment'}
-            {status === 'success' && 'Payment Successful'}
-            {status === 'error' && 'Payment Failed'}
+            {status === 'loading' && checkout('verifyingPayment')}
+            {status === 'success' && checkout('paymentSuccessful')}
+            {status === 'error' && checkout('paymentFailed')}
           </h2>
           
           <p className="mt-2 text-sm text-gray-600">
@@ -101,7 +111,7 @@ function SubscriptionSuccessContent() {
 
           {status === 'success' && (
             <p className="mt-4 text-sm text-gray-500">
-              Redirecting to dashboard...
+              {checkout('redirectingDashboard')}
             </p>
           )}
         </div>

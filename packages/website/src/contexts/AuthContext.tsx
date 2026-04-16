@@ -4,6 +4,9 @@ import { createContext, useContext, useEffect, useState } from 'react';
 // import { API_URLS } from '@/config/api';
 import { api } from '../utils/api';
 import { clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '@/utils/auth-token';
+import { getSubscriptionEntitlements, type SubscriptionEntitlements } from '@/lib/api/subscription';
+
+const ENTITLEMENTS_STORAGE_KEY = 'easy_reading_entitlements';
 
 interface User {
   id: string;
@@ -15,6 +18,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  entitlements: SubscriptionEntitlements | null;
   loading: boolean;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -23,6 +27,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  entitlements: null,
   loading: true,
   logout: async () => {},
   checkAuth: async () => {},
@@ -31,6 +36,22 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [entitlements, setEntitlements] = useState<SubscriptionEntitlements | null>(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const raw = window.localStorage.getItem(ENTITLEMENTS_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(raw) as SubscriptionEntitlements;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,6 +70,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     clearStoredAuthToken();
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(ENTITLEMENTS_STORAGE_KEY);
+    }
+  };
+
+  const persistEntitlements = (value: SubscriptionEntitlements | null) => {
+    setEntitlements(value);
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (!value) {
+      window.localStorage.removeItem(ENTITLEMENTS_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(ENTITLEMENTS_STORAGE_KEY, JSON.stringify(value));
   };
 
   const checkAuth = async () => {
@@ -63,13 +101,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ...userData.user,
           // subscriptionTier: userData.subscriptionTier || 'free',
         });
+        try {
+          const nextEntitlements = await getSubscriptionEntitlements();
+          persistEntitlements(nextEntitlements);
+        } catch (entitlementError) {
+          console.error('Entitlements fetch failed:', entitlementError);
+          persistEntitlements(null);
+        }
       } else if (response.status === 401) {
         setUser(null);
+        persistEntitlements(null);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       clearStoredAuthToken();
       setUser(null);
+      persistEntitlements(null);
     } finally {
       setLoading(false);
     }
@@ -84,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Clear user state immediately
         clearStoredAuthToken();
         setUser(null);
+        persistEntitlements(null);
         // Force a new auth check to ensure we're logged out
         await checkAuth();
       }
@@ -92,11 +140,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Even if the logout request fails, clear the user state
       clearStoredAuthToken();
       setUser(null);
+      persistEntitlements(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, checkAuth, setAuthToken }}>
+    <AuthContext.Provider value={{ user, entitlements, loading, logout, checkAuth, setAuthToken }}>
       {children}
     </AuthContext.Provider>
   );

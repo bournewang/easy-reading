@@ -11,6 +11,38 @@ import type {
 } from '../types/services';
 
 const hasWindow = typeof window !== 'undefined';
+const AUTH_TOKEN_STORAGE_KEY = 'easy_reading_auth_token';
+const ENTITLEMENTS_STORAGE_KEY = 'easy_reading_entitlements';
+
+type StoredEntitlements = {
+  canTranslateSentences?: boolean;
+  canUseTextToSpeech?: boolean;
+};
+
+function getStoredAuthToken() {
+  if (!hasWindow) {
+    return null;
+  }
+
+  return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+}
+
+function getStoredEntitlements(): StoredEntitlements | null {
+  if (!hasWindow) {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(ENTITLEMENTS_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as StoredEntitlements;
+  } catch {
+    return null;
+  }
+}
 
 type CombinedDictionaryResponse = DictResponse & {
   meta?: {
@@ -102,9 +134,18 @@ const translation: TranslationService = {
       return '';
     }
 
+    const entitlements = getStoredEntitlements();
+    if (entitlements && entitlements.canTranslateSentences === false) {
+      throw new Error('Sentence translation is available on paid plans.');
+    }
+
+    const token = getStoredAuthToken();
+
     const response = await axios.post<ApiResponse>(url, {
       text,
       target_lang: targetLang,
+    }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
 
     return (response.data.data as string) || '';
@@ -116,9 +157,18 @@ const translation: TranslationService = {
       return [];
     }
 
+    const entitlements = getStoredEntitlements();
+    if (entitlements && entitlements.canTranslateSentences === false) {
+      throw new Error('Sentence translation is available on paid plans.');
+    }
+
+    const token = getStoredAuthToken();
+
     const response = await axios.post<ApiResponse>(url, {
       text: texts.join('\n'),
       target_lang: targetLang,
+    }, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });
 
     const content = (response.data.data as string) || '';
@@ -141,6 +191,11 @@ const browserSpeechFallback = (text: string) =>
 
 const tts: TTSService = {
   async speak(text: string): Promise<void> {
+    const entitlements = getStoredEntitlements();
+    if (entitlements && entitlements.canUseTextToSpeech === false) {
+      throw new Error('Text to speech is available on paid plans.');
+    }
+
     const region = process.env.NEXT_PUBLIC_TTS_LOCATION || '';
     const key = process.env.NEXT_PUBLIC_TTS_API_KEY || '';
 

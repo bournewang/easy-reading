@@ -7,6 +7,9 @@ import Image from 'next/image';
 interface WeChatPayQRProps {
   tier: string;
   duration: number;
+  billingMode: 'prepaid' | 'recurring';
+  returnUrl: string;
+  cancelUrl: string;
   onPaymentSuccess: () => void;
   onPaymentFailure: (error: Error) => void;
 }
@@ -14,6 +17,9 @@ interface WeChatPayQRProps {
 export default function WeChatPayQR({
   tier,
   duration,
+  billingMode,
+  returnUrl,
+  cancelUrl,
   onPaymentSuccess,
   onPaymentFailure,
 }: WeChatPayQRProps) {
@@ -31,6 +37,9 @@ export default function WeChatPayQR({
         const response = await createOrder({
           tier,
           duration,
+          billingMode,
+          returnUrl,
+          cancelUrl,
         });
         
         setOrderId(response.orderId);
@@ -65,13 +74,13 @@ export default function WeChatPayQR({
         if (statusResponse.status === 'success') {
           console.log('Payment successful');
           setStatus('success');
-          // onPaymentSuccess();
+          onPaymentSuccess();
           return true;
         } else if (statusResponse.status === 'failed' || statusResponse.status === 'expired') {
           console.log('Payment failed or expired');
           setStatus('failed');
           setError(`Payment ${statusResponse.status}`);
-          // onPaymentFailure(new Error(`Payment ${statusResponse.status}`));
+          onPaymentFailure(new Error(`Payment ${statusResponse.status}`));
           return true;
         }
         

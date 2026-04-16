@@ -25,7 +25,6 @@ export default function Navigation() {
     const badgeColors = {
       free: 'bg-gray-100 text-gray-800',
       pro: 'bg-blue-100 text-blue-800',
-      premium: 'bg-purple-100 text-purple-800'
     };
 
     return (
@@ -70,7 +69,7 @@ export default function Navigation() {
             <NavigationItem href="/wordlist" label={nav('wordBook')} />
              
             <NavigationItem href="/history" label={nav('history')} />
-            {/* <NavigationItem href="/pricing" label="Pricing" /> */}
+            <NavigationItem href="/pricing" label={nav('pricing')} />
 
             <LanguageSwitcher />
 

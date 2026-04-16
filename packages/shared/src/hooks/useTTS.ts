@@ -11,6 +11,9 @@ export const useTTS = () => {
       await tts.speak(text);
     } catch (error) {
       console.error('TTS error:', error);
+      if (typeof window !== 'undefined' && error instanceof Error) {
+        window.alert(error.message);
+      }
     } finally {
       setSpeaking(false);
     }

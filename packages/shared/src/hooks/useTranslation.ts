@@ -10,6 +10,9 @@ export const useTranslation = () => {
       return await translation.translate(text, 'Chinese');
     } catch (error) {
       console.error('Translation error:', error);
+      if (typeof window !== 'undefined' && error instanceof Error) {
+        window.alert(error.message);
+      }
       return '';
     } finally {
       setTranslating(false);
@@ -22,6 +25,9 @@ export const useTranslation = () => {
       return await translation.translateBatch(texts, 'Chinese');
     } catch (error) {
       console.error('Batch translation error:', error);
+      if (typeof window !== 'undefined' && error instanceof Error) {
+        window.alert(error.message);
+      }
       return [];
     } finally {
       setTranslating(false);

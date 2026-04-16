@@ -7,6 +7,12 @@ import Link from 'next/link';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { formatMessage } from '@/lib/i18n';
 import { getReadingHistory, type ReadingHistoryItem } from '@/utils/reading-history';
+import {
+  cancelSubscription,
+  getSubscriptionSummary,
+  reactivateSubscription,
+  type SubscriptionSummary,
+} from '@/lib/api/subscription';
 
 type ActivityStat = {
   label: string;
@@ -20,11 +26,6 @@ const getPlanStyles = (plan: string) => {
       return {
         pill: 'bg-sky-100 text-sky-700 ring-1 ring-sky-200',
         panel: 'from-sky-500 via-cyan-500 to-blue-600',
-      };
-    case 'premium':
-      return {
-        pill: 'bg-violet-100 text-violet-700 ring-1 ring-violet-200',
-        panel: 'from-violet-500 via-fuchsia-500 to-indigo-600',
       };
     default:
       return {
@@ -95,10 +96,13 @@ const ActionIcon = ({ type }: { type: 'book' | 'history' | 'voice' | 'plan' }) =
 };
 
 export default function UserCenterPage() {
-  const { user, logout, loading } = useAuth();
+  const { user, entitlements, logout, loading } = useAuth();
   const router = useRouter();
   const { t } = useLocaleContext();
   const [articles, setArticles] = useState<ReadingHistoryItem[]>([]);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionSummary | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const userText = (key: string) => t(`website.userPage.${key}`);
   const common = (key: string) => t(`website.common.${key}`);
 
@@ -116,15 +120,69 @@ export default function UserCenterPage() {
     setArticles(getReadingHistory());
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const loadSubscription = async () => {
+      try {
+        setSubscriptionLoading(true);
+        setSubscriptionError(null);
+        const summary = await getSubscriptionSummary();
+        setSubscriptionInfo(summary);
+      } catch (error) {
+        console.error('Failed to load subscription:', error);
+        setSubscriptionError('Unable to load subscription details right now.');
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+
+    loadSubscription();
+  }, [user]);
+
   const handleLogout = async () => {
     await logout();
     router.push('/');
   };
 
-  const subscriptionStatus = user?.subscriptionTier || 'free';
-  const subscriptionExpires = user?.subscriptionExpires ? new Date(user.subscriptionExpires) : null;
+  const subscriptionStatus = subscriptionInfo?.tier || user?.subscriptionTier || 'free';
+  const subscriptionExpires = subscriptionInfo?.expiresAt
+    ? new Date(subscriptionInfo.expiresAt)
+    : user?.subscriptionExpires
+      ? new Date(user.subscriptionExpires)
+      : null;
   const isExpired = subscriptionExpires ? subscriptionExpires < new Date() : false;
   const planStyles = getPlanStyles(subscriptionStatus);
+  const billingModeLabel = subscriptionInfo?.billingMode === 'recurring' ? 'Recurring' : 'Prepaid';
+  const canManageRecurring = subscriptionInfo?.active && subscriptionInfo.billingMode === 'recurring';
+
+  const handleCancelSubscription = async () => {
+    try {
+      setSubscriptionLoading(true);
+      setSubscriptionError(null);
+      const summary = await cancelSubscription();
+      setSubscriptionInfo(summary);
+    } catch (error: any) {
+      setSubscriptionError(error?.response?.data?.detail || error?.message || 'Unable to cancel subscription.');
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    try {
+      setSubscriptionLoading(true);
+      setSubscriptionError(null);
+      const summary = await reactivateSubscription();
+      setSubscriptionInfo(summary);
+    } catch (error: any) {
+      setSubscriptionError(error?.response?.data?.detail || error?.message || 'Unable to reactivate subscription.');
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
 
   const totalReadingMinutes = useMemo(
     () => articles.reduce((sum, article) => sum + (article.readingTime || 0), 0),
@@ -274,6 +332,13 @@ export default function UserCenterPage() {
                     {subscriptionExpires ? subscriptionExpires.toLocaleDateString() : common('noRenewalScheduled')}
                   </span>
                 </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-2xl bg-black/10 px-4 py-3">
+                  <span>Billing</span>
+                  <span className="font-semibold text-white">
+                    {subscriptionInfo?.billingMode ? billingModeLabel : 'Free plan'}
+                  </span>
+                </div>
               </div>
 
               <div className="mt-6 rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
@@ -288,6 +353,44 @@ export default function UserCenterPage() {
                   >
                     {userText('upgrade')}
                   </Link>
+                )}
+                {subscriptionInfo?.active && (
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {canManageRecurring && !subscriptionInfo.cancelAtPeriodEnd && (
+                      <button
+                        onClick={handleCancelSubscription}
+                        disabled={subscriptionLoading}
+                        className="inline-flex rounded-full bg-slate-900/80 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-900 disabled:opacity-60"
+                      >
+                        Cancel auto-renew
+                      </button>
+                    )}
+                    {canManageRecurring && subscriptionInfo.cancelAtPeriodEnd && (
+                      <button
+                        onClick={handleReactivateSubscription}
+                        disabled={subscriptionLoading}
+                        className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100 disabled:opacity-60"
+                      >
+                        Reactivate auto-renew
+                      </button>
+                    )}
+                    {!subscriptionInfo.autoRenew && (
+                      <Link
+                        href="/pricing"
+                        className="inline-flex rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20 transition-colors hover:bg-white/15"
+                      >
+                        Renew or change plan
+                      </Link>
+                    )}
+                  </div>
+                )}
+                {subscriptionInfo?.cancelAtPeriodEnd && (
+                  <p className="mt-3 text-sm text-amber-100">
+                    Auto-renew is off. Your access stays active until {subscriptionExpires?.toLocaleDateString()}.
+                  </p>
+                )}
+                {subscriptionError && (
+                  <p className="mt-3 text-sm text-amber-100">{subscriptionError}</p>
                 )}
               </div>
             </div>
@@ -359,6 +462,21 @@ export default function UserCenterPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('fullName')}</p>
                   <p className="mt-2 text-base font-medium text-slate-900">{user.fullName || userText('notSetYet')}</p>
                 </div>
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Feature access</p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    Translation: {entitlements?.canTranslateSentences ? 'Unlocked' : 'Upgrade required'}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    Text to speech: {entitlements?.canUseTextToSpeech ? 'Unlocked' : 'Upgrade required'}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    Word Book: {entitlements?.canUseWordBook === false ? 'Locked' : 'Available'}
+                  </p>
+                </div>
+                {subscriptionLoading && (
+                  <p className="text-sm text-slate-500">Refreshing subscription details...</p>
+                )}
               </div>
             </div>
 

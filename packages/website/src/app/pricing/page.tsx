@@ -14,6 +14,34 @@ export default function PricingPage() {
   const defaultDuration = popularTier ? getDefaultDurationOption(popularTier) : null;
   const pricing = (key: string) => t(`website.pricingPage.${key}`);
   const common = (key: string) => t(`website.common.${key}`);
+
+  const getTierContent = (tier: PricingTier) => {
+    if (tier.id === 'free') {
+      return {
+        name: pricing('freeName'),
+        description: pricing('freeDescription'),
+        features: [
+          pricing('freeFeatureBasicReading'),
+          pricing('freeFeatureWordLookup'),
+          pricing('freeFeatureWordBook'),
+          pricing('freeFeatureTranslation'),
+        ],
+      };
+    }
+
+    return {
+      name: pricing('proName'),
+      description: pricing('proDescription'),
+      features: [
+        pricing('proFeatureUnlimitedReading'),
+        pricing('proFeatureAdvancedLookup'),
+        pricing('proFeatureExtendedWordBook'),
+        pricing('proFeatureFullTranslation'),
+        pricing('proFeatureOffline'),
+        pricing('proFeatureAdFree'),
+      ],
+    };
+  };
   
   const [selectedTier, setSelectedTier] = useState<PricingTier | null>(popularTier || null);
   const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(defaultDuration || null);
@@ -44,7 +72,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
+      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">
             {pricing('title')}
@@ -54,12 +82,18 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div className="mt-12 mb-12 grid gap-8 lg:grid-cols-3">
+        <div className="mt-12 mb-12 grid gap-8 md:grid-cols-2">
           {PRICING_TIERS.map((tier) => (
             <div
               key={tier.id}
-              className="relative rounded-2xl shadow-lg ring-1 ring-gray-200 bg-white p-8"
+              className={`relative rounded-2xl shadow-lg ring-1 ring-gray-200 bg-white p-8 ${
+                tier.isPopular ? 'md:-translate-y-2 md:shadow-2xl' : ''
+              }`}
             >
+              {(() => {
+                const content = getTierContent(tier);
+                return (
+                  <>
               {tier.isPopular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                   <span className="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
@@ -69,8 +103,8 @@ export default function PricingPage() {
               )}
 
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900">{tier.name}</h2>
-                <p className="mt-4 text-gray-600">{tier.description}</p>
+                <h2 className="text-2xl font-bold text-gray-900">{content.name}</h2>
+                <p className="mt-4 text-gray-600">{content.description}</p>
                 {tier.monthlyPrice && (
                   <p className="mt-6">
                     <span className="text-4xl font-bold text-gray-900">
@@ -113,7 +147,7 @@ export default function PricingPage() {
               )}
 
               <ul className="mt-8 space-y-4">
-                {tier.features.map((feature) => (
+                {content.features.map((feature) => (
                   <li key={feature} className="flex items-center">
                     <svg
                       className="h-5 w-5 text-green-500"
@@ -132,6 +166,9 @@ export default function PricingPage() {
                   </li>
                 ))}
               </ul>
+                  </>
+                );
+              })()}
             </div>
           ))}
         </div>
@@ -141,7 +178,7 @@ export default function PricingPage() {
             <div className="max-w-7xl mx-auto flex justify-between items-center">
               <div>
                 <p className="text-sm text-gray-600">
-                  {pricing('selectedPlan')}: {selectedTier.name} - {selectedDuration.months}{' '}
+                  {pricing('selectedPlan')}: {getTierContent(selectedTier).name} - {selectedDuration.months}{' '}
                   {selectedDuration.months === 1 ? pricing('month') : pricing('months')}
                 </p>
                 <p className="text-lg font-semibold text-gray-900">

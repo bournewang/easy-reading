@@ -64,42 +64,6 @@ export const PRICING_TIERS: PricingTier[] = [
       'Ad-free experience',
     ],
   },
-  {
-    id: 'premium',
-    name: 'Premium',
-    description: 'Complete package for dedicated learners',
-    monthlyPrice: 49,
-    durationOptions: [
-      {
-        months: 1,
-        price: 49,
-      },
-      {
-        months: 3,
-        price: 135,
-        savings: 10,
-      },
-      {
-        months: 6,
-        price: 258,
-        savings: 15,
-        default: true,
-      },
-      {
-        months: 12,
-        price: 438,
-        savings: 28,
-      },
-    ],
-    features: [
-      'All Pro features',
-      'Priority support',
-      'Advanced analytics',
-      'Custom word lists',
-      'Export/import features',
-      'API access',
-    ],
-  },
 ];
 
 // Helper functions

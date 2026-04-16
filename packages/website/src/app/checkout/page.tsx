@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { PRICING_TIERS, formatPrice } from '@easy-reading/shared';
 import { useRouter, useSearchParams } from 'next/navigation';
-import WeChatPayQR from '@/components/payment/WeChatPayQR';
 import { AlipayPayment } from '@/components/payment/AlipayPayment';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +14,7 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const tierId = searchParams.get('tier');
   const durationMonths = searchParams.get('duration');
+  const cancelled = searchParams.get('status') === 'cancelled' || searchParams.get('cancelled') === '1';
   const { user } = useAuth();
   const { t } = useLocaleContext();
   const checkout = (key: string) => t(`website.checkoutPage.${key}`);
@@ -29,9 +29,8 @@ function CheckoutContent() {
   const [selectedTier, setSelectedTier] = useState(initialTier);
   const [selectedDuration, setSelectedDuration] = useState(initialDuration);
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>('alipay');
-  const [paymentStarted, setPaymentStarted] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const selectedTierName = selectedTier?.id === 'pro' ? pricing('proName') : pricing('freeName');
 
   useEffect(() => {
     const tierId = searchParams.get('tier');
@@ -52,17 +51,11 @@ function CheckoutContent() {
     } else {
       setError(checkout('missingParams'));
     }
+    if (cancelled) {
+      setError(checkout('paymentCancelled'));
+    }
     setLoading(false);
-  }, [searchParams]);
-
-  const handlePayment = () => {
-    if (!selectedTier || !selectedDuration || !paymentMethod) return;
-    setPaymentStarted(true);
-  };
-
-  const handlePaymentSuccess = () => {
-    router.push('/subscription/success');
-  };
+  }, [searchParams, user?.id, cancelled, checkout]);
 
   const handlePaymentError = (error: Error) => {
     setError(error.message);
@@ -81,7 +74,7 @@ function CheckoutContent() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Invalid Subscription Plan</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{checkout('invalidTitle')}</h1>
           <p className="mt-4 text-gray-600">
             {checkout('invalidBody')}
           </p>
@@ -96,6 +89,10 @@ function CheckoutContent() {
     );
   }
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const returnUrl = `${origin}/subscription/success`;
+  const cancelUrl = `${origin}/checkout?tier=${selectedTier.id}&duration=${selectedDuration.months}&cancelled=1`;
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -107,7 +104,7 @@ function CheckoutContent() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">{checkout('orderSummary')}</h2>
             <div className="flex justify-between items-center mb-2">
               <span className="text-gray-600">{pricing('planLabel')}</span>
-              <span className="font-medium">{selectedTier.name}</span>
+              <span className="font-medium">{selectedTierName}</span>
             </div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-gray-600">{pricing('durationLabel')}</span>
@@ -125,20 +122,14 @@ function CheckoutContent() {
                 {user?.username} {user?.fullName}
               </span>
             </div>
+            <p className="mt-3 text-sm text-gray-500">{pricing('paymentPlanHint')}</p>
           </div>
 
           {/* Payment Method Selection */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">{checkout('paymentMethod')}</h2>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setPaymentMethod('alipay')}
-                className={`flex-1 py-3 px-4 rounded-lg border ${
-                  paymentMethod === 'alipay'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300'
-                }`}
-              >
+            <div className="rounded-lg border border-blue-500 bg-blue-50 px-4 py-3">
+              <div className="flex items-center justify-center">
                 <Image
                   src="/images/alipay.png"
                   alt="Alipay"
@@ -146,56 +137,18 @@ function CheckoutContent() {
                   height={40}
                   className="mx-auto"
                 />
-              </button>
-              {/* <button
-                onClick={() => setPaymentMethod('wechat')}
-                className={`flex-1 py-3 px-4 rounded-lg border ${
-                  paymentMethod === 'wechat'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300'
-                }`}
-              >
-                <Image
-                  src="/images/wechatpay.png"
-                  alt="WeChat Pay"
-                  width={120}
-                  height={40}
-                  className="mx-auto"
-                />
-              </button> */}
+              </div>
+              <p className="mt-3 text-center text-sm text-gray-600">{checkout('alipayOnly')}</p>
             </div>
           </div>
 
-          {/* Payment Button */}
-          {!paymentStarted ? (
-            <button
-              onClick={handlePayment}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700"
-            >
-              {checkout('proceedPayment')}
-            </button>
-          ) : (
-            <div className="space-y-4">
-              {paymentMethod === 'wechat' && (
-                <WeChatPayQR
-                  tier={selectedTier.id}
-                  duration={selectedDuration.months}
-                  onPaymentSuccess={handlePaymentSuccess}
-                  onPaymentFailure={handlePaymentError}
-                />
-              )}
-              {paymentMethod === 'alipay' && (
-                <AlipayPayment
-                  amount={selectedDuration.price}
-                  orderId={`ORDER_${Date.now()}`}
-                  tier={selectedTier.id}
-                  duration={selectedDuration.months}
-                  onSuccess={handlePaymentSuccess}
-                  onError={handlePaymentError}
-                />
-              )}
-            </div>
-          )}
+          <AlipayPayment
+            tier={selectedTier.id}
+            duration={selectedDuration.months}
+            returnUrl={returnUrl}
+            cancelUrl={cancelUrl}
+            onError={handlePaymentError}
+          />
 
           {error && (
             <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg">

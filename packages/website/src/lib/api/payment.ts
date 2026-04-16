@@ -5,18 +5,24 @@ import { api } from '../../utils/api';
 
 // Types
 export interface CreateOrderParams {
-  tier?: string;
-  duration?: number;
-  amount?: number;
-  orderId?: string;
+  tier: string;
+  duration: number;
+  billingMode: 'prepaid' | 'recurring';
+  returnUrl?: string;
+  cancelUrl?: string;
 }
 
 export interface PaymentResponse {
   orderId: string;
   amount: number;
   status: 'pending' | 'success' | 'failed' | 'expired';
+  tier?: string;
+  duration?: number;
+  billingMode?: 'prepaid' | 'recurring';
   codeUrl?: string;  // For WeChat Pay Native Payment
   paymentUrl?: string;  // For Alipay
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface OrderStatus {
@@ -31,37 +37,25 @@ interface OrderStatus {
 export async function createOrder(params: CreateOrderParams): Promise<PaymentResponse> {
   const response = await api.post('/payment/wechat/create', params);
 
-  console.log('Response status:', response.status);
-  console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
   if (response.status !== 200) {
     const error = response.data;
-    console.error('Error response:', error);
-    throw new Error(error.message || 'Failed to create order');
+    throw new Error(error.message || error.detail || 'Failed to create order');
   }
 
-  const data = response.data;
-  console.log('Success response:', data);
-  return data;
+  return response.data;
 }
 
 // Create an order with Alipay
 export async function createAlipayOrder(params: CreateOrderParams): Promise<PaymentResponse> {
   try {
-    const response = await api.post(`/payment/alipay/create`, {
-      amount: params.amount,
-      orderId: params.orderId,
-      tier: params.tier,
-      duration: params.duration,
-    });
+    const response = await api.post('/payment/alipay/create', params);
 
     if (response.status !== 200) {
       const error = response.data;
-      throw new Error(error.message || 'Failed to create Alipay order');
+      throw new Error(error.message || error.detail || 'Failed to create Alipay order');
     }
 
-    const data = response.data;
-    return data;
+    return response.data;
   } catch (error) {
     console.error('Error creating Alipay order:', error);
     throw error;
@@ -70,13 +64,13 @@ export async function createAlipayOrder(params: CreateOrderParams): Promise<Paym
 
 // Query order status
 export async function queryOrderStatus(orderId: string): Promise<PaymentResponse> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payment/query-order?orderId=${orderId}`);
-  
-  if (!response.ok) {
+  const response = await api.get(`/payment/query-order?orderId=${orderId}`);
+
+  if (response.status !== 200) {
     throw new Error('Failed to query order status');
   }
-  
-  return response.json();
+
+  return response.data;
 }
 
 // Generate WeChat Pay parameters for JSAPI
