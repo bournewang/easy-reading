@@ -31,6 +31,8 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
+If you already have the virtualenv created, rerun `pip install -r requirements.txt` after pulling payment changes because the mock Alipay form handlers require `python-multipart`.
+
 ## Frontend migration targets
 
 Shared package:
@@ -59,11 +61,18 @@ Website auth/payment:
 - `DASHSCOPE_BASE_URL`: Default: `https://dashscope.aliyuncs.com/compatible-mode/v1`
 - `DICTIONARY_API_BASE_URL`: Default: `https://api.dictionaryapi.dev/api/v2/entries/en`
 - `APP_BASE_URL`: Used to build mock payment URLs
+- `PAYMENT_SIGNING_SECRET`: Used to sign/verify mock payment callbacks
+- `ALIPAY_APP_ID`: Alipay application ID for the future real integration
+- `ALIPAY_PRIVATE_KEY`: Alipay merchant private key placeholder
+- `ALIPAY_PUBLIC_KEY`: Alipay platform public key placeholder
+- `ALIPAY_GATEWAY_URL`: Alipay gateway base URL
+- `ALIPAY_NOTIFY_URL`: Default notify URL stored in Alipay order metadata
+- `ALIPAY_RETURN_URL`: Default return URL used when the frontend does not send one
 
 ## Notes
 
 - If `DATABASE_URL` is set to a MySQL URL, startup will initialize the `users`, `sessions`, and `orders` tables in MySQL automatically.
 - If `DATABASE_URL` is not set, the backend falls back to SQLite.
-- Payment creation is migration-ready but currently returns a generated payment URL / code URL instead of a full provider SDK integration.
+- Payment creation is migration-ready and now reads Alipay env config into order metadata, but it still returns a mock payment URL instead of a full provider SDK integration.
 - Notify routes can be used to mark an order as paid and extend the user subscription while the real WeChat Pay / Alipay signature verification is ported.
 - TTS is still frontend-side today and can remain there until you decide to centralize audio generation.

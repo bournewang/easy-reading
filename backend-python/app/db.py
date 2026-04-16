@@ -24,9 +24,11 @@ def utcnow_iso() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
-def parse_dt(value: str | None) -> datetime | None:
+def parse_dt(value: str | datetime | None) -> datetime | None:
     if not value:
         return None
+    if isinstance(value, datetime):
+        return value
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
@@ -158,6 +160,28 @@ def _init_sqlite() -> None:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                tier TEXT NOT NULL,
+                status TEXT NOT NULL,
+                billing_mode TEXT NOT NULL,
+                interval_months INTEGER NOT NULL,
+                auto_renew INTEGER NOT NULL DEFAULT 0,
+                cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+                started_at TEXT NOT NULL,
+                current_period_start TEXT NOT NULL,
+                current_period_end TEXT NOT NULL,
+                canceled_at TEXT,
+                latest_order_id TEXT,
+                payment_method TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
 
 
 def _init_mysql() -> None:
@@ -206,6 +230,29 @@ def _init_mysql() -> None:
                 created_at VARCHAR(64) NOT NULL,
                 updated_at VARCHAR(64) NOT NULL,
                 INDEX idx_orders_user_id (user_id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                id VARCHAR(64) PRIMARY KEY,
+                user_id VARCHAR(64) NOT NULL,
+                tier VARCHAR(64) NOT NULL,
+                status VARCHAR(64) NOT NULL,
+                billing_mode VARCHAR(64) NOT NULL,
+                interval_months INT NOT NULL,
+                auto_renew TINYINT(1) NOT NULL DEFAULT 0,
+                cancel_at_period_end TINYINT(1) NOT NULL DEFAULT 0,
+                started_at VARCHAR(64) NOT NULL,
+                current_period_start VARCHAR(64) NOT NULL,
+                current_period_end VARCHAR(64) NOT NULL,
+                canceled_at VARCHAR(64) NULL,
+                latest_order_id VARCHAR(64) NULL,
+                payment_method VARCHAR(64) NULL,
+                created_at VARCHAR(64) NOT NULL,
+                updated_at VARCHAR(64) NOT NULL,
+                INDEX idx_subscriptions_user_id (user_id)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
             """
         )

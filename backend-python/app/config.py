@@ -45,6 +45,13 @@ class Settings:
     session_cookie_name: str = os.getenv("SESSION_COOKIE_NAME", "session")
     session_ttl_days: int = int(os.getenv("SESSION_TTL_DAYS", "7"))
     app_base_url: str = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000")
+    payment_signing_secret: str = os.getenv("PAYMENT_SIGNING_SECRET", "easy-reading-dev-secret")
+    alipay_app_id: str = os.getenv("ALIPAY_APP_ID", "")
+    alipay_private_key: str = os.getenv("ALIPAY_PRIVATE_KEY", "")
+    alipay_public_key: str = os.getenv("ALIPAY_PUBLIC_KEY", "")
+    alipay_gateway_url: str = os.getenv("ALIPAY_GATEWAY_URL", "https://openapi.alipay.com/gateway.do")
+    alipay_notify_url: str = os.getenv("ALIPAY_NOTIFY_URL", "")
+    alipay_return_url: str = os.getenv("ALIPAY_RETURN_URL", "")
     cors_allow_origins: tuple[str, ...] = tuple(
         origin.strip()
         for origin in os.getenv(

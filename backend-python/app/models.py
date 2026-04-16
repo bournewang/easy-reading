@@ -76,14 +76,18 @@ class DictionaryEntryModel(BaseModel):
 class PaymentCreateRequest(BaseModel):
     tier: str
     duration: int
-    amount: float | None = None
-    orderId: str | None = None
+    billingMode: str = "prepaid"
+    returnUrl: str | None = None
+    cancelUrl: str | None = None
 
 
 class PaymentQueryResponse(BaseModel):
     orderId: str
     amount: float
     status: str
+    tier: str | None = None
+    duration: int | None = None
+    billingMode: str | None = None
     codeUrl: str | None = None
     paymentUrl: str | None = None
     createdAt: datetime
@@ -93,9 +97,23 @@ class PaymentQueryResponse(BaseModel):
 class PaymentNotifyRequest(BaseModel):
     orderId: str
     transactionId: str | None = None
+    signature: str | None = None
 
 
 class SubscriptionResponse(BaseModel):
+    subscriptionId: str | None = None
     tier: str
     expiresAt: datetime | None = None
     active: bool
+    billingMode: str | None = None
+    intervalMonths: int | None = None
+    autoRenew: bool = False
+    cancelAtPeriodEnd: bool = False
+
+
+class SubscriptionEntitlementsResponse(BaseModel):
+    tier: str
+    active: bool
+    canUseWordBook: bool
+    canTranslateSentences: bool
+    canUseTextToSpeech: bool

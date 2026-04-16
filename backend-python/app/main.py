@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, status
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from .auth import (
     authenticate_user,
@@ -25,6 +25,7 @@ from .models import (
     PaymentQueryResponse,
     RegisterRequest,
     SubscriptionResponse,
+    SubscriptionEntitlementsResponse,
     TranslateRequest,
     TranslateResponse,
     UserPayload,
@@ -107,8 +108,17 @@ def health() -> dict:
 
 
 @app.post("/api/translate")
-def translate(payload: TranslateRequest, debug: bool = Query(default=False)) -> dict:
+def translate(payload: TranslateRequest, request: Request, debug: bool = Query(default=False)) -> dict:
     try:
+        user = get_current_user(request)
+        if user:
+            entitlements = payment_service.get_entitlements(user["id"])
+            if not entitlements["canTranslateSentences"]:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Sentence translation is available on paid plans.",
+                )
+
         if debug:
             translated, debug_info = translation_service.translate(
                 payload.text,
@@ -209,70 +219,108 @@ def me(user: dict | None = Depends(get_current_user)) -> dict:
 
 @app.get("/api/subscription", response_model=SubscriptionResponse)
 def subscription(user: dict = Depends(require_user)) -> SubscriptionResponse:
-    expires_at = parse_dt(user.get("subscription_expires"))
-    active = bool(expires_at and expires_at > datetime.now(timezone.utc))
-    return SubscriptionResponse(
-        tier=user.get("subscription_tier") or "free",
-        expiresAt=expires_at,
-        active=active,
-    )
+    return SubscriptionResponse(**payment_service.get_subscription_summary(user["id"]))
+
+
+@app.get("/api/subscription/entitlements", response_model=SubscriptionEntitlementsResponse)
+def subscription_entitlements(user: dict = Depends(require_user)) -> SubscriptionEntitlementsResponse:
+    return SubscriptionEntitlementsResponse(**payment_service.get_entitlements(user["id"]))
+
+
+@app.post("/api/subscription/cancel", response_model=SubscriptionResponse)
+def cancel_subscription(user: dict = Depends(require_user)) -> SubscriptionResponse:
+    try:
+        summary = payment_service.cancel_subscription(user["id"])
+        return SubscriptionResponse(**summary)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/subscription/reactivate", response_model=SubscriptionResponse)
+def reactivate_subscription(user: dict = Depends(require_user)) -> SubscriptionResponse:
+    try:
+        summary = payment_service.reactivate_subscription(user["id"])
+        return SubscriptionResponse(**summary)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/payment/wechat/create", response_model=PaymentQueryResponse)
 def create_wechat_order(payload: PaymentCreateRequest, user: dict = Depends(require_user)) -> PaymentQueryResponse:
-    order = payment_service.create_order(
-        user_id=user["id"],
-        payment_method="wechat",
-        tier=payload.tier,
-        duration=payload.duration,
-    )
-    return PaymentQueryResponse(
-        orderId=order["id"],
-        amount=order["amount"],
-        status=order["status"],
-        codeUrl=f"{settings.app_base_url.rstrip('/')}/mock-pay/wechat/{order['id']}",
-        createdAt=parse_dt(order["created_at"]),
-        updatedAt=parse_dt(order["updated_at"]),
-    )
+    try:
+        order = payment_service.create_order(
+            user_id=user["id"],
+            payment_method="wechat",
+            tier=payload.tier,
+            duration=payload.duration,
+            billing_mode=payload.billingMode,
+            return_url=payload.returnUrl,
+            cancel_url=payload.cancelUrl,
+        )
+        return PaymentQueryResponse(
+            orderId=order["id"],
+            amount=order["amount"],
+            status=order["status"],
+            tier=order["tier"],
+            duration=order["duration"],
+            billingMode=order["payment_details"].get("billingMode"),
+            codeUrl=payment_service.build_wechat_code_url(order),
+            createdAt=parse_dt(order["created_at"]),
+            updatedAt=parse_dt(order["updated_at"]),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/payment/alipay/create", response_model=PaymentQueryResponse)
 def create_alipay_order(payload: PaymentCreateRequest, user: dict = Depends(require_user)) -> PaymentQueryResponse:
-    order = payment_service.create_order(
-        user_id=user["id"],
-        payment_method="alipay",
-        tier=payload.tier,
-        duration=payload.duration,
-        amount=payload.amount,
-        order_id=payload.orderId,
-    )
-    return PaymentQueryResponse(
-        orderId=order["id"],
-        amount=order["amount"],
-        status=order["status"],
-        paymentUrl=f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}",
-        createdAt=parse_dt(order["created_at"]),
-        updatedAt=parse_dt(order["updated_at"]),
-    )
+    try:
+        order = payment_service.create_order(
+            user_id=user["id"],
+            payment_method="alipay",
+            tier=payload.tier,
+            duration=payload.duration,
+            billing_mode=payload.billingMode,
+            return_url=payload.returnUrl,
+            cancel_url=payload.cancelUrl,
+        )
+        return PaymentQueryResponse(
+            orderId=order["id"],
+            amount=order["amount"],
+            status=order["status"],
+            tier=order["tier"],
+            duration=order["duration"],
+            billingMode=order["payment_details"].get("billingMode"),
+            paymentUrl=payment_service.build_alipay_payment_url(order),
+            createdAt=parse_dt(order["created_at"]),
+            updatedAt=parse_dt(order["updated_at"]),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/payment/query-order", response_model=PaymentQueryResponse)
-def query_order(orderId: str) -> PaymentQueryResponse:
-    order = payment_service.get_order(orderId)
+def query_order(orderId: str, user: dict = Depends(require_user)) -> PaymentQueryResponse:
+    order = payment_service.get_user_order(orderId, user["id"])
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if order["payment_method"] == "alipay":
+        order = payment_service.sync_alipay_order_status(order)
 
     code_url = None
     payment_url = None
     if order["payment_method"] == "wechat":
-        code_url = f"{settings.app_base_url.rstrip('/')}/mock-pay/wechat/{order['id']}"
+        code_url = payment_service.build_wechat_code_url(order)
     if order["payment_method"] == "alipay":
-        payment_url = f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}"
+        payment_url = payment_service.build_alipay_payment_url(order)
 
     return PaymentQueryResponse(
         orderId=order["id"],
         amount=order["amount"],
         status=order["status"],
+        tier=order["tier"],
+        duration=order["duration"],
+        billingMode=order["payment_details"].get("billingMode"),
         codeUrl=code_url,
         paymentUrl=payment_url,
         createdAt=parse_dt(order["created_at"]),
@@ -282,11 +330,112 @@ def query_order(orderId: str) -> PaymentQueryResponse:
 
 @app.post("/api/payment/wechat/notify")
 def wechat_notify(payload: PaymentNotifyRequest) -> dict:
+    if not payment_service.verify_signature(payload.signature, payload.orderId, payload.transactionId or ""):
+        raise HTTPException(status_code=403, detail="Invalid payment signature")
     order = payment_service.mark_order_paid(payload.orderId, payload.transactionId)
     return {"success": True, "orderId": order["id"], "status": order["status"]}
 
 
 @app.post("/api/payment/alipay/notify")
-def alipay_notify(payload: PaymentNotifyRequest) -> dict:
-    order = payment_service.mark_order_paid(payload.orderId, payload.transactionId)
-    return {"success": True, "orderId": order["id"], "status": order["status"]}
+async def alipay_notify(request: Request) -> Response:
+    form = await request.form()
+    payload = {key: str(value) for key, value in form.multi_items()}
+    try:
+        result = payment_service.verify_alipay_notification(payload)
+    except ValueError as exc:
+        return Response(content=f"failure: {exc}", media_type="text/plain", status_code=400)
+
+    order = result["order"]
+    return Response(content="success", media_type="text/plain", status_code=200)
+
+
+@app.get("/mock-pay/alipay/{order_id}", response_class=HTMLResponse)
+def mock_alipay_page(order_id: str, token: str = Query(default="")) -> HTMLResponse:
+    order = payment_service.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order["payment_details"].get("confirmationToken") != token:
+        raise HTTPException(status_code=403, detail="Invalid payment token")
+
+    if order["status"] == "success":
+        return HTMLResponse(
+            f"""
+            <html><body style="font-family: sans-serif; padding: 32px;">
+                <h1>Payment already completed</h1>
+                <p>Order {order['id']} has already been paid.</p>
+                <p><a href="{payment_service.append_query_params(order['payment_details'].get('returnUrl'), {'orderId': order['id'], 'status': order['status']}) or '#'}">Return to Easy Reading</a></p>
+            </body></html>
+            """
+        )
+
+    amount = f"{float(order['amount']):.2f}"
+    billing_mode = order["payment_details"].get("billingMode", "prepaid")
+    return HTMLResponse(
+        f"""
+        <html>
+          <body style="font-family: sans-serif; padding: 32px; background: #f8fafc; color: #0f172a;">
+            <div style="max-width: 520px; margin: 0 auto; background: white; border-radius: 24px; padding: 32px; box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);">
+              <h1 style="margin-top: 0;">Mock Alipay Checkout</h1>
+              <p>Order: <strong>{order['id']}</strong></p>
+              <p>Plan: <strong>{order['tier']}</strong></p>
+              <p>Duration: <strong>{order['duration']} month(s)</strong></p>
+              <p>Billing mode: <strong>{billing_mode}</strong></p>
+              <p>Amount: <strong>¥{amount}</strong></p>
+
+              <form method="post" action="{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}/complete" style="margin-top: 24px;">
+                <input type="hidden" name="token" value="{token}" />
+                <button type="submit" style="width: 100%; border: 0; border-radius: 999px; padding: 14px 18px; background: #1677ff; color: white; font-size: 16px; font-weight: 600; cursor: pointer;">
+                  Complete Mock Payment
+                </button>
+              </form>
+
+              <form method="post" action="{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}/cancel" style="margin-top: 12px;">
+                <input type="hidden" name="token" value="{token}" />
+                <button type="submit" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 999px; padding: 14px 18px; background: white; color: #334155; font-size: 16px; font-weight: 600; cursor: pointer;">
+                  Cancel
+                </button>
+              </form>
+            </div>
+          </body>
+        </html>
+        """
+    )
+
+
+@app.post("/mock-pay/alipay/{order_id}/complete")
+def mock_alipay_complete(order_id: str, token: str = Form(default="")) -> RedirectResponse:
+    order = payment_service.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order["payment_details"].get("confirmationToken") != token:
+        raise HTTPException(status_code=403, detail="Invalid payment token")
+
+    transaction_id = f"ALI{int(datetime.now().timestamp())}{order_id[-6:]}"
+    paid_order = payment_service.mark_order_paid(order_id, transaction_id)
+    redirect_url = payment_service.append_query_params(
+        paid_order["payment_details"].get("returnUrl"),
+        {
+            "orderId": paid_order["id"],
+            "status": paid_order["status"],
+        },
+    ) or f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{paid_order['id']}?token={token}"
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@app.post("/mock-pay/alipay/{order_id}/cancel")
+def mock_alipay_cancel(order_id: str, token: str = Form(default="")) -> RedirectResponse:
+    order = payment_service.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order["payment_details"].get("confirmationToken") != token:
+        raise HTTPException(status_code=403, detail="Invalid payment token")
+
+    redirect_url = payment_service.append_query_params(
+        order["payment_details"].get("cancelUrl") or order["payment_details"].get("returnUrl"),
+        {
+            "orderId": order["id"],
+            "status": "cancelled",
+        },
+    ) or f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}?token={token}"
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
