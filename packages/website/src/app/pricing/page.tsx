@@ -1,17 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PRICING_TIERS, type PricingTier, type DurationOption, formatPrice, getSavingsText, getDefaultDurationOption, getPopularTier } from '@easy-reading/shared';
-import { useRouter } from 'next/navigation';
+import { type PricingTier, type DurationOption, formatPrice, getDefaultDurationOption, getPopularTier } from '@easy-reading/shared';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
+import { fetchPricingCatalog } from '@/lib/api/pricing';
 
 export default function PricingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { t } = useLocaleContext();
-  const popularTier = getPopularTier();
-  const defaultDuration = popularTier ? getDefaultDurationOption(popularTier) : null;
   const pricing = (key: string) => t(`website.pricingPage.${key}`);
   const common = (key: string) => t(`website.common.${key}`);
 
@@ -43,8 +43,38 @@ export default function PricingPage() {
     };
   };
   
-  const [selectedTier, setSelectedTier] = useState<PricingTier | null>(popularTier || null);
-  const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(defaultDuration || null);
+  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
+  const [selectedTier, setSelectedTier] = useState<PricingTier | null>(null);
+  const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadPricing = async () => {
+      try {
+        const tiers = await fetchPricingCatalog();
+        if (!mounted) return;
+        setPricingTiers(tiers);
+        const popularTier = getPopularTier(tiers) ?? tiers.find((tier) => tier.id === 'pro') ?? tiers[0] ?? null;
+        const defaultDuration = popularTier ? getDefaultDurationOption(popularTier) ?? null : null;
+        setSelectedTier(popularTier);
+        setSelectedDuration(defaultDuration);
+      } catch (error) {
+        console.error('Failed to load pricing catalog:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPricing();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSelectPlan = (tier: PricingTier, duration?: DurationOption) => {
     setSelectedTier(tier);
@@ -61,7 +91,16 @@ export default function PricingPage() {
 
   const handleProceedToCheckout = () => {
     if (selectedTier && selectedDuration && user?.id) {
-      router.push(`/checkout?tier=${selectedTier.id}&duration=${selectedDuration.months}&userId=${user.id}`);
+      const referralCode = searchParams.get('ref');
+      const nextParams = new URLSearchParams({
+        tier: selectedTier.id,
+        duration: String(selectedDuration.months),
+        userId: user.id,
+      });
+      if (referralCode) {
+        nextParams.set('ref', referralCode);
+      }
+      router.push(`/checkout?${nextParams.toString()}`);
     } else {
       // If no user ID, redirect to login
       router.push('/login');
@@ -69,6 +108,14 @@ export default function PricingPage() {
   };
 
   const showCheckoutBar = selectedTier && selectedDuration && selectedTier.id !== 'free';
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -83,7 +130,7 @@ export default function PricingPage() {
         </div>
 
         <div className="mt-12 mb-12 grid gap-8 md:grid-cols-2">
-          {PRICING_TIERS.map((tier) => (
+          {pricingTiers.map((tier) => (
             <div
               key={tier.id}
               className={`relative rounded-2xl shadow-lg ring-1 ring-gray-200 bg-white p-8 ${
@@ -105,10 +152,15 @@ export default function PricingPage() {
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-900">{content.name}</h2>
                 <p className="mt-4 text-gray-600">{content.description}</p>
-                {tier.monthlyPrice && (
+                {tier.saleMonthlyPrice && (
                   <p className="mt-6">
+                    {tier.originalMonthlyPrice ? (
+                      <span className="mr-2 text-lg text-gray-400 line-through">
+                        ¥{tier.originalMonthlyPrice.toFixed(2)}
+                      </span>
+                    ) : null}
                     <span className="text-4xl font-bold text-gray-900">
-                      ¥{tier.monthlyPrice}
+                      ¥{tier.saleMonthlyPrice.toFixed(2)}
                     </span>
                     <span className="text-gray-600">{pricing('perMonth')}</span>
                   </p>
@@ -133,7 +185,10 @@ export default function PricingPage() {
                           {duration.months} {duration.months === 1 ? pricing('month') : pricing('months')}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span>{formatPrice(duration.price)}</span>
+                          <div className="text-right">
+                            <div className="font-semibold">{formatPrice(duration.salePrice)}</div>
+                            <div className="text-xs text-gray-400 line-through">{formatPrice(duration.originalPrice)}</div>
+                          </div>
                           {duration.savings && (
                             <span className="text-green-600 text-xs">
                               {common('save')} {duration.savings}%
@@ -182,7 +237,7 @@ export default function PricingPage() {
                   {selectedDuration.months === 1 ? pricing('month') : pricing('months')}
                 </p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {pricing('total')}: {formatPrice(selectedDuration.price)}
+                  {pricing('total')}: {formatPrice(selectedDuration.salePrice)}
                 </p>
               </div>
               <button

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import socket
 from datetime import datetime, timezone
@@ -28,24 +29,80 @@ class DictionaryFetchError(ValueError):
 
 
 class DictionaryService:
+    def __init__(self) -> None:
+        self._lemma_map: dict[str, str] | None = None
+
     def _cache_path(self, word: str) -> Path:
         return Path(settings.dictionary_cache_dir) / f"{word}.json"
 
     def list_words(self) -> list[str]:
         return sorted(path.stem for path in Path(settings.dictionary_cache_dir).glob("*.json"))
 
-    def get_entry(self, word: str) -> dict | None:
+    def _record_debug(self, debug_trace: list[dict] | None, step: str, **data: object) -> None:
+        if debug_trace is None:
+            return
+        debug_trace.append({"step": step, **data})
+
+    def _print_debug_trace(self, debug_trace: list[dict] | None) -> None:
+        if not debug_trace:
+            return
+
+        for item in debug_trace:
+            details = ", ".join(
+                f"{key}={json.dumps(value, ensure_ascii=False)}"
+                for key, value in item.items()
+                if key != "step"
+            )
+            if details:
+                print(f"[dictionary][debug] {item['step']}: {details}")
+            else:
+                print(f"[dictionary][debug] {item['step']}")
+
+    def get_entry(self, word: str, *, debug_trace: list[dict] | None = None, lookup_kind: str = "exact") -> dict | None:
         cache_path = self._cache_path(word)
+        self._record_debug(
+            debug_trace,
+            "exact_word_check" if lookup_kind == "exact" else "lemma_word_check",
+            word=word,
+            lookupKind=lookup_kind,
+            cachePath=str(cache_path),
+        )
         if cache_path.exists():
+            self._record_debug(
+                debug_trace,
+                "cache_hit",
+                word=word,
+                lookupKind=lookup_kind,
+                path=str(cache_path),
+            )
             with cache_path.open("r", encoding="utf-8") as handle:
                 return json.load(handle)
 
-        if not cache_path.exists():
-            legacy = self._get_legacy_entry(word)
-            if legacy:
-                self.save_entry(word, legacy)
-                return legacy
-            return None
+        self._record_debug(
+            debug_trace,
+            "cache_miss",
+            word=word,
+            lookupKind=lookup_kind,
+            path=str(cache_path),
+        )
+
+        legacy = self._get_legacy_entry(word)
+        if legacy:
+            self._record_debug(
+                debug_trace,
+                "legacy_hit",
+                word=word,
+                lookupKind=lookup_kind,
+            )
+            self.save_entry(word, legacy)
+            return legacy
+
+        self._record_debug(
+            debug_trace,
+            "legacy_miss",
+            word=word,
+            lookupKind=lookup_kind,
+        )
         return None
 
     def save_entry(self, word: str, payload: dict) -> None:
@@ -58,12 +115,104 @@ class DictionaryService:
         if not normalized_word:
             raise ValueError("Word is required.")
 
-        if not force:
-            existing = self.get_entry(normalized_word)
-            if existing:
-                return DictionaryEntryModel.model_validate(existing)
+        debug_trace: list[dict] | None = [] if debug else None
+        self._record_debug(debug_trace, "lookup_start", requestedWord=normalized_word, force=force)
 
-        source_entries = self._fetch_dictionary_entries(normalized_word, debug=debug)
+        try:
+            entry = self._resolve_word_entry(
+                normalized_word,
+                force=force,
+                debug=debug,
+                debug_trace=debug_trace,
+                lookup_kind="exact",
+            )
+        except DictionaryFetchError as exc:
+            self._record_debug(
+                debug_trace,
+                "exact_lookup_failed",
+                word=normalized_word,
+                error=str(exc),
+            )
+            if debug_trace is not None:
+                exc.details = {
+                    **(exc.details or {}),
+                    "lookupTrace": debug_trace,
+                }
+                self._print_debug_trace(debug_trace)
+            raise
+
+        if debug_trace is not None:
+            self._print_debug_trace(debug_trace)
+
+        return DictionaryEntryModel.model_validate(entry)
+
+    def _resolve_word_entry(
+        self,
+        word: str,
+        force: bool = False,
+        debug: bool = False,
+        *,
+        debug_trace: list[dict] | None = None,
+        lookup_kind: str = "exact",
+    ) -> dict:
+        if not force:
+            existing = self.get_entry(word, debug_trace=debug_trace, lookup_kind=lookup_kind)
+            if existing:
+                return existing
+        else:
+            self._record_debug(
+                debug_trace,
+                "skip_exact_word_check" if lookup_kind == "exact" else "skip_lemma_word_check",
+                word=word,
+                lookupKind=lookup_kind,
+                reason="force=true",
+            )
+
+        if lookup_kind == "exact":
+            lemma = self._lemma_for(word, debug_trace=debug_trace)
+            if lemma and lemma != word:
+                self._record_debug(
+                    debug_trace,
+                    "lemma_lookup_start",
+                    requestedWord=word,
+                    lemma=lemma,
+                )
+                lemma_entry = self.get_entry(lemma, debug_trace=debug_trace, lookup_kind="lemma")
+                if lemma_entry:
+                    self._record_debug(
+                        debug_trace,
+                        "lemma_lookup_hit",
+                        requestedWord=word,
+                        lemma=lemma,
+                    )
+                    return self._with_lemma_fallback(word, lemma, lemma_entry)
+                self._record_debug(
+                    debug_trace,
+                    "lemma_lookup_miss",
+                    requestedWord=word,
+                    lemma=lemma,
+                )
+
+        self._record_debug(
+            debug_trace,
+            "dictionaryapi_lookup",
+            word=word,
+            lookupKind=lookup_kind,
+            url=f"{settings.dictionary_api_base_url.rstrip('/')}/{word}",
+        )
+        source_entries = self._fetch_dictionary_entries(
+            word,
+            debug=debug,
+            debug_trace=debug_trace,
+            lookup_kind=lookup_kind,
+        )
+        self._record_debug(
+            debug_trace,
+            "dictionaryapi_success",
+            word=word,
+            lookupKind=lookup_kind,
+            entries=len(source_entries),
+        )
         normalized_entry = self._normalize_entries(source_entries)
         texts = self._collect_translatable_texts(normalized_entry)
         try:
@@ -80,10 +229,17 @@ class DictionaryService:
             "translationProvider": translation_provider,
             **(normalized_entry.get("meta") or {}),
         }
-        self.save_entry(normalized_word, bilingual_entry)
-        return DictionaryEntryModel.model_validate(bilingual_entry)
+        self.save_entry(word, bilingual_entry)
+        return bilingual_entry
 
-    def _fetch_dictionary_entries(self, word: str, debug: bool = False) -> list[dict]:
+    def _fetch_dictionary_entries(
+        self,
+        word: str,
+        debug: bool = False,
+        *,
+        debug_trace: list[dict] | None = None,
+        lookup_kind: str = "exact",
+    ) -> list[dict]:
         upstream_url = f"{settings.dictionary_api_base_url.rstrip('/')}/{word}"
         debug_context = {
             "word": word,
@@ -123,6 +279,14 @@ class DictionaryService:
                 "reason": getattr(exc, "reason", None),
                 "responseBody": response_body,
             }
+            self._record_debug(
+                debug_trace,
+                "dictionaryapi_error",
+                word=word,
+                lookupKind=lookup_kind,
+                statusCode=exc.code,
+                reason=getattr(exc, "reason", None),
+            )
             print(f"[dictionary] http error: {json.dumps(details, ensure_ascii=False)}")
             raise DictionaryFetchError(
                 f"Dictionary upstream returned HTTP {exc.code} for '{word}'.",
@@ -138,6 +302,13 @@ class DictionaryService:
                 "reason": str(exc.reason),
                 "socketHostnameCheck": self._resolve_hostname(upstream_url),
             }
+            self._record_debug(
+                debug_trace,
+                "dictionaryapi_error",
+                word=word,
+                lookupKind=lookup_kind,
+                reason=str(exc.reason),
+            )
             print(f"[dictionary] url error: {json.dumps(details, ensure_ascii=False)}")
             raise DictionaryFetchError(
                 f"Dictionary upstream is unreachable for '{word}': {exc.reason}.",
@@ -167,6 +338,56 @@ class DictionaryService:
 
         with legacy_path.open("r", encoding="utf-8") as handle:
             return json.load(handle)
+
+    def _lemma_for(self, word: str, *, debug_trace: list[dict] | None = None) -> str | None:
+        lemma_map = self._load_lemma_map()
+        lemma = lemma_map.get(word)
+        self._record_debug(
+            debug_trace,
+            "lemma_check",
+            word=word,
+            lemma=lemma,
+            found=bool(lemma),
+            lemmatizationPath=str(settings.lemmatization_path),
+        )
+        return lemma
+
+    def _load_lemma_map(self) -> dict[str, str]:
+        if self._lemma_map is not None:
+            return self._lemma_map
+
+        lemma_map: dict[str, str] = {}
+        lemmatization_path = Path(settings.lemmatization_path)
+        if not lemmatization_path.exists():
+            self._lemma_map = lemma_map
+            return lemma_map
+
+        with lemmatization_path.open("r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line:
+                    continue
+
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+
+                lemma = parts[0].strip().lower()
+                inflected = parts[1].strip().lower()
+                if lemma and inflected and inflected not in lemma_map:
+                    lemma_map[inflected] = lemma
+
+        self._lemma_map = lemma_map
+        return lemma_map
+
+    def _with_lemma_fallback(self, requested_word: str, lemma: str, entry: dict) -> dict:
+        payload = copy.deepcopy(entry)
+        payload["meta"] = {
+            **(payload.get("meta") or {}),
+            "requestedWord": requested_word,
+            "lemmaFallback": lemma,
+        }
+        return payload
 
     def _normalize_entries(self, entries: list[dict]) -> dict:
         if not entries:

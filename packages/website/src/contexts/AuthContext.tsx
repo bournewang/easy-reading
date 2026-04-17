@@ -12,6 +12,7 @@ interface User {
   id: string;
   username: string;
   fullName?: string;
+  referralCode?: string;
   subscriptionTier?: string;
   subscriptionExpires?: string;
 }

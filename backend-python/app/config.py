@@ -9,6 +9,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = ROOT_DIR / "data" / "easy_reading.db"
 DEFAULT_DICT_CACHE_DIR = ROOT_DIR / "data" / "dictionary"
 DEFAULT_LEGACY_DICT_DIR = ROOT_DIR.parent / "worker" / "dict" / "data" / "entries"
+DEFAULT_LEMMATIZATION_PATH = ROOT_DIR / "lemmatization-en.txt"
 DEFAULT_ENV_PATH = ROOT_DIR / ".env"
 
 
@@ -75,6 +76,7 @@ class Settings:
     )
     dictionary_cache_dir: Path = Path(os.getenv("DICTIONARY_CACHE_DIR", DEFAULT_DICT_CACHE_DIR))
     legacy_dictionary_dir: Path = Path(os.getenv("LEGACY_DICTIONARY_DIR", DEFAULT_LEGACY_DICT_DIR))
+    lemmatization_path: Path = Path(os.getenv("LEMMATIZATION_PATH", DEFAULT_LEMMATIZATION_PATH))
 
 
 settings = Settings()

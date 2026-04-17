@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { PRICING_TIERS, formatPrice } from '@easy-reading/shared';
+import { useState, useEffect, Suspense, useCallback } from 'react';
+import { type PricingTier, type DurationOption, formatPrice } from '@easy-reading/shared';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlipayPayment } from '@/components/payment/AlipayPayment';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
+import { fetchPricingCatalog, fetchPricingQuote, type PricingQuote } from '@/lib/api/pricing';
 
 // Client component that uses useSearchParams
 function CheckoutContent() {
@@ -14,48 +15,102 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const tierId = searchParams.get('tier');
   const durationMonths = searchParams.get('duration');
+  const initialPromoCode = searchParams.get('ref') || '';
   const cancelled = searchParams.get('status') === 'cancelled' || searchParams.get('cancelled') === '1';
   const { user } = useAuth();
   const { t } = useLocaleContext();
-  const checkout = (key: string) => t(`website.checkoutPage.${key}`);
-  const pricing = (key: string) => t(`website.pricingPage.${key}`);
+  const checkout = useCallback((key: string) => t(`website.checkoutPage.${key}`), [t]);
+  const pricing = useCallback((key: string) => t(`website.pricingPage.${key}`), [t]);
 
-  // Initialize tier and duration from URL parameters
-  const initialTier = tierId ? PRICING_TIERS.find((t) => t.id === tierId) : null;
-  const initialDuration = initialTier?.durationOptions?.find(
-    (d) => d.months === parseInt(durationMonths || '0')
-  ) || null;
-
-  const [selectedTier, setSelectedTier] = useState(initialTier);
-  const [selectedDuration, setSelectedDuration] = useState(initialDuration);
+  const [selectedTier, setSelectedTier] = useState<PricingTier | null>(null);
+  const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState(initialPromoCode);
+  const [quote, setQuote] = useState<PricingQuote | null>(null);
   const selectedTierName = selectedTier?.id === 'pro' ? pricing('proName') : pricing('freeName');
 
   useEffect(() => {
-    const tierId = searchParams.get('tier');
-    const durationMonths = searchParams.get('duration');
-    const userId = user?.id;
+    let mounted = true;
 
-    if (tierId && durationMonths && userId) {
-      const tier = PRICING_TIERS.find((t) => t.id === tierId);
-      if (tier) {
+    const loadCheckoutSelection = async () => {
+      setLoading(true);
+      try {
+        const nextTierId = searchParams.get('tier');
+        const nextDurationMonths = searchParams.get('duration');
+        const userId = user?.id;
+
+        if (!nextTierId || !nextDurationMonths || !userId) {
+          if (mounted) {
+            setError(checkout('missingParams'));
+          }
+          return;
+        }
+
+        const tiers = await fetchPricingCatalog();
+        if (!mounted) return;
+
+        const tier = tiers.find((item) => item.id === nextTierId) ?? null;
+        const duration = tier?.durationOptions?.find((item) => item.months === parseInt(nextDurationMonths, 10)) ?? null;
+
         setSelectedTier(tier);
-        const duration = tier.durationOptions?.find(
-          (d) => d.months === parseInt(durationMonths)
-        );
-        if (duration) {
-          setSelectedDuration(duration);
+        setSelectedDuration(duration);
+
+        if (!tier || !duration) {
+          setError(checkout('missingParams'));
+        } else if (cancelled) {
+          setError(checkout('paymentCancelled'));
+        } else {
+          setError(null);
+        }
+      } catch (error) {
+        console.error('Failed to load pricing catalog:', error);
+        if (mounted) {
+          setError(checkout('missingParams'));
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
         }
       }
-    } else {
-      setError(checkout('missingParams'));
-    }
-    if (cancelled) {
-      setError(checkout('paymentCancelled'));
-    }
-    setLoading(false);
+    };
+
+    loadCheckoutSelection();
+
+    return () => {
+      mounted = false;
+    };
   }, [searchParams, user?.id, cancelled, checkout]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadQuote = async () => {
+      if (!selectedTier || !selectedDuration || !user?.id) {
+        return;
+      }
+      try {
+        const nextQuote = await fetchPricingQuote({
+          tier: selectedTier.id,
+          duration: selectedDuration.months,
+          promoCode: promoCode || undefined,
+        });
+        if (!mounted) return;
+        setQuote(nextQuote);
+        setError(cancelled ? checkout('paymentCancelled') : null);
+      } catch (quoteError: any) {
+        if (!mounted) return;
+        setQuote(null);
+        setError(quoteError?.response?.data?.detail || quoteError?.message || checkout('missingParams'));
+      }
+    };
+
+    loadQuote();
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedTier, selectedDuration, user?.id, promoCode, cancelled, checkout]);
 
   const handlePaymentError = (error: Error) => {
     setError(error.message);
@@ -113,9 +168,21 @@ function CheckoutContent() {
             <div className="flex justify-between items-center">
               <span className="text-gray-600">{pricing('total')}</span>
               <span className="text-xl font-bold text-blue-600">
-                {formatPrice(selectedDuration.price)}
+                {formatPrice(quote?.finalAmount ?? selectedDuration.salePrice)}
               </span>
             </div>
+            {quote && quote.originalAmount > quote.finalAmount && (
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-600">{pricing('originalPriceLabel')}</span>
+                <span className="font-medium text-gray-400 line-through">{formatPrice(quote.originalAmount)}</span>
+              </div>
+            )}
+            {quote && quote.discountAmount > 0 && (
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-600">{pricing('discountLabel')}</span>
+                <span className="font-medium text-green-600">-{formatPrice(quote.discountAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-gray-600">{pricing('userLabel')}</span>
               <span className="font-medium">
@@ -123,6 +190,18 @@ function CheckoutContent() {
               </span>
             </div>
             <p className="mt-3 text-sm text-gray-500">{pricing('paymentPlanHint')}</p>
+          </div>
+
+          <div className="mb-6 grid gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-gray-700">{pricing('promoLabel')}</span>
+              <input
+                value={promoCode}
+                onChange={(event) => setPromoCode(event.target.value.trim().toUpperCase())}
+                placeholder={pricing('promoPlaceholder')}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            </label>
           </div>
 
           {/* Payment Method Selection */}
@@ -147,6 +226,7 @@ function CheckoutContent() {
             duration={selectedDuration.months}
             returnUrl={returnUrl}
             cancelUrl={cancelUrl}
+            promoCode={quote?.promoCode ?? (promoCode || undefined)}
             onError={handlePaymentError}
           />
 

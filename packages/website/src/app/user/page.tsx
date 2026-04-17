@@ -13,6 +13,7 @@ import {
   reactivateSubscription,
   type SubscriptionSummary,
 } from '@/lib/api/subscription';
+import { getReferralSummary, type ReferralSummary } from '@/lib/api/referral';
 
 type ActivityStat = {
   label: string;
@@ -101,6 +102,7 @@ export default function UserCenterPage() {
   const { t } = useLocaleContext();
   const [articles, setArticles] = useState<ReadingHistoryItem[]>([]);
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionSummary | null>(null);
+  const [referralInfo, setReferralInfo] = useState<ReferralSummary | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const userText = (key: string) => t(`website.userPage.${key}`);
@@ -140,6 +142,23 @@ export default function UserCenterPage() {
     };
 
     loadSubscription();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const loadReferral = async () => {
+      try {
+        const summary = await getReferralSummary();
+        setReferralInfo(summary);
+      } catch (error) {
+        console.error('Failed to load referral summary:', error);
+      }
+    };
+
+    loadReferral();
   }, [user]);
 
   const handleLogout = async () => {
@@ -463,6 +482,10 @@ export default function UserCenterPage() {
                   <p className="mt-2 text-base font-medium text-slate-900">{user.fullName || userText('notSetYet')}</p>
                 </div>
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('referralCode')}</p>
+                  <p className="mt-2 text-base font-medium text-slate-900">{referralInfo?.referralCode || user.referralCode || userText('notSetYet')}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Feature access</p>
                   <p className="mt-2 text-sm text-slate-700">
                     Translation: {entitlements?.canTranslateSentences ? 'Unlocked' : 'Upgrade required'}
@@ -477,6 +500,39 @@ export default function UserCenterPage() {
                 {subscriptionLoading && (
                   <p className="text-sm text-slate-500">Refreshing subscription details...</p>
                 )}
+              </div>
+            </div>
+
+            <div className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_24px_80px_-42px_rgba(15,23,42,0.4)]">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
+                {userText('referralTitle')}
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{userText('referralSubtitle')}</h2>
+              <div className="mt-6 space-y-4">
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('referralLink')}</p>
+                  <p className="mt-2 break-all text-sm text-slate-700">{referralInfo?.referralLink || '-'}</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('totalReferrals')}</p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">{referralInfo?.totalReferrals ?? 0}</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('totalCommission')}</p>
+                    <p className="mt-2 text-xl font-semibold text-slate-900">¥{(referralInfo?.totalCommission ?? 0).toFixed(2)}</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('pendingCommission')}</p>
+                    <p className="mt-2 text-base font-medium text-slate-900">¥{(referralInfo?.pendingCommission ?? 0).toFixed(2)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('paidCommission')}</p>
+                    <p className="mt-2 text-base font-medium text-slate-900">¥{(referralInfo?.paidCommission ?? 0).toFixed(2)}</p>
+                  </div>
+                </div>
               </div>
             </div>
 

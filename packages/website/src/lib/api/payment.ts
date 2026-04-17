@@ -10,15 +10,20 @@ export interface CreateOrderParams {
   billingMode: 'prepaid' | 'recurring';
   returnUrl?: string;
   cancelUrl?: string;
+  promoCode?: string;
 }
 
 export interface PaymentResponse {
   orderId: string;
   amount: number;
+  originalAmount?: number;
+  saleAmount?: number;
+  discountAmount?: number;
   status: 'pending' | 'success' | 'failed' | 'expired';
   tier?: string;
   duration?: number;
   billingMode?: 'prepaid' | 'recurring';
+  promoCode?: string;
   codeUrl?: string;  // For WeChat Pay Native Payment
   paymentUrl?: string;  // For Alipay
   createdAt: string;

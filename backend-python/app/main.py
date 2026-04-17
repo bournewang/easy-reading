@@ -23,7 +23,11 @@ from .models import (
     PaymentCreateRequest,
     PaymentNotifyRequest,
     PaymentQueryResponse,
+    PricingQuoteRequest,
+    PricingQuoteResponse,
+    PricingTierResponse,
     RegisterRequest,
+    ReferralSummaryResponse,
     SubscriptionResponse,
     SubscriptionEntitlementsResponse,
     TranslateRequest,
@@ -70,6 +74,7 @@ async def cors_middleware(request: Request, call_next):
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
+    payment_service.ensure_sample_coupons()
 
 
 def serialize_user(user: dict) -> UserPayload:
@@ -77,6 +82,7 @@ def serialize_user(user: dict) -> UserPayload:
         id=user["id"],
         username=user["username"],
         fullName=user.get("full_name"),
+        referralCode=user.get("referral_code"),
         subscriptionTier=user.get("subscription_tier") or "free",
         subscriptionExpires=parse_dt(user.get("subscription_expires")),
     )
@@ -105,6 +111,22 @@ def set_session_cookie(request: Request, response: Response, token: str) -> None
 @app.get("/health")
 def health() -> dict:
     return {"ok": True}
+
+
+@app.get("/api/pricing", response_model=list[PricingTierResponse])
+def pricing_catalog() -> list[PricingTierResponse]:
+    return [PricingTierResponse(**tier) for tier in payment_service.get_pricing_catalog()]
+
+
+@app.post("/api/pricing/quote", response_model=PricingQuoteResponse)
+def pricing_quote(payload: PricingQuoteRequest, user: dict = Depends(require_user)) -> PricingQuoteResponse:
+    quote = payment_service.quote_pricing(
+        user_id=user["id"],
+        tier=payload.tier,
+        duration=payload.duration,
+        promo_code=payload.promoCode,
+    )
+    return PricingQuoteResponse(**quote)
 
 
 @app.post("/api/translate")
@@ -227,6 +249,11 @@ def subscription_entitlements(user: dict = Depends(require_user)) -> Subscriptio
     return SubscriptionEntitlementsResponse(**payment_service.get_entitlements(user["id"]))
 
 
+@app.get("/api/referral/summary", response_model=ReferralSummaryResponse)
+def referral_summary(user: dict = Depends(require_user)) -> ReferralSummaryResponse:
+    return ReferralSummaryResponse(**payment_service.get_referral_summary(user["id"]))
+
+
 @app.post("/api/subscription/cancel", response_model=SubscriptionResponse)
 def cancel_subscription(user: dict = Depends(require_user)) -> SubscriptionResponse:
     try:
@@ -256,14 +283,19 @@ def create_wechat_order(payload: PaymentCreateRequest, user: dict = Depends(requ
             billing_mode=payload.billingMode,
             return_url=payload.returnUrl,
             cancel_url=payload.cancelUrl,
+            promo_code=payload.promoCode,
         )
         return PaymentQueryResponse(
             orderId=order["id"],
             amount=order["amount"],
+            originalAmount=order.get("original_amount"),
+            saleAmount=order.get("sale_amount"),
+            discountAmount=order.get("discount_amount"),
             status=order["status"],
             tier=order["tier"],
             duration=order["duration"],
             billingMode=order["payment_details"].get("billingMode"),
+            promoCode=order["payment_details"].get("promoCode") or order.get("coupon_code") or order.get("referral_code"),
             codeUrl=payment_service.build_wechat_code_url(order),
             createdAt=parse_dt(order["created_at"]),
             updatedAt=parse_dt(order["updated_at"]),
@@ -283,14 +315,19 @@ def create_alipay_order(payload: PaymentCreateRequest, user: dict = Depends(requ
             billing_mode=payload.billingMode,
             return_url=payload.returnUrl,
             cancel_url=payload.cancelUrl,
+            promo_code=payload.promoCode,
         )
         return PaymentQueryResponse(
             orderId=order["id"],
             amount=order["amount"],
+            originalAmount=order.get("original_amount"),
+            saleAmount=order.get("sale_amount"),
+            discountAmount=order.get("discount_amount"),
             status=order["status"],
             tier=order["tier"],
             duration=order["duration"],
             billingMode=order["payment_details"].get("billingMode"),
+            promoCode=order["payment_details"].get("promoCode") or order.get("coupon_code") or order.get("referral_code"),
             paymentUrl=payment_service.build_alipay_payment_url(order),
             createdAt=parse_dt(order["created_at"]),
             updatedAt=parse_dt(order["updated_at"]),
@@ -317,10 +354,14 @@ def query_order(orderId: str, user: dict = Depends(require_user)) -> PaymentQuer
     return PaymentQueryResponse(
         orderId=order["id"],
         amount=order["amount"],
+        originalAmount=order.get("original_amount"),
+        saleAmount=order.get("sale_amount"),
+        discountAmount=order.get("discount_amount"),
         status=order["status"],
         tier=order["tier"],
         duration=order["duration"],
         billingMode=order["payment_details"].get("billingMode"),
+        promoCode=order["payment_details"].get("promoCode") or order.get("coupon_code") or order.get("referral_code"),
         codeUrl=code_url,
         paymentUrl=payment_url,
         createdAt=parse_dt(order["created_at"]),

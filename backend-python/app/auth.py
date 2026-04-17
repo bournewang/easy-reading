@@ -69,18 +69,25 @@ def get_user_by_id(user_id: str) -> dict | None:
         return row_to_dict(cursor.fetchone())
 
 
+def generate_referral_code(username: str) -> str:
+    base = "".join(ch for ch in username.upper() if ch.isalnum())[:6] or "EASY"
+    suffix = secrets.token_hex(3).upper()
+    return f"{base}{suffix}"
+
+
 def create_user(username: str, password: str, full_name: str | None) -> dict:
     now = utcnow_iso()
     user_id = str(uuid.uuid4())
+    referral_code = generate_referral_code(username)
     try:
         with db_cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO users (
-                    id, username, password_hash, full_name, subscription_tier, subscription_expires, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, 'free', NULL, ?, ?)
+                    id, username, password_hash, full_name, referral_code, subscription_tier, subscription_expires, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'free', NULL, ?, ?)
                 """,
-                (user_id, username, hash_password(password), full_name, now, now),
+                (user_id, username, hash_password(password), full_name, referral_code, now, now),
             )
     except DBIntegrityError as exc:
         raise ValueError("Username already taken") from exc
@@ -105,6 +112,7 @@ def get_current_user(request: Request) -> dict | None:
         cursor.execute(
             """
             SELECT sessions.*, users.id AS uid, users.username, users.full_name, users.subscription_tier, users.subscription_expires
+                , users.referral_code
             FROM sessions
             JOIN users ON users.id = sessions.user_id
             WHERE sessions.token = ?
@@ -125,6 +133,7 @@ def get_current_user(request: Request) -> dict | None:
         "id": row["uid"],
         "username": row["username"],
         "full_name": row["full_name"],
+        "referral_code": row["referral_code"],
         "subscription_tier": row["subscription_tier"] or "free",
         "subscription_expires": row["subscription_expires"],
     }

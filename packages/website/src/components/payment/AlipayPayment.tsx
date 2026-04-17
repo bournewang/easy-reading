@@ -9,6 +9,7 @@ interface AlipayPaymentProps {
   duration: number;
   returnUrl: string;
   cancelUrl: string;
+  promoCode?: string;
   onError: (error: Error) => void;
 }
 
@@ -17,6 +18,7 @@ export function AlipayPayment({
   duration,
   returnUrl,
   cancelUrl,
+  promoCode,
   onError,
 }: AlipayPaymentProps) {
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,7 @@ export function AlipayPayment({
   const checkout = (key: string) => t(`website.checkoutPage.${key}`);
 
   const handlePayment = async () => {
+    const paymentTab = typeof window !== 'undefined' ? window.open('', '_blank', 'noopener,noreferrer') : null;
     try {
       setLoading(true);
       const response = await createAlipayOrder({
@@ -32,15 +35,23 @@ export function AlipayPayment({
         billingMode: 'prepaid',
         returnUrl,
         cancelUrl,
+        promoCode,
       });
 
       if (response.paymentUrl) {
-        window.location.assign(response.paymentUrl);
+        if (paymentTab) {
+          paymentTab.location.href = response.paymentUrl;
+        } else {
+          window.location.assign(response.paymentUrl);
+        }
         return;
       }
 
       throw new Error('No Alipay payment URL returned.');
     } catch (error) {
+      if (paymentTab && !paymentTab.closed) {
+        paymentTab.close();
+      }
       console.error('Payment error:', error);
       onError(error instanceof Error ? error : new Error('Payment failed'));
     } finally {
