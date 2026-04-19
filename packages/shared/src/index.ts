@@ -1,5 +1,6 @@
 export { default as Dictionary } from './components/Dictionary';
 export { default as Reader } from './components/Reader';
+export { default as ToastViewport } from './components/ToastViewport';
 export { default as WordList } from './components/WordList';
 export { default as UrlReader } from './pages/UrlReader';
 export { SharedServicesProvider, useSharedServices } from './contexts/SharedServicesContext';
@@ -7,6 +8,8 @@ export { defaultServices } from './services/defaultServices';
 export * from './types';
 export * from './types/services';
 export * from './utils/helper';
+export * from './utils/reader-warning';
+export * from './utils/toast';
 export * from './hooks/useTranslation';
 export * from './hooks/useTTS';
 export * from './hooks/useWordList';

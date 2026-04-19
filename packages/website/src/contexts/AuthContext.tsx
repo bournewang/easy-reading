@@ -1,15 +1,20 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { clearStoredReaderWarning } from '@easy-reading/shared';
 // import { API_URLS } from '@/config/api';
 import { api } from '../utils/api';
 import { clearStoredAuthToken, getStoredAuthToken, setStoredAuthToken } from '@/utils/auth-token';
 import { getSubscriptionEntitlements, type SubscriptionEntitlements } from '@/lib/api/subscription';
+import { fetchAnonymousLimits } from '@/utils/anonymous-limits';
+import { clearLocalReadingHistory, getReadingHistory, invalidateReadingHistoryCache, syncReadingHistoryAsync } from '@/utils/reading-history';
 
 const ENTITLEMENTS_STORAGE_KEY = 'easy_reading_entitlements';
+const WORDBOOK_STORAGE_KEY = 'english_reader_wordlist';
+const AUTH_CHANGED_EVENT = 'easy-reading-auth-changed';
 
 interface User {
-  id: string;
+  id: number;
   username: string;
   fullName?: string;
   referralCode?: string;
@@ -35,6 +40,42 @@ const AuthContext = createContext<AuthContextType>({
   setAuthToken: () => {},
 });
 
+function emitAuthChanged() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+function getLocalWordbookWords() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(WORDBOOK_STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return Array.from(
+      new Set(
+        parsed
+          .map((word) => (typeof word === 'string' ? word.trim().toLowerCase() : ''))
+          .filter(Boolean),
+      ),
+    );
+  } catch {
+    return [];
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [entitlements, setEntitlements] = useState<SubscriptionEntitlements | null>(() => {
@@ -56,6 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    void fetchAnonymousLimits();
+
     if (!getStoredAuthToken()) {
       setLoading(false);
       return;
@@ -67,13 +110,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setAuthToken = (token: string | null) => {
     if (token) {
       setStoredAuthToken(token);
+      invalidateReadingHistoryCache();
       return;
     }
 
     clearStoredAuthToken();
+    invalidateReadingHistoryCache();
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(ENTITLEMENTS_STORAGE_KEY);
     }
+    emitAuthChanged();
   };
 
   const persistEntitlements = (value: SubscriptionEntitlements | null) => {
@@ -90,6 +136,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(ENTITLEMENTS_STORAGE_KEY, JSON.stringify(value));
   };
 
+  const syncLocalUserDataToServer = async () => {
+    const localHistory = getReadingHistory();
+    if (localHistory.length > 0) {
+      await syncReadingHistoryAsync(localHistory);
+      clearLocalReadingHistory();
+    }
+
+    const localWordbookWords = getLocalWordbookWords();
+    if (localWordbookWords.length > 0 && typeof window !== 'undefined') {
+      await api.post('/wordbook/sync', { words: localWordbookWords });
+      window.localStorage.removeItem(WORDBOOK_STORAGE_KEY);
+    }
+  };
+
   const checkAuth = async () => {
     try {
       // console.log('Checking auth at:', API_URLS.me);
@@ -98,10 +158,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.status === 200) {
         const userData = response.data;
         console.log('User data:', userData);
-        setUser({
+        const nextUser = {
           ...userData.user,
           // subscriptionTier: userData.subscriptionTier || 'free',
+        };
+        clearStoredReaderWarning();
+        setUser({
+          ...nextUser,
         });
+
+        try {
+          await syncLocalUserDataToServer();
+        } catch (migrationError) {
+          console.error('Local data migration failed:', migrationError);
+        }
+
         try {
           const nextEntitlements = await getSubscriptionEntitlements();
           persistEntitlements(nextEntitlements);
@@ -109,15 +180,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Entitlements fetch failed:', entitlementError);
           persistEntitlements(null);
         }
+
+        emitAuthChanged();
       } else if (response.status === 401) {
         setUser(null);
         persistEntitlements(null);
+        emitAuthChanged();
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       clearStoredAuthToken();
+      invalidateReadingHistoryCache();
       setUser(null);
       persistEntitlements(null);
+      emitAuthChanged();
     } finally {
       setLoading(false);
     }
@@ -130,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Logout response:', response);
       if (response.status === 200) {
         // Clear user state immediately
-        clearStoredAuthToken();
+        setAuthToken(null);
         setUser(null);
         persistEntitlements(null);
         // Force a new auth check to ensure we're logged out
@@ -139,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Logout failed:', error);
       // Even if the logout request fails, clear the user state
-      clearStoredAuthToken();
+      setAuthToken(null);
       setUser(null);
       persistEntitlements(null);
     }

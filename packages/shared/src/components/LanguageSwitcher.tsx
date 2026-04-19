@@ -22,7 +22,7 @@ export const LanguageSwitcher: React.FC = () => {
   return (
     <button
       onClick={toggleLocale}
-      className="flex items-center justify-center w-8 h-8 rounded-full bg-white/80 hover:bg-white text-gray-700 hover:text-gray-900 transition-all shadow-sm hover:shadow"
+      className="flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-[#1d1d1f]/82 transition-all hover:bg-[#e8f2ff] hover:text-[#005bb5]"
       title={`Switch to ${locale === 'en' ? 'Chinese' : 'English'}`}
     >
       <span className="text-lg">{LOCALE_FLAGS[locale === 'en' ? 'zh' : 'en']}</span>

@@ -25,10 +25,10 @@ function SubscriptionSuccessContent() {
       setIsVerifying(true);
       // Get all query parameters
       const params = Object.fromEntries(searchParams.entries());
-      const orderId = params.orderId || params.out_trade_no;
+      const orderNo = params.orderNo || params.orderId || params.out_trade_no;
       const returnedStatus = params.status;
       
-      if (!orderId) {
+      if (!orderNo) {
         throw new Error('No order ID found in URL parameters');
       }
 
@@ -39,7 +39,7 @@ function SubscriptionSuccessContent() {
       }
       
       // Call backend to verify payment
-      const response = await api.get(`/payment/query-order?orderId=${orderId}`);
+      const response = await api.get(`/payment/query-order?orderNo=${encodeURIComponent(orderNo)}`);
 
       if (response.status !== 200) {
         throw new Error('Payment verification failed');

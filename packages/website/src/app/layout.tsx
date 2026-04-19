@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import Navigation from "../components/Navigation";
 import "./globals.css";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { absoluteUrl, siteConfig } from "@/lib/seo";
 import { LocaleProvider } from "@easy-reading/shared/contexts/LocaleContext";
-
-const inter = Inter({ subsets: ["latin"] });
+import { ToastViewport } from '@easy-reading/shared';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.siteUrl),
@@ -60,7 +58,7 @@ export default function RootLayout({
       <head>
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7286645003075205" crossOrigin="anonymous"></script>
       </head>  
-      <body className={`${inter.className} min-h-screen`}>
+      <body className="min-h-screen">
         <LocaleProvider>
           <AuthProvider>
             <div className="flex min-h-screen flex-col">
@@ -68,6 +66,7 @@ export default function RootLayout({
             <main className="flex-1 min-h-0">
               {children}
             </main>
+            <ToastViewport />
             </div>
           </AuthProvider>
         </LocaleProvider>

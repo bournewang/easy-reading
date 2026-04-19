@@ -5,11 +5,13 @@ import { BackIcon, CheckIcon, Reader } from '@easy-reading/shared';
 import type { Article, Paragraph } from '@easy-reading/shared';
 import { useArticleExtractor } from '@/hooks/useArticleExtractor';
 import { useRouter, useSearchParams } from 'next/navigation';
+import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
+import { api } from '@/utils/api';
 import {
   createIELTSHistoryItem,
   createNewsHistoryItem,
   isRouteRead,
-  saveReadingHistoryItem,
+  saveReadingHistoryItemAsync,
 } from '@/utils/reading-history';
 
 type ReaderPageClientProps = {
@@ -24,6 +26,12 @@ type IELTSArticleResource = {
   source?: string;
   wordCount?: number;
   readingTime?: number;
+};
+
+type NewsArticleResource = {
+  id: string;
+  article: Article;
+  syncedAt?: string | null;
 };
 
 const DEFAULT_IELTS_ARTICLE_BASE_URL = '/ielts-articles';
@@ -93,11 +101,32 @@ async function fetchIELTSArticle(articleId: string): Promise<Article | null> {
   };
 }
 
+async function fetchNewsArticle(newsId: string): Promise<Article | null> {
+  try {
+    const response = await api.get<NewsArticleResource>(`/news/${encodeURIComponent(newsId)}`);
+    const article = response.data?.article;
+    if (!article) {
+      return null;
+    }
+    if (!article.reading_time) {
+      article.reading_time = Math.max(1, Math.ceil((article.word_count || 0) / 150));
+    }
+    return article;
+  } catch {
+    return null;
+  }
+}
+
 function ReaderContent({
   initialArticle = null,
   initialBackPath = '/news',
   localArticleMode = false,
 }: ReaderPageClientProps) {
+  const baseButtonClass =
+    'inline-flex items-center gap-2 rounded-full px-4 py-2 text-[14px] font-medium tracking-[-0.22px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:ring-offset-2';
+  const primaryButtonClass = `${baseButtonClass} bg-[#0071e3] text-white hover:bg-[#0077ed]`;
+  const darkButtonClass = `${baseButtonClass} bg-[#1d1d1f] text-white hover:bg-black`;
+  const outlineButtonClass = `${baseButtonClass} border border-[#0066cc] bg-white/90 text-[#0066cc] hover:bg-[#0071e3]/[0.06]`;
   const [article, setArticle] = useState<Article | null>(initialArticle);
   const [showMarkAsRead, setShowMarkAsRead] = useState(false);
   const [isRead, setIsRead] = useState(false);
@@ -107,6 +136,7 @@ function ReaderContent({
   const searchParams = useSearchParams();
   const router = useRouter();
   const articleId = searchParams.get('articleId');
+  const newsId = searchParams.get('newsId');
   const urlParam = searchParams.get('url');
   const backPath = articleId || localArticleMode ? '/ielts' : initialBackPath;
 
@@ -137,6 +167,27 @@ function ReaderContent({
       return;
     }
 
+    if (newsId) {
+      setQueryLoading(true);
+      setQueryError(null);
+
+      fetchNewsArticle(newsId)
+        .then((data) => {
+          if (!data) {
+            setQueryError('This news article could not be found.');
+            return;
+          }
+          setArticle(data);
+        })
+        .catch(() => {
+          setQueryError('Unable to load news article.');
+        })
+        .finally(() => {
+          setQueryLoading(false);
+        });
+      return;
+    }
+
     if (!urlParam || localArticleMode) {
       return;
     }
@@ -152,7 +203,7 @@ function ReaderContent({
 
       setArticle(data);
     });
-  }, [articleId, extractArticle, initialArticle, localArticleMode, urlParam]);
+  }, [articleId, extractArticle, initialArticle, localArticleMode, newsId, urlParam]);
 
   useEffect(() => {
     if (!article) {
@@ -174,23 +225,47 @@ function ReaderContent({
       return;
     }
 
-    if (articleId) {
-      setIsRead(isRouteRead(`/reader?articleId=${encodeURIComponent(articleId)}`));
-      return;
-    }
+    let cancelled = false;
 
-    if (urlParam) {
-      setIsRead(isRouteRead(`/reader?url=${encodeURIComponent(urlParam)}`));
-    }
-  }, [article, articleId, urlParam]);
+    const loadReadState = async () => {
+      if (articleId) {
+        const nextIsRead = await isRouteRead(`/reader?articleId=${encodeURIComponent(articleId)}`);
+        if (!cancelled) {
+          setIsRead(nextIsRead);
+        }
+        return;
+      }
 
-  const handleMarkAsRead = () => {
+      if (urlParam) {
+        const nextIsRead = await isRouteRead(`/reader?url=${encodeURIComponent(urlParam)}`);
+        if (!cancelled) {
+          setIsRead(nextIsRead);
+        }
+        return;
+      }
+
+      if (newsId) {
+        const nextIsRead = await isRouteRead(`/reader?newsId=${encodeURIComponent(newsId)}`);
+        if (!cancelled) {
+          setIsRead(nextIsRead);
+        }
+      }
+    };
+
+    void loadReadState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [article, articleId, newsId, urlParam]);
+
+  const handleMarkAsRead = async () => {
     if (!article) {
       return;
     }
 
     if (articleId) {
-      saveReadingHistoryItem(
+      await saveReadingHistoryItemAsync(
         createIELTSHistoryItem({
           routeUrl: `/reader?articleId=${encodeURIComponent(articleId)}`,
           title: article.title,
@@ -204,18 +279,26 @@ function ReaderContent({
     }
 
     if (!urlParam) {
-      return;
+      if (!newsId) {
+        return;
+      }
     }
 
-    saveReadingHistoryItem(createNewsHistoryItem({ article }));
+    await saveReadingHistoryItemAsync(
+      createNewsHistoryItem({
+        article,
+        routeUrl: newsId ? `/reader?newsId=${encodeURIComponent(newsId)}` : undefined,
+      }),
+    );
     setIsRead(true);
   };
 
   if ((loading || queryLoading) && !article) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="p-4 bg-white rounded-lg shadow-md">
-          <div className="animate-spin text-2xl">⏳</div>
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7]">
+        <div className="rounded-[28px] bg-white px-8 py-7 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+          <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Loading</div>
+          <div className="mt-3 text-2xl text-[#1d1d1f] animate-spin">⏳</div>
         </div>
       </div>
     );
@@ -223,13 +306,14 @@ function ReaderContent({
 
   if ((error || queryError) && !article) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center px-4">
-        <div className="max-w-lg p-6 bg-white rounded-lg shadow-md text-center">
-          <h1 className="text-xl font-semibold mb-2">Unable to load article</h1>
-          <p className="text-gray-600 mb-4">{queryError || error}</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7] px-4">
+        <div className="max-w-xl rounded-[32px] bg-white p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Reader</p>
+          <h1 className="mb-3 text-[40px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">Unable to load article</h1>
+          <p className="mb-5 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/64">{queryError || error}</p>
           <button
             onClick={() => router.push(backPath)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700"
+            className={darkButtonClass}
           >
             <BackIcon className="w-4 h-4 stroke-white" />
             Back
@@ -245,13 +329,14 @@ function ReaderContent({
       : 'Open an article from the news list to start reading.';
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center px-4">
-        <div className="max-w-lg p-6 bg-white rounded-lg shadow-md text-center">
-          <h1 className="text-xl font-semibold mb-2">No article selected</h1>
-          <p className="text-gray-600 mb-4">{emptyStateText}</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7] px-4">
+        <div className="max-w-xl rounded-[32px] bg-white p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Reader</p>
+          <h1 className="mb-3 text-[40px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">No article selected</h1>
+          <p className="mb-5 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/64">{emptyStateText}</p>
           <button
             onClick={() => router.push(backPath)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700"
+            className={darkButtonClass}
           >
             <BackIcon className="w-4 h-4 stroke-white" />
             Back
@@ -262,22 +347,34 @@ function ReaderContent({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="container mx-auto pb-24">
-        <Reader article={article} />
-        <button
-          onClick={() => router.push(backPath)}
-          className="fixed bottom-6 left-6 flex items-center gap-2 py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 bg-gray-600 text-white hover:bg-gray-700 z-50"
-        >
-          <BackIcon className="w-4 h-4 stroke-white" />
-          <span className="text-sm">Back</span>
+    <div className="min-h-screen bg-[#f5f5f7]">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 pb-2 pt-5 md:px-6 md:pt-6">
+        <button onClick={() => router.push(backPath)} className={outlineButtonClass}>
+          <BackIcon className="h-4 w-4" />
+          Back
         </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-black/56">
+            {article.site_name || (newsId ? 'News' : 'Reader')}
+          </span>
+          {article.reading_time ? (
+            <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] tracking-[-0.12px] text-black/56">
+              {article.reading_time} min read
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-3 md:px-6 md:pb-32 md:pt-4">
+        <AnonymousReaderWarning />
+        <Reader article={article} />
+      </div>
+
+      <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3 px-4">
         {showMarkAsRead && (
           <button
             onClick={handleMarkAsRead}
-            className={`fixed bottom-6 left-1/2 flex items-center gap-2 transform -translate-x-1/2 py-3 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 ${
-              isRead ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            className={isRead ? `${darkButtonClass} shadow-[0_10px_30px_rgba(0,0,0,0.18)]` : `${primaryButtonClass} shadow-[0_10px_30px_rgba(0,113,227,0.28)]`}
           >
             {isRead ? (
               <>
@@ -296,9 +393,10 @@ function ReaderContent({
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
-      <div className="p-4 bg-white rounded-lg shadow-md">
-        <div className="animate-spin text-2xl">⏳</div>
+    <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7]">
+      <div className="rounded-[28px] bg-white px-8 py-7 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+        <div className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Loading</div>
+        <div className="mt-3 text-2xl text-[#1d1d1f] animate-spin">⏳</div>
       </div>
     </div>
   );

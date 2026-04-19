@@ -26,20 +26,23 @@ from ..db import db_cursor, dumps_json, parse_dt, row_to_dict, utcnow_iso
 PRICING_TIERS = {
     "free": {
         "isPopular": False,
+        "originalPricePerMonth": 0.0,
         "durationOptions": [],
     },
     "pro": {
         "isPopular": True,
+        "originalPricePerMonth": 59.0,
         "durationOptions": [
-            {"months": 1, "originalPrice": 59.0, "salePrice": 39.0},
-            {"months": 3, "originalPrice": 177.0, "salePrice": 105.0, "savings": 41, "default": True},
-            {"months": 6, "originalPrice": 354.0, "salePrice": 198.0, "savings": 44},
-            {"months": 12, "originalPrice": 708.0, "salePrice": 336.0, "savings": 53},
+            {"months": 1, "salePricePerMonth": 39.0},
+            {"months": 3, "salePricePerMonth": 33.0, "default": True},
+            {"months": 6, "salePricePerMonth": 28.0},
+            {"months": 12, "salePricePerMonth": 24.0},
         ],
     },
 }
 
-DEFAULT_REFERRAL_DISCOUNT_RATE = 0.05
+DEFAULT_REFERRAL_DISCOUNT_RATE = 0.10
+DEFAULT_REFERRAL_DISCOUNT_CAP = 50.0
 DEFAULT_COMMISSION_RATE = 0.15
 
 
@@ -151,13 +154,12 @@ class PaymentService:
                 cursor.execute(
                     """
                     INSERT INTO coupons (
-                        id, code, description, discount_type, discount_value, min_amount,
+                        code, description, discount_type, discount_value, min_amount,
                         max_discount_amount, max_redemptions, per_user_limit, active,
                         starts_at, ends_at, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, NULL, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, NULL, ?, ?)
                     """,
                     (
-                        str(uuid.uuid4()),
                         coupon["code"],
                         coupon["description"],
                         coupon["discount_type"],
@@ -196,13 +198,31 @@ class PaymentService:
 
     def get_duration_option(self, tier: str, duration: int) -> dict[str, Any]:
         try:
-            duration_options = PRICING_TIERS[tier]["durationOptions"]
+            tier_config = PRICING_TIERS[tier]
         except KeyError as exc:
             raise ValueError(f"Invalid tier/duration combination: {tier}/{duration}") from exc
+        duration_options = tier_config["durationOptions"]
         for option in duration_options:
             if option["months"] == duration:
-                return option
+                return self.expand_duration_option(tier_config, option)
         raise ValueError(f"Invalid tier/duration combination: {tier}/{duration}")
+
+    @staticmethod
+    def expand_duration_option(tier_config: dict[str, Any], option: dict[str, Any]) -> dict[str, Any]:
+        months = int(option["months"])
+        original_price_per_month = float(tier_config.get("originalPricePerMonth") or 0.0)
+        sale_price_per_month = float(option["salePricePerMonth"])
+        original_price = round(original_price_per_month * months, 2)
+        sale_price = round(sale_price_per_month * months, 2)
+        return {
+            "months": months,
+            "originalPricePerMonth": original_price_per_month,
+            "salePricePerMonth": sale_price_per_month,
+            "originalPrice": original_price,
+            "salePrice": sale_price,
+            "savings": PaymentService.calculate_savings_percentage(original_price, sale_price),
+            "default": bool(option.get("default", False)),
+        }
 
     def _normalize_promo_code(self, promo_code: str | None) -> str | None:
         if not promo_code:
@@ -226,7 +246,20 @@ class PaymentService:
             cursor.execute("SELECT * FROM users WHERE referral_code = ?", (normalized,))
             return row_to_dict(cursor.fetchone())
 
-    def validate_coupon(self, promo_code: str | None, *, user_id: str, sale_amount: float) -> tuple[dict | None, float]:
+    def has_successful_order(self, user_id: int) -> bool:
+        with db_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM orders
+                WHERE user_id = ? AND status = 'success'
+                """,
+                (user_id,),
+            )
+            row = row_to_dict(cursor.fetchone()) or {}
+        return int(row.get("count", 0)) > 0
+
+    def validate_coupon(self, promo_code: str | None, *, user_id: int, sale_amount: float) -> tuple[dict | None, float]:
         coupon = self.get_coupon(promo_code)
         if not coupon:
             return None, 0.0
@@ -277,7 +310,7 @@ class PaymentService:
 
         return coupon, round(max(coupon_discount, 0.0), 2)
 
-    def resolve_promo_code(self, promo_code: str | None, *, user_id: str, sale_amount: float) -> dict[str, Any]:
+    def resolve_promo_code(self, promo_code: str | None, *, user_id: int, sale_amount: float) -> dict[str, Any]:
         normalized = self._normalize_promo_code(promo_code)
         if not normalized:
             return {
@@ -307,12 +340,15 @@ class PaymentService:
         if referrer:
             if referrer["id"] == user_id:
                 raise ValueError("You cannot use your own promo code.")
+            if self.has_successful_order(user_id):
+                raise ValueError("Referral promo codes are only available for a first purchase.")
+            referral_discount_amount = round(sale_amount * DEFAULT_REFERRAL_DISCOUNT_RATE, 2)
             return {
                 "promoCode": normalized,
                 "coupon": None,
                 "couponDiscountAmount": 0.0,
                 "referrer": referrer,
-                "referralDiscountAmount": round(sale_amount * DEFAULT_REFERRAL_DISCOUNT_RATE, 2),
+                "referralDiscountAmount": min(referral_discount_amount, DEFAULT_REFERRAL_DISCOUNT_CAP),
             }
 
         raise ValueError("This promo code is invalid.")
@@ -320,7 +356,7 @@ class PaymentService:
     def quote_pricing(
         self,
         *,
-        user_id: str,
+        user_id: int,
         tier: str,
         duration: int,
         promo_code: str | None = None,
@@ -361,20 +397,14 @@ class PaymentService:
         tiers: list[dict[str, Any]] = []
         for tier_id, config in PRICING_TIERS.items():
             duration_options = [
-                {
-                    "months": int(option["months"]),
-                    "originalPrice": float(option["originalPrice"]),
-                    "salePrice": float(option["salePrice"]),
-                    "savings": option.get("savings"),
-                    "default": bool(option.get("default", False)),
-                }
+                self.expand_duration_option(config, option)
                 for option in config["durationOptions"]
             ]
             original_monthly_price = None
             sale_monthly_price = None
             if duration_options:
-                original_monthly_price = min(option["originalPrice"] / option["months"] for option in duration_options)
-                sale_monthly_price = min(option["salePrice"] / option["months"] for option in duration_options)
+                original_monthly_price = float(config.get("originalPricePerMonth") or 0.0)
+                sale_monthly_price = min(option["salePricePerMonth"] for option in duration_options)
             tiers.append(
                 {
                     "id": tier_id,
@@ -386,10 +416,29 @@ class PaymentService:
             )
         return tiers
 
+    @staticmethod
+    def calculate_savings_percentage(original_price: float, sale_price: float) -> int | None:
+        if original_price <= 0 or sale_price >= original_price:
+            return None
+        savings_ratio = (original_price - sale_price) / original_price
+        return round(savings_ratio * 100)
+
+    @staticmethod
+    def format_order_no(order_id: int, created_at: datetime | None = None) -> str:
+        order_date = created_at or datetime.now()
+        return f"{order_date.strftime('%Y%m%d')}-{order_id:05d}"
+
+    @staticmethod
+    def _hydrate_order(row: dict[str, Any] | None) -> dict | None:
+        if not row:
+            return None
+        row["payment_details"] = json.loads(row["payment_details"])
+        return row
+
     def create_order(
         self,
         *,
-        user_id: str,
+        user_id: int,
         payment_method: str,
         tier: str,
         duration: int,
@@ -429,11 +478,9 @@ class PaymentService:
             duration=duration,
             promo_code=promo_code,
         )
-        resolved_order_id = f"{payment_method[:2].upper()}{int(datetime.now().timestamp())}{uuid.uuid4().hex[:8]}"
         now = utcnow_iso()
         confirmation_token = uuid.uuid4().hex
         payment_details = {
-            "orderId": resolved_order_id,
             "amount": quote["finalAmount"],
             "tier": tier,
             "duration": duration,
@@ -459,12 +506,12 @@ class PaymentService:
             cursor.execute(
                 """
                 INSERT INTO orders (
-                    id, user_id, original_amount, sale_amount, discount_amount, amount, status, payment_method,
+                    order_no, user_id, original_amount, sale_amount, discount_amount, amount, status, payment_method,
                     tier, duration, coupon_code, referral_code, payment_details, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    resolved_order_id,
+                    f"TEMP-{confirmation_token}",
                     user_id,
                     quote["originalAmount"],
                     quote["saleAmount"],
@@ -480,28 +527,41 @@ class PaymentService:
                     now,
                 ),
             )
-        return self.get_order(resolved_order_id)
+            order_id = int(cursor.lastrowid)
+            order_no = self.format_order_no(order_id, datetime.now())
+            payment_details["orderId"] = order_id
+            payment_details["orderNo"] = order_no
+            cursor.execute(
+                """
+                UPDATE orders
+                SET order_no = ?, payment_details = ?
+                WHERE id = ?
+                """,
+                (order_no, dumps_json(payment_details), order_id),
+            )
+        return self.get_order(order_id)
 
-    def get_user_order(self, order_id: str, user_id: str) -> dict | None:
-        order = self.get_order(order_id)
+    def get_user_order(self, order_no: str, user_id: int) -> dict | None:
+        order = self.get_order_by_no(order_no)
         if not order or order["user_id"] != user_id:
             return None
         return order
 
-    def get_order(self, order_id: str) -> dict | None:
+    def get_order(self, order_id: int) -> dict | None:
         with db_cursor() as cursor:
             cursor.execute("SELECT * FROM orders WHERE id = ?", (order_id,))
-            row = row_to_dict(cursor.fetchone())
-        if not row:
-            return None
-        row["payment_details"] = json.loads(row["payment_details"])
-        return row
+            return self._hydrate_order(row_to_dict(cursor.fetchone()))
+
+    def get_order_by_no(self, order_no: str) -> dict | None:
+        with db_cursor() as cursor:
+            cursor.execute("SELECT * FROM orders WHERE order_no = ?", (order_no,))
+            return self._hydrate_order(row_to_dict(cursor.fetchone()))
 
     def build_alipay_payment_url(self, order: dict) -> str:
         if order["payment_details"].get("mode") == "official":
             return self.build_official_alipay_payment_url(order)
         token = order["payment_details"].get("confirmationToken")
-        return f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}?token={token}"
+        return f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['order_no']}?token={token}"
 
     def _mark_coupon_redeemed(self, order: dict) -> None:
         coupon_id = order["payment_details"].get("couponId")
@@ -514,10 +574,10 @@ class PaymentService:
             cursor.execute(
                 """
                 INSERT INTO coupon_redemptions (
-                    id, coupon_id, code, user_id, order_id, discount_amount, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'redeemed', ?, ?)
+                    coupon_id, code, user_id, order_id, discount_amount, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'redeemed', ?, ?)
                 """,
-                (str(uuid.uuid4()), coupon_id, coupon_code, order["user_id"], order["id"], discount_amount, now, now),
+                (coupon_id, coupon_code, order["user_id"], order["id"], discount_amount, now, now),
             )
 
     def _record_referral_commission(self, order: dict) -> None:
@@ -539,12 +599,11 @@ class PaymentService:
             cursor.execute(
                 """
                 INSERT INTO referral_commissions (
-                    id, order_id, referrer_user_id, referred_user_id, referral_code,
+                    order_id, referrer_user_id, referred_user_id, referral_code,
                     commission_rate, commission_amount, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
                 """,
                 (
-                    str(uuid.uuid4()),
                     order["id"],
                     referrer_user_id,
                     order["user_id"],
@@ -570,13 +629,13 @@ class PaymentService:
             raise ValueError("Alipay is not fully configured.")
 
         model = AlipayTradePagePayModel()
-        model.out_trade_no = order["id"]
+        model.out_trade_no = order["order_no"]
         model.total_amount = f"{Decimal(str(order['amount'])):.2f}"
         model.subject = f"Easy Reading Pro {order['duration']}-month plan"
         model.body = f"Easy Reading Pro subscription for {order['duration']} month(s)"
         model.product_code = "FAST_INSTANT_TRADE_PAY"
         model.timeout_express = "15m"
-        model.passback_params = order["user_id"]
+        model.passback_params = str(order["user_id"])
 
         request = AlipayTradePagePayRequest()
         request.biz_model = model
@@ -586,7 +645,7 @@ class PaymentService:
 
     def build_wechat_code_url(self, order: dict) -> str:
         token = order["payment_details"].get("confirmationToken")
-        return f"{settings.app_base_url.rstrip('/')}/mock-pay/wechat/{order['id']}?token={token}"
+        return f"{settings.app_base_url.rstrip('/')}/mock-pay/wechat/{order['order_no']}?token={token}"
 
     def _parse_alipay_query_response(self, response_content: str) -> dict[str, Any]:
         parsed = json.loads(response_content)
@@ -605,7 +664,7 @@ class PaymentService:
             return order
 
         model = AlipayTradeQueryModel()
-        model.out_trade_no = order["id"]
+        model.out_trade_no = order["order_no"]
         request = AlipayTradeQueryRequest()
         request.biz_model = model
 
@@ -619,7 +678,7 @@ class PaymentService:
 
         trade_status = response.get("trade_status")
         if trade_status in {"TRADE_SUCCESS", "TRADE_FINISHED"}:
-            return self.mark_order_paid(order["id"], response.get("trade_no"))
+            return self.mark_order_paid(order["order_no"], response.get("trade_no"))
         return order
 
     def verify_alipay_notification(self, payload: Mapping[str, str]) -> dict[str, Any]:
@@ -645,11 +704,11 @@ class PaymentService:
         if not verified:
             raise ValueError("Invalid Alipay signature.")
 
-        order_id = payload.get("out_trade_no")
-        if not order_id:
+        order_no = payload.get("out_trade_no")
+        if not order_no:
             raise ValueError("Missing Alipay order ID.")
 
-        order = self.get_order(order_id)
+        order = self.get_order_by_no(order_no)
         if not order:
             raise ValueError("Order not found.")
 
@@ -668,15 +727,15 @@ class PaymentService:
 
         trade_status = payload.get("trade_status", "")
         if trade_status in {"TRADE_SUCCESS", "TRADE_FINISHED"}:
-            order = self.mark_order_paid(order_id, payload.get("trade_no"))
+            order = self.mark_order_paid(order_no, payload.get("trade_no"))
 
         return {
             "order": order,
             "tradeStatus": trade_status,
         }
 
-    def mark_order_paid(self, order_id: str, transaction_id: str | None = None) -> dict:
-        order = self.get_order(order_id)
+    def mark_order_paid(self, order_ref: str | int, transaction_id: str | None = None) -> dict:
+        order = self.get_order_by_no(order_ref) if isinstance(order_ref, str) else self.get_order(order_ref)
         if not order:
             raise ValueError("Order not found.")
         if order["status"] == "success":
@@ -694,11 +753,11 @@ class PaymentService:
                 SET status = 'success', payment_details = ?, updated_at = ?
                 WHERE id = ?
                 """,
-                (dumps_json(details), now, order_id),
+                (dumps_json(details), now, order["id"]),
             )
 
         self.activate_subscription(order)
-        paid_order = self.get_order(order_id)
+        paid_order = self.get_order(order["id"])
         if paid_order:
             self._mark_coupon_redeemed(paid_order)
             self._record_referral_commission(paid_order)
@@ -706,7 +765,7 @@ class PaymentService:
         return order
 
     def activate_subscription(self, order: dict) -> None:
-        user_id = order["user_id"]
+        user_id = int(order["user_id"])
         tier = order["tier"]
         duration_months = int(order["duration"])
         details = order["payment_details"]
@@ -731,7 +790,6 @@ class PaymentService:
         base = current_expiry if current_expiry and current_expiry > now else now
         extended = base + timedelta(days=30 * duration_months)
         started_at = parse_dt(current["started_at"]) if current else now
-        subscription_id = current["id"] if current else str(uuid.uuid4())
         current_period_start = base if current_expiry and current_expiry and current_expiry > now else now
         now_iso = utcnow_iso()
 
@@ -756,20 +814,19 @@ class PaymentService:
                         order["id"],
                         order["payment_method"],
                         now_iso,
-                        subscription_id,
+                        current["id"],
                     ),
                 )
             else:
                 cursor.execute(
                     """
                     INSERT INTO subscriptions (
-                        id, user_id, tier, status, billing_mode, interval_months, auto_renew,
+                        user_id, tier, status, billing_mode, interval_months, auto_renew,
                         cancel_at_period_end, started_at, current_period_start, current_period_end,
                         canceled_at, latest_order_id, payment_method, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL, ?, ?, ?, ?)
                     """,
                     (
-                        subscription_id,
                         user_id,
                         tier,
                         "active",
@@ -795,7 +852,7 @@ class PaymentService:
                 (tier, extended.isoformat(), now_iso, user_id),
             )
 
-    def get_current_subscription(self, user_id: str) -> dict | None:
+    def get_current_subscription(self, user_id: int) -> dict | None:
         with db_cursor() as cursor:
             cursor.execute(
                 """
@@ -809,7 +866,7 @@ class PaymentService:
             )
             return row_to_dict(cursor.fetchone())
 
-    def get_subscription_summary(self, user_id: str) -> dict:
+    def get_subscription_summary(self, user_id: int) -> dict:
         subscription = self.get_current_subscription(user_id)
         if not subscription:
             return {
@@ -836,7 +893,7 @@ class PaymentService:
             "cancelAtPeriodEnd": bool(subscription["cancel_at_period_end"]) and active,
         }
 
-    def cancel_subscription(self, user_id: str) -> dict:
+    def cancel_subscription(self, user_id: int) -> dict:
         subscription = self.get_current_subscription(user_id)
         if not subscription:
             raise ValueError("No subscription found.")
@@ -859,7 +916,7 @@ class PaymentService:
 
         return self.get_subscription_summary(user_id)
 
-    def reactivate_subscription(self, user_id: str) -> dict:
+    def reactivate_subscription(self, user_id: int) -> dict:
         subscription = self.get_current_subscription(user_id)
         if not subscription:
             raise ValueError("No subscription found.")
@@ -882,18 +939,22 @@ class PaymentService:
 
         return self.get_subscription_summary(user_id)
 
-    def get_entitlements(self, user_id: str) -> dict:
+    def get_entitlements(self, user_id: int) -> dict:
         subscription = self.get_subscription_summary(user_id)
         is_paid = subscription["active"] and subscription["tier"] == "pro"
         return {
             "tier": subscription["tier"],
             "active": subscription["active"],
             "canUseWordBook": True,
-            "canTranslateSentences": is_paid,
-            "canUseTextToSpeech": is_paid,
+            "canTranslateSentences": True,
+            "canUseTextToSpeech": True,
+            "hasUnlimitedTranslation": is_paid,
+            "hasUnlimitedTextToSpeech": is_paid,
+            "translationDailyLimit": None if is_paid else settings.free_translation_daily_limit,
+            "ttsDailyLimit": None if is_paid else settings.free_tts_daily_limit,
         }
 
-    def get_referral_summary(self, user_id: str) -> dict[str, Any]:
+    def get_referral_summary(self, user_id: int) -> dict[str, Any]:
         with db_cursor() as cursor:
             cursor.execute("SELECT referral_code FROM users WHERE id = ?", (user_id,))
             user = row_to_dict(cursor.fetchone())

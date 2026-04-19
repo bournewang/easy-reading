@@ -25,15 +25,194 @@ type LevelTab = {
   shortLabel: string;
 };
 
+const levelAudienceProfiles = {
+  a1: {
+    en: {
+      title: 'First full stories in English',
+      body: 'Short chapters, high-frequency words, and very light sentence patterns for readers building their first real reading habit.',
+    },
+    zh: {
+      title: '适合开始读第一批英文故事',
+      body: '章节更短、词汇更常见、句型更轻，让刚开始做完整英文阅读的读者更容易进入状态。',
+    },
+  },
+  a2: {
+    en: {
+      title: 'Comfortable step after beginner texts',
+      body: 'Familiar daily language with enough story momentum to stretch vocabulary without making reading feel heavy.',
+    },
+    zh: {
+      title: '适合从入门读物往前走一步',
+      body: '以熟悉的日常表达为主，同时加入更多故事推进感，帮助你扩展词汇又不至于读得太吃力。',
+    },
+  },
+  b11: {
+    en: {
+      title: 'Bridge into longer reading sessions',
+      body: 'A strong fit for readers leaving easy passages behind and getting used to longer chapters with manageable new words.',
+    },
+    zh: {
+      title: '适合过渡到更长的阅读时长',
+      body: '很适合正在离开简单短文、开始接触更长章节的读者，新词量可控，适合建立持续阅读节奏。',
+    },
+  },
+  b12: {
+    en: {
+      title: 'Intermediate stories with fuller flow',
+      body: 'Better for readers who want richer plots, steadier chapter reading, and more natural sentence rhythm across each session.',
+    },
+    zh: {
+      title: '适合进入更完整的中级阅读体验',
+      body: '更适合希望读到更完整情节、更自然句式和更稳定章节推进感的中级读者。',
+    },
+  },
+  b21: {
+    en: {
+      title: 'Independent reading with more depth',
+      body: 'Designed for readers who can keep moving on their own and want more descriptive language, nuance, and denser scenes.',
+    },
+    zh: {
+      title: '适合开始更独立、更有深度地阅读',
+      body: '面向已经能相对独立读下去的读者，内容会有更多描写、更细的表达和更密集的场景信息。',
+    },
+  },
+  b22: {
+    en: {
+      title: 'Near-authentic chapter practice',
+      body: 'Useful when you want smoother comprehension over longer chapters and reading that feels close to real-world books.',
+    },
+    zh: {
+      title: '适合接近真实书籍的章节练习',
+      body: '如果你想在更长章节里保持更顺的理解，并逐步接近真实英文书籍的阅读体验，这一级会更合适。',
+    },
+  },
+  c1: {
+    en: {
+      title: 'Advanced reading with nuance and challenge',
+      body: 'Best for confident readers who want layered vocabulary, mature themes, and sentence structures that demand fuller attention.',
+    },
+    zh: {
+      title: '适合追求细腻表达与挑战的高级读者',
+      body: '适合已经很有把握的读者，想继续阅读更细腻的词汇、更成熟的主题，以及更需要专注理解的复杂句式。',
+    },
+  },
+} as const;
+
+const localizedLevelCopy = {
+  a1: {
+    en: {
+      label: 'A1 English Books',
+      description:
+        'Best for complete beginners who know basic everyday words and want very short, simple stories to build reading confidence.',
+    },
+    zh: {
+      label: 'A1 英语分级图书',
+      description: '适合刚起步的读者，已经认识基础日常词汇，希望通过很短、很简单的故事建立英文阅读信心。',
+    },
+  },
+  a2: {
+    en: {
+      label: 'A2 English Books',
+      description:
+        'Best for early learners who can handle familiar sentences and want easy stories that grow everyday vocabulary and fluency.',
+    },
+    zh: {
+      label: 'A2 英语分级图书',
+      description: '适合已经能读懂熟悉句子的初级学习者，希望通过更轻松的故事扩展日常词汇并提升流畅度。',
+    },
+  },
+  b11: {
+    en: {
+      label: 'B1.1 English Books',
+      description:
+        'Best for lower-intermediate readers who are moving beyond easy texts and want longer stories with manageable new vocabulary.',
+    },
+    zh: {
+      label: 'B1.1 英语分级图书',
+      description: '适合刚进入中级阶段的读者，准备走出简单短文，开始阅读更长、但新词量仍然可控的故事。',
+    },
+  },
+  b12: {
+    en: {
+      label: 'B1.2 English Books',
+      description:
+        'Best for solid intermediate learners who want richer plots, more natural sentence patterns, and broader day-to-day vocabulary.',
+    },
+    zh: {
+      label: 'B1.2 英语分级图书',
+      description: '适合基础更稳的中级学习者，希望读到更完整的情节、更自然的句式，以及更广的日常词汇。',
+    },
+  },
+  b21: {
+    en: {
+      label: 'B2.1 English Books',
+      description:
+        'Best for upper-intermediate readers who can read independently and want deeper narratives with more descriptive and abstract language.',
+    },
+    zh: {
+      label: 'B2.1 英语分级图书',
+      description: '适合能够较独立阅读的中高级读者，希望接触更有层次的叙事，以及更多描写性和抽象表达。',
+    },
+  },
+  b22: {
+    en: {
+      label: 'B2.2 English Books',
+      description:
+        'Best for strong upper-intermediate learners who want near-authentic reading practice and smoother comprehension across longer chapters.',
+    },
+    zh: {
+      label: 'B2.2 英语分级图书',
+      description: '适合基础扎实的中高级学习者，希望进行接近真实文本的阅读练习，并在更长章节中保持更顺畅的理解。',
+    },
+  },
+  c1: {
+    en: {
+      label: 'C1 English Books',
+      description:
+        'Best for advanced readers who want challenging, authentic-style books with nuanced vocabulary, complex structure, and mature themes.',
+    },
+    zh: {
+      label: 'C1 英语分级图书',
+      description: '适合高级读者，希望阅读更具挑战、接近原版风格的作品，接触更细腻的词汇、更复杂的结构和更成熟的主题。',
+    },
+  },
+} as const;
+
+function getLevelAudienceProfile(levelId: string, locale: 'en' | 'zh', fallbackDescription: string) {
+  const profile = levelAudienceProfiles[levelId as keyof typeof levelAudienceProfiles]?.[locale];
+
+  if (profile) {
+    return profile;
+  }
+
+  return {
+    title: fallbackDescription,
+    body: fallbackDescription,
+  };
+}
+
+function getLocalizedLevelCopy(
+  levelId: string,
+  locale: 'en' | 'zh',
+  fallback: { label: string; description: string },
+) {
+  return localizedLevelCopy[levelId as keyof typeof localizedLevelCopy]?.[locale] ?? fallback;
+}
+
 export function BookLevelPageClient({ levelData, levels }: { levelData: LevelData; levels: LevelTab[] }) {
-  const { t } = useLocaleContext();
+  const { locale, t } = useLocaleContext();
   const levelText = (key: string) => t(`website.bookLevelPage.${key}`);
   const common = (key: string) => t(`website.common.${key}`);
+  const currentLocale = locale === 'zh' ? 'zh' : 'en';
+  const heroCopy = getLocalizedLevelCopy(levelData.id, currentLocale, {
+    label: levelData.label,
+    description: levelData.description,
+  });
 
   return (
-    <div className="bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.16),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(45,212,191,0.12),_transparent_26%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_100%)] py-8 sm:py-12">
+    <div className="bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.16),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(45,212,191,0.12),_transparent_26%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_100%)] py-6 sm:py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <nav className="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+        <nav className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
           <Link href="/books" className="font-medium hover:text-blue-600">
             {common('books')}
           </Link>
@@ -42,33 +221,28 @@ export function BookLevelPageClient({ levelData, levels }: { levelData: LevelDat
         </nav>
 
         <section className="overflow-hidden rounded-[34px] border border-white/60 bg-white/80 shadow-[0_24px_80px_-42px_rgba(15,23,42,0.45)] backdrop-blur">
-          <div className="grid gap-8 border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-6 py-8 text-white sm:px-8 lg:grid-cols-[1.25fr_0.75fr] lg:px-10 lg:py-10">
+          <div className="grid gap-5 border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-5 py-6 text-white sm:px-6 sm:py-7 lg:grid-cols-[1.3fr_0.7fr] lg:px-8 lg:py-8">
             <div>
               <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-blue-100 ring-1 ring-white/15">
                 {formatMessage(levelText('collection'), { level: levelData.shortLabel })}
               </div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{levelData.label}</h1>
-              <p className="mt-4 max-w-3xl text-base leading-8 text-slate-200">{levelData.description}</p>
-              <p className="mt-4 text-sm text-slate-300">
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{heroCopy.label}</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-200 sm:text-base">{heroCopy.description}</p>
+              <p className="mt-3 text-sm text-slate-300">
                 {formatMessage(levelText('levelSummary'), { count: levelData.total })}
               </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-[28px] bg-white/10 p-5 ring-1 ring-white/10">
+            <div>
+              <div className="rounded-[24px] bg-white/10 p-4 ring-1 ring-white/10">
                 <p className="text-sm text-slate-300">{levelText('booksInLevel')}</p>
-                <p className="mt-2 text-4xl font-semibold text-white">{levelData.total}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{levelText('booksInLevelBody')}</p>
-              </div>
-              <div className="rounded-[28px] bg-white/10 p-5 ring-1 ring-white/10">
-                <p className="text-sm text-slate-300">{levelText('bestFor')}</p>
-                <p className="mt-2 text-lg font-semibold text-white">{levelText('bestForTitle')}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{levelText('bestForBody')}</p>
+                <p className="mt-1.5 text-3xl font-semibold text-white">{levelData.total}</p>
+                <p className="mt-1.5 text-sm leading-6 text-slate-300">{levelText('booksInLevelBody')}</p>
               </div>
             </div>
           </div>
 
-          <div className="px-6 py-6 sm:px-8 lg:px-10">
+          <div className="px-5 py-4 sm:px-6 sm:py-5 lg:px-8">
             <div className="flex flex-wrap gap-2">
               {levels.map((level) => {
                 const isActive = level.id === levelData.id;

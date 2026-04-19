@@ -1,5 +1,9 @@
+'use client';
+
 import { useState } from 'react';
+import { isReaderLimitWarning, setStoredReaderWarning } from '../utils/reader-warning';
 import { useSharedServices } from '../contexts/SharedServicesContext';
+import { showToast } from '../utils/toast';
 
 export const useTranslation = () => {
   const [translating, setTranslating] = useState(false);
@@ -10,8 +14,12 @@ export const useTranslation = () => {
       return await translation.translate(text, 'Chinese');
     } catch (error) {
       console.error('Translation error:', error);
-      if (typeof window !== 'undefined' && error instanceof Error) {
-        window.alert(error.message);
+      if (error instanceof Error) {
+        if (isReaderLimitWarning(error.message)) {
+          setStoredReaderWarning('translation', error.message);
+        } else {
+          showToast(error.message, { variant: 'error' });
+        }
       }
       return '';
     } finally {
@@ -25,8 +33,12 @@ export const useTranslation = () => {
       return await translation.translateBatch(texts, 'Chinese');
     } catch (error) {
       console.error('Batch translation error:', error);
-      if (typeof window !== 'undefined' && error instanceof Error) {
-        window.alert(error.message);
+      if (error instanceof Error) {
+        if (isReaderLimitWarning(error.message)) {
+          setStoredReaderWarning('translation', error.message);
+        } else {
+          showToast(error.message, { variant: 'error' });
+        }
       }
       return [];
     } finally {

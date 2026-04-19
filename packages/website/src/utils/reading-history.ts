@@ -1,5 +1,8 @@
 import type { Article } from '@easy-reading/shared';
 import { getBookChapterReaderUrl, getIELTSPassageReaderUrl } from '@/lib/reading-routes';
+import { getStoredAuthToken } from '@/utils/auth-token';
+import { api } from '@/utils/api';
+import { fetchAnonymousLimits, getCachedAnonymousLimits } from '@/utils/anonymous-limits';
 
 export type ReadingHistoryKind = 'news' | 'ielts' | 'book';
 
@@ -26,6 +29,18 @@ type LegacyStoredArticle = {
 const HISTORY_STORAGE_KEY = 'readingHistoryV2';
 const LEGACY_READ_ARTICLES_KEY = 'readArticles';
 
+type HistoryCacheState = {
+  token: string | null;
+  items: ReadingHistoryItem[] | null;
+  promise: Promise<ReadingHistoryItem[]> | null;
+};
+
+let historyCache: HistoryCacheState = {
+  token: null,
+  items: null,
+  promise: null,
+};
+
 function isBrowser() {
   return typeof window !== 'undefined';
 }
@@ -44,6 +59,27 @@ function safeParse<T>(raw: string | null, fallback: T): T {
 
 function sortHistory(items: ReadingHistoryItem[]) {
   return [...items].sort((a, b) => b.timestamp - a.timestamp);
+}
+
+function capHistoryItems(items: ReadingHistoryItem[]) {
+  const limit = Math.max(0, getCachedAnonymousLimits().historyLimit);
+  return sortHistory(items).slice(0, limit);
+}
+
+function setHistoryCache(items: ReadingHistoryItem[], token = getStoredAuthToken()) {
+  historyCache = {
+    token,
+    items: capHistoryItems(items),
+    promise: null,
+  };
+}
+
+export function invalidateReadingHistoryCache() {
+  historyCache = {
+    token: getStoredAuthToken(),
+    items: null,
+    promise: null,
+  };
 }
 
 function normalizeHistoryItem(value: unknown): ReadingHistoryItem | null {
@@ -87,7 +123,7 @@ function readStoredHistory(): ReadingHistoryItem[] {
   }
 
   const stored = safeParse<unknown[]>(window.localStorage.getItem(HISTORY_STORAGE_KEY), []);
-  return sortHistory(
+  return capHistoryItems(
     stored
       .map((item) => normalizeHistoryItem(item))
       .filter((item): item is ReadingHistoryItem => Boolean(item)),
@@ -99,7 +135,7 @@ function writeStoredHistory(items: ReadingHistoryItem[]) {
     return;
   }
 
-  const sorted = sortHistory(items);
+  const sorted = capHistoryItems(items);
   window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(sorted));
 
   const legacyReadArticles = sorted
@@ -175,33 +211,147 @@ function migrateLegacyHistory(): ReadingHistoryItem[] {
   return merged;
 }
 
-export function getReadingHistory() {
+function readLocalHistory() {
   return migrateLegacyHistory();
 }
 
+export function getReadingHistory() {
+  return readLocalHistory();
+}
+
+export async function getReadingHistoryAsync(options?: { forceRefresh?: boolean }) {
+  const token = getStoredAuthToken();
+  if (!token) {
+    void fetchAnonymousLimits();
+    const localHistory = readLocalHistory();
+    setHistoryCache(localHistory, null);
+    return localHistory;
+  }
+
+  const forceRefresh = options?.forceRefresh ?? false;
+  if (!forceRefresh && historyCache.token === token && historyCache.items) {
+    return historyCache.items;
+  }
+
+  if (!forceRefresh && historyCache.token === token && historyCache.promise) {
+    return historyCache.promise;
+  }
+
+  const request = api
+    .get<ReadingHistoryItem[]>('/history')
+    .then((response) => {
+      const items = sortHistory(
+        response.data
+          .map((item) => normalizeHistoryItem(item))
+          .filter((item): item is ReadingHistoryItem => Boolean(item)),
+      );
+      setHistoryCache(items, token);
+      return items;
+    })
+    .catch((error) => {
+      invalidateReadingHistoryCache();
+      throw error;
+    });
+
+  historyCache = {
+    token,
+    items: null,
+    promise: request,
+  };
+
+  return request;
+}
+
 export function saveReadingHistoryItem(item: ReadingHistoryItem) {
-  const current = getReadingHistory();
+  const current = readLocalHistory();
   const next = [item, ...current.filter((entry) => entry.key !== item.key)];
   writeStoredHistory(next);
+  setHistoryCache(capHistoryItems(next), null);
+}
+
+export async function saveReadingHistoryItemAsync(item: ReadingHistoryItem) {
+  const token = getStoredAuthToken();
+  if (!token) {
+    await fetchAnonymousLimits();
+    saveReadingHistoryItem(item);
+    return item;
+  }
+
+  const response = await api.post<ReadingHistoryItem>('/history', item);
+  const savedItem = normalizeHistoryItem(response.data) || item;
+
+  if (historyCache.token === token && historyCache.items) {
+    setHistoryCache(mergeHistoryItems(historyCache.items, [savedItem]), token);
+  } else {
+    invalidateReadingHistoryCache();
+  }
+
+  return savedItem;
+}
+
+export async function syncReadingHistoryAsync(items: ReadingHistoryItem[]) {
+  const normalizedItems = items
+    .map((item) => normalizeHistoryItem(item))
+    .filter((item): item is ReadingHistoryItem => Boolean(item));
+  const token = getStoredAuthToken();
+
+  if (!token) {
+    await fetchAnonymousLimits();
+    const merged = mergeHistoryItems(readLocalHistory(), normalizedItems);
+    writeStoredHistory(merged);
+    const capped = capHistoryItems(merged);
+    setHistoryCache(capped, null);
+    return capped;
+  }
+
+  const response = await api.post<ReadingHistoryItem[]>('/history/sync', {
+    items: normalizedItems,
+  });
+  const merged = sortHistory(
+    response.data
+      .map((item) => normalizeHistoryItem(item))
+      .filter((item): item is ReadingHistoryItem => Boolean(item)),
+  );
+  setHistoryCache(merged, token);
+  return merged;
+}
+
+export function clearLocalReadingHistory() {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.localStorage.removeItem(HISTORY_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_READ_ARTICLES_KEY);
+
+  if (!getStoredAuthToken()) {
+    invalidateReadingHistoryCache();
+  }
 }
 
 export function createHistoryItem(item: ReadingHistoryItem): ReadingHistoryItem {
-  return item;
+  return {
+    ...item,
+    key: migrateHistoryRouteUrl(item.key),
+    routeUrl: migrateHistoryRouteUrl(item.routeUrl),
+  };
 }
 
 export function createNewsHistoryItem({
   article,
+  routeUrl,
   timestamp = Date.now(),
 }: {
   article: Pick<Article, 'title' | 'site_name' | 'url' | 'reading_time' | 'word_count'>;
+  routeUrl?: string;
   timestamp?: number;
 }) {
-  const routeUrl = `/reader?url=${encodeURIComponent(article.url)}`;
+  const resolvedRouteUrl = routeUrl || `/reader?url=${encodeURIComponent(article.url)}`;
 
   return createHistoryItem({
-    key: routeUrl,
+    key: resolvedRouteUrl,
     kind: 'news',
-    routeUrl,
+    routeUrl: resolvedRouteUrl,
     title: article.title,
     subtitle: article.site_name,
     sourceUrl: article.url,
@@ -265,12 +415,12 @@ export function createBookHistoryItem({
   });
 }
 
-export function isRouteRead(routeUrl: string) {
-  return getReadingHistory().some((item) => item.routeUrl === routeUrl);
+export async function isRouteRead(routeUrl: string) {
+  return (await getReadingHistoryAsync()).some((item) => item.routeUrl === routeUrl);
 }
 
-export function isSourceRead(sourceUrl: string) {
-  return getReadingHistory().some((item) => item.sourceUrl === sourceUrl);
+export async function isSourceRead(sourceUrl: string) {
+  return (await getReadingHistoryAsync()).some((item) => item.sourceUrl === sourceUrl);
 }
 
 export function migrateHistoryRouteUrl(routeUrl: string) {

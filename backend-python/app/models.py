@@ -28,7 +28,7 @@ class LoginRequest(BaseModel):
 
 
 class UserPayload(BaseModel):
-    id: str
+    id: int
     username: str
     fullName: str | None = None
     referralCode: str | None = None
@@ -121,8 +121,54 @@ class PricingQuoteResponse(BaseModel):
     paymentMode: str = "prepaid"
 
 
+class ReadingHistoryItemModel(BaseModel):
+    key: str
+    kind: str
+    routeUrl: str
+    title: str
+    subtitle: str
+    sourceUrl: str | None = None
+    wordCount: int = 0
+    readingTime: int = 0
+    timestamp: int = 0
+
+
+class ReadingHistorySyncRequest(BaseModel):
+    items: list[ReadingHistoryItemModel] = Field(default_factory=list)
+
+
+class WordbookEntryModel(BaseModel):
+    word: str
+    createdAt: datetime | None = None
+    updatedAt: datetime | None = None
+
+
+class WordbookReplaceRequest(BaseModel):
+    words: list[str] = Field(default_factory=list)
+
+
+class WordbookSyncRequest(BaseModel):
+    words: list[str] = Field(default_factory=list)
+
+
+class AnonymousLimitsResponse(BaseModel):
+    translationDailyLimit: int
+    ttsDailyLimit: int
+    wordbookLimit: int
+    historyLimit: int
+
+
+class AnonymousUsageResponse(BaseModel):
+    feature: str
+    dailyLimit: int
+    usedCount: int
+    remainingCount: int
+    usageDate: str
+
+
 class PaymentQueryResponse(BaseModel):
-    orderId: str
+    orderId: int
+    orderNo: str
     amount: float
     originalAmount: float | None = None
     saleAmount: float | None = None
@@ -139,13 +185,14 @@ class PaymentQueryResponse(BaseModel):
 
 
 class PaymentNotifyRequest(BaseModel):
-    orderId: str
+    orderId: int | None = None
+    orderNo: str | None = None
     transactionId: str | None = None
     signature: str | None = None
 
 
 class SubscriptionResponse(BaseModel):
-    subscriptionId: str | None = None
+    subscriptionId: int | None = None
     tier: str
     expiresAt: datetime | None = None
     active: bool
@@ -161,6 +208,10 @@ class SubscriptionEntitlementsResponse(BaseModel):
     canUseWordBook: bool
     canTranslateSentences: bool
     canUseTextToSpeech: bool
+    hasUnlimitedTranslation: bool = False
+    hasUnlimitedTextToSpeech: bool = False
+    translationDailyLimit: int | None = None
+    ttsDailyLimit: int | None = None
 
 
 class ReferralSummaryResponse(BaseModel):
@@ -171,3 +222,31 @@ class ReferralSummaryResponse(BaseModel):
     pendingCommission: float = 0
     paidCommission: float = 0
     totalCommission: float = 0
+
+
+class NewsItemModel(BaseModel):
+    id: str
+    title: str
+    url: str
+    category: str
+    description: str = ""
+    imageUrl: str | None = None
+    source: str
+    readingTime: int = 0
+
+
+class NewsListResponse(BaseModel):
+    items: list[NewsItemModel] = Field(default_factory=list)
+    page: int = 1
+    pageSize: int = 20
+    total: int = 0
+    totalPages: int = 0
+    categories: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+    lastSyncedAt: datetime | None = None
+
+
+class NewsArticleContentResponse(BaseModel):
+    id: str
+    article: dict[str, Any]
+    syncedAt: datetime | None = None

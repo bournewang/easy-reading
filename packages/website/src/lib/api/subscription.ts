@@ -1,7 +1,7 @@
 import { api } from '@/utils/api';
 
 export interface SubscriptionSummary {
-  subscriptionId: string | null;
+  subscriptionId: number | null;
   tier: string;
   expiresAt: string | null;
   active: boolean;
@@ -17,6 +17,10 @@ export interface SubscriptionEntitlements {
   canUseWordBook: boolean;
   canTranslateSentences: boolean;
   canUseTextToSpeech: boolean;
+  hasUnlimitedTranslation: boolean;
+  hasUnlimitedTextToSpeech: boolean;
+  translationDailyLimit: number | null;
+  ttsDailyLimit: number | null;
 }
 
 export async function getSubscriptionSummary(): Promise<SubscriptionSummary> {

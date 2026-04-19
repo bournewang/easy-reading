@@ -1,5 +1,9 @@
+'use client';
+
 import { useState } from 'react';
+import { isReaderLimitWarning, setStoredReaderWarning } from '../utils/reader-warning';
 import { useSharedServices } from '../contexts/SharedServicesContext';
+import { showToast } from '../utils/toast';
 
 export const useTTS = () => {
   const [speaking, setSpeaking] = useState(false);
@@ -11,8 +15,12 @@ export const useTTS = () => {
       await tts.speak(text);
     } catch (error) {
       console.error('TTS error:', error);
-      if (typeof window !== 'undefined' && error instanceof Error) {
-        window.alert(error.message);
+      if (error instanceof Error) {
+        if (isReaderLimitWarning(error.message)) {
+          setStoredReaderWarning('tts', error.message);
+        } else {
+          showToast(error.message, { variant: 'error' });
+        }
       }
     } finally {
       setSpeaking(false);

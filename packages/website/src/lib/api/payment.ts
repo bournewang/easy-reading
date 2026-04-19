@@ -14,7 +14,8 @@ export interface CreateOrderParams {
 }
 
 export interface PaymentResponse {
-  orderId: string;
+  orderId: number;
+  orderNo: string;
   amount: number;
   originalAmount?: number;
   saleAmount?: number;
@@ -32,7 +33,8 @@ export interface PaymentResponse {
 
 interface OrderStatus {
   status: 'pending' | 'success' | 'failed' | 'expired';
-  orderId: string;
+  orderId: number;
+  orderNo: string;
   amount: number;
   createdAt: string;
   updatedAt: string;
@@ -68,8 +70,8 @@ export async function createAlipayOrder(params: CreateOrderParams): Promise<Paym
 }
 
 // Query order status
-export async function queryOrderStatus(orderId: string): Promise<PaymentResponse> {
-  const response = await api.get(`/payment/query-order?orderId=${orderId}`);
+export async function queryOrderStatus(orderNo: string): Promise<PaymentResponse> {
+  const response = await api.get(`/payment/query-order?orderNo=${encodeURIComponent(orderNo)}`);
 
   if (response.status !== 200) {
     throw new Error('Failed to query order status');

@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Request
@@ -24,16 +23,16 @@ def verify_password(password: str, stored_hash: str) -> bool:
     return hmac.compare_digest(expected, password_hash)
 
 
-def create_session(user_id: str) -> str:
+def create_session(user_id: int) -> str:
     token = secrets.token_hex(32)
     expires_at = datetime.now(timezone.utc) + timedelta(days=settings.session_ttl_days)
     with db_cursor() as cursor:
         cursor.execute(
             """
-            INSERT INTO sessions (id, token, user_id, expires_at, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO sessions (token, user_id, expires_at, created_at)
+            VALUES (?, ?, ?, ?)
             """,
-            (str(uuid.uuid4()), token, user_id, expires_at.isoformat(), utcnow_iso()),
+            (token, user_id, expires_at.isoformat(), utcnow_iso()),
         )
     return token
 
@@ -63,7 +62,7 @@ def get_user_by_username(username: str) -> dict | None:
         return row_to_dict(cursor.fetchone())
 
 
-def get_user_by_id(user_id: str) -> dict | None:
+def get_user_by_id(user_id: int) -> dict | None:
     with db_cursor() as cursor:
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         return row_to_dict(cursor.fetchone())
@@ -77,18 +76,18 @@ def generate_referral_code(username: str) -> str:
 
 def create_user(username: str, password: str, full_name: str | None) -> dict:
     now = utcnow_iso()
-    user_id = str(uuid.uuid4())
     referral_code = generate_referral_code(username)
     try:
         with db_cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO users (
-                    id, username, password_hash, full_name, referral_code, subscription_tier, subscription_expires, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, 'free', NULL, ?, ?)
+                    username, password_hash, full_name, referral_code, subscription_tier, subscription_expires, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'free', NULL, ?, ?)
                 """,
-                (user_id, username, hash_password(password), full_name, referral_code, now, now),
+                (username, hash_password(password), full_name, referral_code, now, now),
             )
+            user_id = int(cursor.lastrowid)
     except DBIntegrityError as exc:
         raise ValueError("Username already taken") from exc
     return get_user_by_id(user_id)
@@ -129,11 +128,25 @@ def get_current_user(request: Request) -> dict | None:
         delete_session(session_token)
         return None
 
+    subscription_expires = parse_dt(row["subscription_expires"])
+    effective_subscription_tier = row["subscription_tier"] or "free"
+    if subscription_expires and subscription_expires <= datetime.now(timezone.utc):
+        effective_subscription_tier = "free"
+        with db_cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE users
+                SET subscription_tier = 'free', updated_at = ?
+                WHERE id = ?
+                """,
+                (utcnow_iso(), row["uid"]),
+            )
+
     return {
         "id": row["uid"],
         "username": row["username"],
         "full_name": row["full_name"],
         "referral_code": row["referral_code"],
-        "subscription_tier": row["subscription_tier"] or "free",
+        "subscription_tier": effective_subscription_tier,
         "subscription_expires": row["subscription_expires"],
     }

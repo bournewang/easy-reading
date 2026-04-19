@@ -4,6 +4,8 @@ export interface StorageService {
   get<T>(key: string, defaultValue: T): Promise<T>;
   set<T>(key: string, value: T): Promise<void>;
   remove(key: string): Promise<void>;
+  addToList?<T>(key: string, value: T): Promise<void>;
+  removeFromList?<T>(key: string, value: T): Promise<void>;
 }
 
 export interface DictionaryService {

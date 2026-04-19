@@ -102,28 +102,40 @@ const Reader: React.FC<ReaderProps> = ({ article, containedScroll = false, conte
   return (
     <>
       <style>{spinAnimation}</style>
-      <div className={`flex flex-col md:flex-row gap-1 relative w-full ${containedScroll ? 'h-full min-h-0 overflow-hidden' : 'min-h-screen'}`}>
-        <div className={`flex-1 p-0 ${containedScroll ? 'min-h-0 overflow-hidden' : 'sm:p-2'}`}>
-          <div className={`flex flex-col ${containedScroll ? 'h-full min-h-0 overflow-hidden' : ''}`}>
+      <div className={`relative flex w-full flex-col gap-5 xl:flex-row ${containedScroll ? 'h-full min-h-0 overflow-hidden' : ''}`}>
+        <div className={`flex-1 ${containedScroll ? 'min-h-0 overflow-hidden' : ''}`}>
+          <div className={`overflow-hidden rounded-[32px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.10)] ${containedScroll ? 'flex h-full min-h-0 flex-col overflow-hidden' : ''}`}>
             <div className="shrink-0">
-              <h1 className={`text-center font-bold px-2 ${containedScroll ? 'mb-1 text-xl sm:text-2xl' : 'mb-2 text-2xl'}`}>
-                <InteractiveText
-                  text={article.title}
-                  isMarkdown={false}
-                  id="title"
-                  onWordClick={handleWordClick}
-                  isVisible={true}
-                />
-              </h1>
-              <div className={`flex flex-col sm:flex-row sm:items-center justify-center gap-4 border-b border-gray-200 dark:border-gray-700 ${containedScroll ? 'mb-1 py-1.5' : 'mb-2 py-2'}`}>
-                <div className="flex items-center justify-center gap-4">
-                  <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                    <BookIcon className="w-4 h-4" />
-                    <span>{article.word_count.toLocaleString()} words</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                    <ClockIcon className="w-4 h-4" />
-                    <span>{article.reading_time} min read</span>
+              <div className="border-b border-black/6 bg-[#fbfbfd] px-5 py-6 md:px-8">
+                <div className="mx-auto max-w-[980px]">
+                  <p className="mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">
+                    Reading View
+                  </p>
+                  <h1 className={`px-2 text-center font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f] ${containedScroll ? 'text-[28px] sm:text-[34px]' : 'text-[34px] md:text-[40px]'}`}>
+                    <InteractiveText
+                      text={article.title}
+                      isMarkdown={false}
+                      id="title"
+                      onWordClick={handleWordClick}
+                      isVisible={true}
+                    />
+                  </h1>
+                  <div className="mt-5 flex flex-col justify-center gap-3 border-t border-black/6 pt-4 sm:flex-row sm:items-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[14px] tracking-[-0.22px] text-black/64 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                        <BookIcon className="h-4 w-4" />
+                        <span>{article.word_count.toLocaleString()} words</span>
+                      </div>
+                      <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[14px] tracking-[-0.22px] text-black/64 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>{article.reading_time} min read</span>
+                      </div>
+                    </div>
+                    {article.site_name ? (
+                      <div className="text-center text-[14px] tracking-[-0.22px] text-black/48">
+                        {article.site_name}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -131,43 +143,47 @@ const Reader: React.FC<ReaderProps> = ({ article, containedScroll = false, conte
             {!showChat ? (
               <div
                 ref={contentRef}
-                className={`space-y-4 p-1 ${containedScroll ? 'min-h-0 flex-1 overflow-y-auto pr-2' : 'sm:p-2'}`}
+                className={`${containedScroll ? 'min-h-0 flex-1 overflow-y-auto' : ''}`}
               >
-                {Object.entries(article.paragraphs || {}).map(([id, paragraph]) => (
-                  <div
-                    key={id}
-                    ref={el => setParagraphRef(el, id)}
-                    data-paragraph-id={id}
-                    className="group relative bg-white p-1 hover:shadow-md transition-shadow"
-                  >
-                    {paragraph.type === 'text' ? (
-                      <InteractiveText
-                        text={paragraph.content}
-                        isMarkdown={false}
-                        id={id}
-                        onWordClick={handleWordClick}
-                        isVisible={containedScroll ? visibleParagraphs[id] ?? true : visibleParagraphs[id]}
-                      />
-                    ) : paragraph.type === 'image' ? (
-                      <figure className="text-center">
-                        <img
-                          src={`${process.env.NEXT_PUBLIC_IMAGE_LOADER_URL}?url=${paragraph.content}`}
-                          alt={paragraph.description || ''}
-                          className="w-full h-auto rounded-lg"
-                          loading="lazy"
-                        />
-                        {paragraph.description && (
-                          <figcaption className="mt-2 text-sm text-gray-600 italic">
-                            {paragraph.description}
-                          </figcaption>
-                        )}
-                      </figure>
-                    ) : null}
-                  </div>
-                ))}
+                <div className="mx-auto max-w-[980px] space-y-6 px-5 py-8 md:px-8 md:py-10">
+                  {Object.entries(article.paragraphs || {}).map(([id, paragraph]) => (
+                    <div
+                      key={id}
+                      ref={el => setParagraphRef(el, id)}
+                      data-paragraph-id={id}
+                      className="group relative px-1 py-1 md:px-0 md:py-1"
+                    >
+                      {paragraph.type === 'text' ? (
+                        <div className="text-[17px] leading-[1.8] tracking-[-0.37px] text-[#1d1d1f]">
+                          <InteractiveText
+                            text={paragraph.content}
+                            isMarkdown={false}
+                            id={id}
+                            onWordClick={handleWordClick}
+                            isVisible={containedScroll ? visibleParagraphs[id] ?? true : visibleParagraphs[id]}
+                          />
+                        </div>
+                      ) : paragraph.type === 'image' ? (
+                        <figure className="text-center">
+                          <img
+                            src={`${process.env.NEXT_PUBLIC_IMAGE_LOADER_URL}?url=${paragraph.content}`}
+                            alt={paragraph.description || ''}
+                            className="mx-auto h-auto max-w-full rounded-[24px]"
+                            loading="lazy"
+                          />
+                          {paragraph.description && (
+                            <figcaption className="mt-3 text-[14px] italic tracking-[-0.22px] text-black/56">
+                              {paragraph.description}
+                            </figcaption>
+                          )}
+                        </figure>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className={`${containedScroll ? 'min-h-0 flex-1 overflow-y-auto' : 'flex-1'}`}>
+              <div className={`${containedScroll ? 'min-h-0 flex-1 overflow-y-auto' : 'flex-1'} px-5 py-6 md:px-8`}>
                 <ChatWindow
                   article={article}
                   onWordClick={handleWordClick}
@@ -177,9 +193,9 @@ const Reader: React.FC<ReaderProps> = ({ article, containedScroll = false, conte
             )}
           </div>
         </div>
-        <div className={`${containedScroll ? 'hidden md:block md:w-2/5 lg:w-1/3 h-full overflow-y-auto border-l border-slate-200 bg-slate-50' : `fixed md:sticky bottom-0 md:top-0 left-0 right-0 md:w-2/5 lg:w-1/3 h-[200px] md:h-screen bg-white md:bg-slate-50 overflow-y-auto border-t border-slate-200 md:border-l md:border-t-0 shadow-lg md:shadow-none`} z-2 ${!selectedWord ? 'hidden md:block' : ''}`}>
+        <div className={`${containedScroll ? 'hidden h-full overflow-y-auto border-l border-black/6 bg-white md:block md:w-2/5 lg:w-1/3' : 'fixed bottom-0 left-0 right-0 z-10 h-[220px] overflow-y-auto border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:static md:h-auto md:w-full md:shadow-none xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:w-[360px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]'} ${!selectedWord ? 'hidden md:block' : ''}`}>
           <Dictionary selectedWord={selectedWord} />
-          {!selectedWord && <div className='m-2'><Tips /></div>}
+          {!selectedWord && <div className="m-3 rounded-[24px] bg-[#f5f5f7]"><Tips /></div>}
         </div>
       </div>
     </>

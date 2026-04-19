@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useEffect, Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useArticles } from '@/hooks/useArticles';
-import type { FeaturedArticle } from '@/data/articles';
+import type { NewsArticle } from '@/types/news';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { isSourceRead } from '@/utils/reading-history';
 
@@ -16,13 +16,17 @@ const backgroundColors = {
   earth: '#F59E0B'
 }
 
-function ArticleCard({ article, onClick, categoryLabel }: { article: FeaturedArticle; onClick: () => void; categoryLabel: string }) {
-  const [isRead, setIsRead] = useState(false);
-
-  useEffect(() => {
-    setIsRead(isSourceRead(article.url));
-  }, [article.url]);
-
+function ArticleCard({
+  article,
+  onClick,
+  categoryLabel,
+  isRead,
+}: {
+  article: NewsArticle;
+  onClick: () => void;
+  categoryLabel: string;
+  isRead: boolean;
+}) {
   return (
     <div 
       className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer p-4 relative"
@@ -49,13 +53,17 @@ function ArticleCard({ article, onClick, categoryLabel }: { article: FeaturedArt
   );
 }
 
-function ArticleCardWithImage({ article, onClick, categoryLabel }: { article: FeaturedArticle; onClick: () => void; categoryLabel: string }) {
-  const [isRead, setIsRead] = useState(false);
-
-  useEffect(() => {
-    setIsRead(isSourceRead(article.url));
-  }, [article.url]);
-
+function ArticleCardWithImage({
+  article,
+  onClick,
+  categoryLabel,
+  isRead,
+}: {
+  article: NewsArticle;
+  onClick: () => void;
+  categoryLabel: string;
+  isRead: boolean;
+}) {
   return (
     <div 
       className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative"
@@ -88,42 +96,86 @@ function ArticleCardWithImage({ article, onClick, categoryLabel }: { article: Fe
 }
 
 function UrlReaderContent() {
-  const { articles: featuredArticles, loading: articlesLoading, error: articlesError } = useArticles();
   const { t } = useLocaleContext();
   const searchParams = useSearchParams();
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [readArticles, setReadArticles] = useState<Set<string>>(new Set());
   const router = useRouter();
   const news = (key: string) => t(`website.newsPage.${key}`);
+  const selectedCategory = searchParams.get('category') || 'all';
+  const searchQuery = searchParams.get('search') || '';
+  const currentPage = Math.max(1, Number(searchParams.get('page') || '1') || 1);
+  const {
+    articles: featuredArticles,
+    metadata,
+    loading: articlesLoading,
+    error: articlesError,
+  } = useArticles({
+    category: selectedCategory,
+    search: searchQuery,
+    page: currentPage,
+    pageSize: 18,
+  });
+
   const getCategoryLabel = (category: string) => {
     const normalized = category.charAt(0).toUpperCase() + category.slice(1);
     return news(`categories${normalized}`);
   };
 
-  // Extract unique categories from articles
-  const categories = ['all', ...new Set(featuredArticles.map(article => article.category))];
+  const categories = ['all', ...metadata.categories];
+
+  const updateSearchParams = (updates: Record<string, string | null>) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value) {
+        nextParams.delete(key);
+        return;
+      }
+      nextParams.set(key, value);
+    });
+
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `/news?${nextQuery}` : '/news');
+  };
 
   const handleArticleClick = async (articleUrl: string) => {
+    const selectedArticle = featuredArticles.find((article) => article.url === articleUrl);
+    if (selectedArticle?.id) {
+      router.push(`/reader?newsId=${encodeURIComponent(selectedArticle.id)}`);
+      return;
+    }
     router.push(`/reader?url=${encodeURIComponent(articleUrl)}`);
   };
 
-  // Filter articles based on category and search query
-  const getFilteredAndSplitArticles = () => {
-    let filtered = selectedCategory === 'all' 
-      ? featuredArticles 
-      : featuredArticles.filter(article => article.category === selectedCategory);
+  useEffect(() => {
+    let cancelled = false;
 
-    // Apply search filter
-    const searchQuery = searchParams.get('search') || '';
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(article => 
-        article.title.toLowerCase().includes(query) || 
-        article.description.toLowerCase().includes(query)
+    const loadReadArticles = async () => {
+      const nextReadArticles = new Set<string>();
+
+      await Promise.all(
+        featuredArticles.map(async (article) => {
+          if (await isSourceRead(article.url)) {
+            nextReadArticles.add(article.url);
+          }
+        }),
       );
-    }
 
-    const withImages = filtered.filter(article => article.imageUrl);
-    const withoutImages = filtered.filter(article => !article.imageUrl);
+      if (!cancelled) {
+        setReadArticles(nextReadArticles);
+      }
+    };
+
+    void loadReadArticles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [featuredArticles]);
+
+  const getFilteredAndSplitArticles = () => {
+    const withImages = featuredArticles.filter((article) => article.imageUrl);
+    const withoutImages = featuredArticles.filter((article) => !article.imageUrl);
 
     return { featuredWithImages: withImages, remainingArticles: withoutImages };
   };
@@ -131,9 +183,29 @@ function UrlReaderContent() {
   const { featuredWithImages, remainingArticles } = getFilteredAndSplitArticles();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-center mb-8">{news('title')}</h1>
+    <div className="min-h-screen bg-[#f5f5f7]">
+      <div className="mx-auto max-w-[1440px] px-4 pb-10 pt-6 md:px-6 md:pb-14 md:pt-10">
+        <section className="mb-8 rounded-[36px] bg-[#1d1d1f] px-6 py-10 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-10 md:py-14">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_360px] lg:items-end">
+            <div className="max-w-3xl">
+              <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#2997ff]">News</p>
+              <h1 className="text-[40px] font-semibold leading-[1.07] tracking-[-0.04em] md:text-[56px]">{news('title')}</h1>
+              <p className="mt-4 text-[17px] leading-[1.47] tracking-[-0.37px] text-white/72">
+                Read current English articles in a cleaner flow, then open any story with built-in dictionary, translation, and word saving support.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Articles</p>
+                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{metadata.total}</p>
+              </div>
+              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Read</p>
+                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{readArticles.size}</p>
+              </div>
+            </div>
+          </div>
+        </section>
         {articlesLoading ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -144,16 +216,16 @@ function UrlReaderContent() {
           </div>
         ) : (
           <>
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[28px] bg-white px-5 py-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
               <div className="flex gap-2 flex-wrap">
                 {categories.map(category => (
                   <button
                     key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-full capitalize text-sm ${
+                    onClick={() => updateSearchParams({ category: category === 'all' ? null : category, page: null })}
+                    className={`rounded-full px-4 py-2 capitalize text-[14px] font-medium tracking-[-0.22px] ${
                       selectedCategory === category
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-100'
+                        ? 'bg-[#0071e3] text-white'
+                        : 'bg-[#f5f5f7] text-black/64 hover:bg-black/5'
                     }`}
                   >
                     {category === 'all' ? news('categoriesAll') : getCategoryLabel(category)}
@@ -165,13 +237,11 @@ function UrlReaderContent() {
                 <input
                   type="text"
                   placeholder={news('searchPlaceholder')}
-                  value={searchParams.get('search') || ''}
+                  value={searchQuery}
                   onChange={(e) => {
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('search', e.target.value);
-                    window.history.pushState({}, '', newUrl.toString());
+                    updateSearchParams({ search: e.target.value || null, page: null });
                   }}
-                  className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-[18px] border border-black/10 bg-[#fafafc] px-4 py-3 text-[14px] tracking-[-0.22px] text-[#1d1d1f] focus:border-[#0071e3] focus:outline-none focus:ring-2 focus:ring-[#0071e3]"
                 />
                 <svg
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
@@ -184,14 +254,24 @@ function UrlReaderContent() {
               </div>
             </div>
 
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 text-[14px] tracking-[-0.22px] text-black/56">
+              <span>
+                {metadata.total} article{metadata.total === 1 ? '' : 's'}
+              </span>
+              {metadata.lastSyncedAt ? (
+                <span>Updated {new Date(metadata.lastSyncedAt).toLocaleString()}</span>
+              ) : null}
+            </div>
+
             {featuredWithImages.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              <div className="mb-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {featuredWithImages.map(article => (
                   <ArticleCardWithImage
                     key={article.url}
                     article={article}
                     categoryLabel={getCategoryLabel(article.category)}
                     onClick={() => handleArticleClick(article.url)}
+                    isRead={readArticles.has(article.url)}
                   />
                 ))}
               </div>
@@ -199,19 +279,48 @@ function UrlReaderContent() {
 
             {remainingArticles.length > 0 && (
               <>
-                <h2 className="text-2xl font-semibold mb-4">{news('moreArticles')}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <h2 className="mb-4 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">{news('moreArticles')}</h2>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {remainingArticles.map(article => (
                     <ArticleCard
                       key={article.url}
                       article={article}
                       categoryLabel={getCategoryLabel(article.category)}
                       onClick={() => handleArticleClick(article.url)}
+                      isRead={readArticles.has(article.url)}
                     />
                   ))}
                 </div>
               </>
             )}
+
+            {metadata.totalPages > 1 ? (
+              <div className="mt-10 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => updateSearchParams({ page: currentPage > 1 ? String(currentPage - 1) : null })}
+                  disabled={currentPage <= 1}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-slate-600">
+                  Page {metadata.page} / {metadata.totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateSearchParams({
+                      page: currentPage < metadata.totalPages ? String(currentPage + 1) : String(metadata.totalPages),
+                    })
+                  }
+                  disabled={currentPage >= metadata.totalPages}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            ) : null}
           </>
         )}
       </div>

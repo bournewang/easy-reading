@@ -17,15 +17,21 @@ from .auth import (
 from .config import settings
 from .db import init_db, parse_dt
 from .models import (
+    AnonymousLimitsResponse,
+    AnonymousUsageResponse,
     AuthResponse,
     DictionaryEntryModel,
     LoginRequest,
+    NewsArticleContentResponse,
+    NewsListResponse,
     PaymentCreateRequest,
     PaymentNotifyRequest,
     PaymentQueryResponse,
     PricingQuoteRequest,
     PricingQuoteResponse,
     PricingTierResponse,
+    ReadingHistoryItemModel,
+    ReadingHistorySyncRequest,
     RegisterRequest,
     ReferralSummaryResponse,
     SubscriptionResponse,
@@ -33,14 +39,40 @@ from .models import (
     TranslateRequest,
     TranslateResponse,
     UserPayload,
+    WordbookEntryModel,
+    WordbookReplaceRequest,
+    WordbookSyncRequest,
+)
+from .services.anonymous_usage import (
+    ANONYMOUS_FEATURE_TRANSLATION,
+    ANONYMOUS_FEATURE_TTS,
+    anonymous_usage_service,
 )
 from .services.dictionary import dictionary_service
 from .services.dictionary import DictionaryFetchError
+from .services.news import NewsSyncError, news_service
 from .services.payment import payment_service
 from .services.translation import TranslationError, translation_service
+from .services.user_data import user_data_service
+from .services.user_usage import (
+    USER_FEATURE_TRANSLATION,
+    USER_FEATURE_TTS,
+    user_usage_service,
+)
 
 
 app = FastAPI(title="Easy Reading Python Backend", version="0.1.0")
+
+
+def get_anonymous_id(request: Request) -> str | None:
+    anonymous_id = request.headers.get("x-anonymous-id", "").strip()
+    if anonymous_id:
+        return anonymous_id[:191]
+
+    forwarded_for = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    client_host = request.client.host if request.client else ""
+    fallback = forwarded_for or client_host
+    return fallback[:191] if fallback else None
 
 
 def apply_cors_headers(request: Request, response: Response) -> None:
@@ -78,13 +110,22 @@ def on_startup() -> None:
 
 
 def serialize_user(user: dict) -> UserPayload:
+    subscription_expires = parse_dt(user.get("subscription_expires"))
+    effective_tier = user.get("subscription_tier") or "free"
+    # Defensive check: ensure timezone-aware comparison
+    if subscription_expires:
+        if subscription_expires.tzinfo is None:
+            subscription_expires = subscription_expires.replace(tzinfo=timezone.utc)
+        if subscription_expires <= datetime.now(timezone.utc):
+            effective_tier = "free"
+
     return UserPayload(
         id=user["id"],
         username=user["username"],
         fullName=user.get("full_name"),
         referralCode=user.get("referral_code"),
-        subscriptionTier=user.get("subscription_tier") or "free",
-        subscriptionExpires=parse_dt(user.get("subscription_expires")),
+        subscriptionTier=effective_tier,
+        subscriptionExpires=subscription_expires,
     )
 
 
@@ -113,6 +154,11 @@ def health() -> dict:
     return {"ok": True}
 
 
+@app.get("/api/public/anonymous-limits", response_model=AnonymousLimitsResponse)
+def anonymous_limits() -> AnonymousLimitsResponse:
+    return AnonymousLimitsResponse(**anonymous_usage_service.get_limits())
+
+
 @app.get("/api/pricing", response_model=list[PricingTierResponse])
 def pricing_catalog() -> list[PricingTierResponse]:
     return [PricingTierResponse(**tier) for tier in payment_service.get_pricing_catalog()]
@@ -132,14 +178,31 @@ def pricing_quote(payload: PricingQuoteRequest, user: dict = Depends(require_use
 @app.post("/api/translate")
 def translate(payload: TranslateRequest, request: Request, debug: bool = Query(default=False)) -> dict:
     try:
+        requested_amount = request.headers.get("x-usage-amount", "1").strip()
+        try:
+            usage_amount = max(1, min(100, int(requested_amount or "1")))
+        except ValueError:
+            usage_amount = 1
+
         user = get_current_user(request)
         if user:
             entitlements = payment_service.get_entitlements(user["id"])
-            if not entitlements["canTranslateSentences"]:
+            if not entitlements["hasUnlimitedTranslation"]:
+                try:
+                    user_usage_service.consume(user["id"], USER_FEATURE_TRANSLATION, amount=usage_amount)
+                except ValueError as exc:
+                    raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
+        else:
+            anonymous_id = get_anonymous_id(request)
+            if not anonymous_id:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Sentence translation is available on paid plans.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Anonymous translation quota could not be identified.",
                 )
+            try:
+                anonymous_usage_service.consume(anonymous_id, ANONYMOUS_FEATURE_TRANSLATION, amount=usage_amount)
+            except ValueError as exc:
+                raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
 
         if debug:
             translated, debug_info = translation_service.translate(
@@ -165,9 +228,98 @@ def translate(payload: TranslateRequest, request: Request, debug: bool = Query(d
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail) from exc
 
 
+@app.post("/api/usage/tts", response_model=AnonymousUsageResponse)
+def consume_tts_usage(request: Request, amount: int = Query(default=1, ge=1, le=10)) -> AnonymousUsageResponse:
+    user = get_current_user(request)
+    if user:
+        entitlements = payment_service.get_entitlements(user["id"])
+        if entitlements["hasUnlimitedTextToSpeech"]:
+            return AnonymousUsageResponse(
+                feature=USER_FEATURE_TTS,
+                dailyLimit=0,
+                usedCount=0,
+                remainingCount=0,
+                usageDate=user_usage_service.get_usage_date(),
+            )
+
+        try:
+            usage = user_usage_service.consume(user["id"], USER_FEATURE_TTS, amount=amount)
+            return AnonymousUsageResponse(**usage)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
+
+    anonymous_id = get_anonymous_id(request)
+    if not anonymous_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Anonymous TTS quota could not be identified.",
+        )
+
+    try:
+        usage = anonymous_usage_service.consume(anonymous_id, ANONYMOUS_FEATURE_TTS, amount=amount)
+        return AnonymousUsageResponse(**usage)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
+
+
+@app.post("/api/anonymous-usage/tts", response_model=AnonymousUsageResponse)
+def consume_anonymous_tts_usage(request: Request, amount: int = Query(default=1, ge=1, le=10)) -> AnonymousUsageResponse:
+    return consume_tts_usage(request, amount)
+
+
 @app.get("/api/entries")
 def list_entries() -> dict:
     return {"items": dictionary_service.list_words()}
+
+
+@app.get("/api/news", response_model=NewsListResponse)
+def list_news(
+    category: str | None = Query(default=None),
+    source: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+) -> NewsListResponse:
+    try:
+        payload = news_service.list_news(
+            category=category,
+            source=source,
+            search=search,
+            page=page,
+            page_size=pageSize,
+        )
+        response_payload = dict(payload)
+        response_payload["lastSyncedAt"] = parse_dt(payload.get("lastSyncedAt"))
+        return NewsListResponse(**response_payload)
+    except NewsSyncError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@app.get("/api/news/{article_id}", response_model=NewsArticleContentResponse)
+def get_news_article(article_id: str) -> NewsArticleContentResponse:
+    try:
+        payload = news_service.get_news_article(article_id)
+    except NewsSyncError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="News article not found")
+
+    response_payload = dict(payload)
+    response_payload["syncedAt"] = parse_dt(payload.get("syncedAt"))
+    return NewsArticleContentResponse(**response_payload)
+
+
+@app.post("/api/news/sync")
+def sync_news() -> dict:
+    try:
+        synced_at = news_service.sync_if_stale(force=True)
+        return {
+            "success": True,
+            "syncedAt": synced_at,
+        }
+    except NewsSyncError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 
 @app.get("/api/entries/{word}", response_model=DictionaryEntryModel)
@@ -239,6 +391,72 @@ def me(user: dict | None = Depends(get_current_user)) -> dict:
     return {"user": serialize_user(user).model_dump()}
 
 
+@app.get("/api/history", response_model=list[ReadingHistoryItemModel])
+def list_reading_history(user: dict = Depends(require_user)) -> list[ReadingHistoryItemModel]:
+    items = user_data_service.list_history(user["id"])
+    return [ReadingHistoryItemModel(**item) for item in items]
+
+
+@app.post("/api/history", response_model=ReadingHistoryItemModel)
+def save_reading_history_item(
+    payload: ReadingHistoryItemModel,
+    user: dict = Depends(require_user),
+) -> ReadingHistoryItemModel:
+    item = user_data_service.upsert_history_item(user["id"], payload.model_dump())
+    return ReadingHistoryItemModel(**item)
+
+
+@app.post("/api/history/sync", response_model=list[ReadingHistoryItemModel])
+def sync_reading_history(
+    payload: ReadingHistorySyncRequest,
+    user: dict = Depends(require_user),
+) -> list[ReadingHistoryItemModel]:
+    items = user_data_service.sync_history(
+        user["id"],
+        [item.model_dump() for item in payload.items],
+    )
+    return [ReadingHistoryItemModel(**item) for item in items]
+
+
+@app.get("/api/wordbook", response_model=list[WordbookEntryModel])
+def list_wordbook(user: dict = Depends(require_user)) -> list[WordbookEntryModel]:
+    items = user_data_service.list_wordbook(user["id"])
+    return [WordbookEntryModel(**item) for item in items]
+
+
+@app.put("/api/wordbook", response_model=list[WordbookEntryModel])
+def replace_wordbook(
+    payload: WordbookReplaceRequest,
+    user: dict = Depends(require_user),
+) -> list[WordbookEntryModel]:
+    items = user_data_service.replace_wordbook(user["id"], payload.words)
+    return [WordbookEntryModel(**item) for item in items]
+
+
+@app.post("/api/wordbook/sync", response_model=list[WordbookEntryModel])
+def sync_wordbook(
+    payload: WordbookSyncRequest,
+    user: dict = Depends(require_user),
+) -> list[WordbookEntryModel]:
+    items = user_data_service.sync_wordbook(user["id"], payload.words)
+    return [WordbookEntryModel(**item) for item in items]
+
+
+@app.post("/api/wordbook/{word}", response_model=WordbookEntryModel)
+def add_wordbook_word(word: str, user: dict = Depends(require_user)) -> WordbookEntryModel:
+    try:
+        item = user_data_service.add_word(user["id"], word)
+        return WordbookEntryModel(**item)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.delete("/api/wordbook/{word}")
+def delete_wordbook_word(word: str, user: dict = Depends(require_user)) -> dict:
+    user_data_service.remove_word(user["id"], word)
+    return {"success": True}
+
+
 @app.get("/api/subscription", response_model=SubscriptionResponse)
 def subscription(user: dict = Depends(require_user)) -> SubscriptionResponse:
     return SubscriptionResponse(**payment_service.get_subscription_summary(user["id"]))
@@ -287,6 +505,7 @@ def create_wechat_order(payload: PaymentCreateRequest, user: dict = Depends(requ
         )
         return PaymentQueryResponse(
             orderId=order["id"],
+            orderNo=order["order_no"],
             amount=order["amount"],
             originalAmount=order.get("original_amount"),
             saleAmount=order.get("sale_amount"),
@@ -319,6 +538,7 @@ def create_alipay_order(payload: PaymentCreateRequest, user: dict = Depends(requ
         )
         return PaymentQueryResponse(
             orderId=order["id"],
+            orderNo=order["order_no"],
             amount=order["amount"],
             originalAmount=order.get("original_amount"),
             saleAmount=order.get("sale_amount"),
@@ -337,8 +557,15 @@ def create_alipay_order(payload: PaymentCreateRequest, user: dict = Depends(requ
 
 
 @app.get("/api/payment/query-order", response_model=PaymentQueryResponse)
-def query_order(orderId: str, user: dict = Depends(require_user)) -> PaymentQueryResponse:
-    order = payment_service.get_user_order(orderId, user["id"])
+def query_order(orderNo: str | None = None, orderId: int | None = None, user: dict = Depends(require_user)) -> PaymentQueryResponse:
+    if orderNo:
+        order = payment_service.get_user_order(orderNo, user["id"])
+    elif orderId is not None:
+        order = payment_service.get_order(orderId)
+        if order and order["user_id"] != user["id"]:
+            order = None
+    else:
+        raise HTTPException(status_code=400, detail="orderNo is required")
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     if order["payment_method"] == "alipay":
@@ -353,6 +580,7 @@ def query_order(orderId: str, user: dict = Depends(require_user)) -> PaymentQuer
 
     return PaymentQueryResponse(
         orderId=order["id"],
+        orderNo=order["order_no"],
         amount=order["amount"],
         originalAmount=order.get("original_amount"),
         saleAmount=order.get("sale_amount"),
@@ -371,10 +599,14 @@ def query_order(orderId: str, user: dict = Depends(require_user)) -> PaymentQuer
 
 @app.post("/api/payment/wechat/notify")
 def wechat_notify(payload: PaymentNotifyRequest) -> dict:
-    if not payment_service.verify_signature(payload.signature, payload.orderId, payload.transactionId or ""):
+    order_ref = payload.orderNo if payload.orderNo is not None else payload.orderId
+    if order_ref is None:
+        raise HTTPException(status_code=400, detail="orderNo is required")
+    signature_ref = payload.orderNo or str(payload.orderId)
+    if not payment_service.verify_signature(payload.signature, signature_ref, payload.transactionId or ""):
         raise HTTPException(status_code=403, detail="Invalid payment signature")
-    order = payment_service.mark_order_paid(payload.orderId, payload.transactionId)
-    return {"success": True, "orderId": order["id"], "status": order["status"]}
+    order = payment_service.mark_order_paid(order_ref, payload.transactionId)
+    return {"success": True, "orderId": order["id"], "orderNo": order["order_no"], "status": order["status"]}
 
 
 @app.post("/api/payment/alipay/notify")
@@ -390,9 +622,9 @@ async def alipay_notify(request: Request) -> Response:
     return Response(content="success", media_type="text/plain", status_code=200)
 
 
-@app.get("/mock-pay/alipay/{order_id}", response_class=HTMLResponse)
-def mock_alipay_page(order_id: str, token: str = Query(default="")) -> HTMLResponse:
-    order = payment_service.get_order(order_id)
+@app.get("/mock-pay/alipay/{order_no}", response_class=HTMLResponse)
+def mock_alipay_page(order_no: str, token: str = Query(default="")) -> HTMLResponse:
+    order = payment_service.get_order_by_no(order_no)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -404,8 +636,8 @@ def mock_alipay_page(order_id: str, token: str = Query(default="")) -> HTMLRespo
             f"""
             <html><body style="font-family: sans-serif; padding: 32px;">
                 <h1>Payment already completed</h1>
-                <p>Order {order['id']} has already been paid.</p>
-                <p><a href="{payment_service.append_query_params(order['payment_details'].get('returnUrl'), {'orderId': order['id'], 'status': order['status']}) or '#'}">Return to Easy Reading</a></p>
+                <p>Order {order['order_no']} has already been paid.</p>
+                <p><a href="{payment_service.append_query_params(order['payment_details'].get('returnUrl'), {'orderNo': order['order_no'], 'status': order['status']}) or '#'}">Return to Easy Reading</a></p>
             </body></html>
             """
         )
@@ -418,20 +650,20 @@ def mock_alipay_page(order_id: str, token: str = Query(default="")) -> HTMLRespo
           <body style="font-family: sans-serif; padding: 32px; background: #f8fafc; color: #0f172a;">
             <div style="max-width: 520px; margin: 0 auto; background: white; border-radius: 24px; padding: 32px; box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);">
               <h1 style="margin-top: 0;">Mock Alipay Checkout</h1>
-              <p>Order: <strong>{order['id']}</strong></p>
+              <p>Order: <strong>{order['order_no']}</strong></p>
               <p>Plan: <strong>{order['tier']}</strong></p>
               <p>Duration: <strong>{order['duration']} month(s)</strong></p>
               <p>Billing mode: <strong>{billing_mode}</strong></p>
               <p>Amount: <strong>¥{amount}</strong></p>
 
-              <form method="post" action="{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}/complete" style="margin-top: 24px;">
+              <form method="post" action="{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['order_no']}/complete" style="margin-top: 24px;">
                 <input type="hidden" name="token" value="{token}" />
                 <button type="submit" style="width: 100%; border: 0; border-radius: 999px; padding: 14px 18px; background: #1677ff; color: white; font-size: 16px; font-weight: 600; cursor: pointer;">
                   Complete Mock Payment
                 </button>
               </form>
 
-              <form method="post" action="{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}/cancel" style="margin-top: 12px;">
+              <form method="post" action="{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['order_no']}/cancel" style="margin-top: 12px;">
                 <input type="hidden" name="token" value="{token}" />
                 <button type="submit" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 999px; padding: 14px 18px; background: white; color: #334155; font-size: 16px; font-weight: 600; cursor: pointer;">
                   Cancel
@@ -444,29 +676,29 @@ def mock_alipay_page(order_id: str, token: str = Query(default="")) -> HTMLRespo
     )
 
 
-@app.post("/mock-pay/alipay/{order_id}/complete")
-def mock_alipay_complete(order_id: str, token: str = Form(default="")) -> RedirectResponse:
-    order = payment_service.get_order(order_id)
+@app.post("/mock-pay/alipay/{order_no}/complete")
+def mock_alipay_complete(order_no: str, token: str = Form(default="")) -> RedirectResponse:
+    order = payment_service.get_order_by_no(order_no)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     if order["payment_details"].get("confirmationToken") != token:
         raise HTTPException(status_code=403, detail="Invalid payment token")
 
-    transaction_id = f"ALI{int(datetime.now().timestamp())}{order_id[-6:]}"
-    paid_order = payment_service.mark_order_paid(order_id, transaction_id)
+    transaction_id = f"ALI{int(datetime.now().timestamp())}{order_no[-6:]}"
+    paid_order = payment_service.mark_order_paid(order_no, transaction_id)
     redirect_url = payment_service.append_query_params(
         paid_order["payment_details"].get("returnUrl"),
         {
-            "orderId": paid_order["id"],
+            "orderNo": paid_order["order_no"],
             "status": paid_order["status"],
         },
-    ) or f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{paid_order['id']}?token={token}"
+    ) or f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{paid_order['order_no']}?token={token}"
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
-@app.post("/mock-pay/alipay/{order_id}/cancel")
-def mock_alipay_cancel(order_id: str, token: str = Form(default="")) -> RedirectResponse:
-    order = payment_service.get_order(order_id)
+@app.post("/mock-pay/alipay/{order_no}/cancel")
+def mock_alipay_cancel(order_no: str, token: str = Form(default="")) -> RedirectResponse:
+    order = payment_service.get_order_by_no(order_no)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     if order["payment_details"].get("confirmationToken") != token:
@@ -475,8 +707,8 @@ def mock_alipay_cancel(order_id: str, token: str = Form(default="")) -> Redirect
     redirect_url = payment_service.append_query_params(
         order["payment_details"].get("cancelUrl") or order["payment_details"].get("returnUrl"),
         {
-            "orderId": order["id"],
+            "orderNo": order["order_no"],
             "status": "cancelled",
         },
-    ) or f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['id']}?token={token}"
+    ) or f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['order_no']}?token={token}"
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)

@@ -23,7 +23,6 @@ export default function WeChatPayQR({
   onPaymentSuccess,
   onPaymentFailure,
 }: WeChatPayQRProps) {
-  const [orderId, setOrderId] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('initial');
   const [error, setError] = useState<string | null>(null);
@@ -42,8 +41,6 @@ export default function WeChatPayQR({
           cancelUrl,
         });
         
-        setOrderId(response.orderId);
-        
         // Generate QR code URL from the code_url
         if (response.codeUrl) {
           setQrCodeUrl(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(response.codeUrl)}`);
@@ -52,7 +49,7 @@ export default function WeChatPayQR({
         setStatus('ready');
         
         // Start polling for payment status
-        pollPaymentStatus(response.orderId);
+        pollPaymentStatus(response.orderNo);
       } catch (error) {
         console.error('Failed to initialize payment:', error);
         setStatus('error');
@@ -65,11 +62,11 @@ export default function WeChatPayQR({
   }, [tier, duration]);
 
   // Poll for payment status
-  const pollPaymentStatus = async (orderIdToCheck: string) => {
+  const pollPaymentStatus = async (orderNoToCheck: string) => {
     try {
       console.log('=== Polling payment status ===');
       const checkStatus = async () => {
-        const statusResponse = await queryOrderStatus(orderIdToCheck);
+        const statusResponse = await queryOrderStatus(orderNoToCheck);
         console.log('Status response: ', statusResponse);
         if (statusResponse.status === 'success') {
           console.log('Payment successful');

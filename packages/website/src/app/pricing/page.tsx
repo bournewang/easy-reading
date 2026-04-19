@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { type PricingTier, type DurationOption, formatPrice, getDefaultDurationOption, getPopularTier } from '@easy-reading/shared';
+import { Suspense, useEffect, useState } from 'react';
+import { calculateMonthlyPrice, type PricingTier, type DurationOption, formatPrice, getDefaultDurationOption, getPopularTier } from '@easy-reading/shared';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { fetchPricingCatalog } from '@/lib/api/pricing';
 
-export default function PricingPage() {
+function PricingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -89,13 +89,20 @@ export default function PricingPage() {
     }
   };
 
+  const getDisplayedDuration = (tier: PricingTier) => {
+    if (selectedTier?.id === tier.id && selectedDuration) {
+      return selectedDuration;
+    }
+    return getDefaultDurationOption(tier) ?? tier.durationOptions?.[0] ?? null;
+  };
+
   const handleProceedToCheckout = () => {
     if (selectedTier && selectedDuration && user?.id) {
       const referralCode = searchParams.get('ref');
       const nextParams = new URLSearchParams({
         tier: selectedTier.id,
         duration: String(selectedDuration.months),
-        userId: user.id,
+        userId: String(user.id),
       });
       if (referralCode) {
         nextParams.set('ref', referralCode);
@@ -152,19 +159,33 @@ export default function PricingPage() {
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-900">{content.name}</h2>
                 <p className="mt-4 text-gray-600">{content.description}</p>
-                {tier.saleMonthlyPrice && (
-                  <p className="mt-6">
-                    {tier.originalMonthlyPrice ? (
+                {(() => {
+                  const displayedDuration = getDisplayedDuration(tier);
+                  if (!displayedDuration) {
+                    return null;
+                  }
+
+                  const originalMonthlyPrice = calculateMonthlyPrice(
+                    displayedDuration.originalPrice,
+                    displayedDuration.months,
+                  );
+                  const saleMonthlyPrice = calculateMonthlyPrice(
+                    displayedDuration.salePrice,
+                    displayedDuration.months,
+                  );
+
+                  return (
+                    <p className="mt-6">
                       <span className="mr-2 text-lg text-gray-400 line-through">
-                        ¥{tier.originalMonthlyPrice.toFixed(2)}
+                        ¥{originalMonthlyPrice.toFixed(2)}
                       </span>
-                    ) : null}
-                    <span className="text-4xl font-bold text-gray-900">
-                      ¥{tier.saleMonthlyPrice.toFixed(2)}
-                    </span>
-                    <span className="text-gray-600">{pricing('perMonth')}</span>
-                  </p>
-                )}
+                      <span className="text-4xl font-bold text-gray-900">
+                        ¥{saleMonthlyPrice.toFixed(2)}
+                      </span>
+                      <span className="text-gray-600">{pricing('perMonth')}</span>
+                    </p>
+                  );
+                })()}
               </div>
 
               {tier.durationOptions && (
@@ -252,4 +273,20 @@ export default function PricingPage() {
       </div>
     </div>
   );
-} 
+}
+
+function PricingPageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-500" />
+    </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={<PricingPageFallback />}>
+      <PricingPageContent />
+    </Suspense>
+  );
+}

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import type { IELTSArticleListItem } from '@/lib/ielts-types';
 import {
   getIELTSPassageReaderUrl,
@@ -20,12 +19,44 @@ type IELTSPageClientProps = {
 const yearsFromArticles = (articles: IELTSArticleListItem[]) =>
   Array.from(new Set(articles.map((article) => article.year)));
 
+const testsFromArticles = (articles: IELTSArticleListItem[]) =>
+  Array.from(new Set(articles.map((article) => `${article.year}-${article.month}-${article.test}`)));
+
 export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
-  const router = useRouter();
   const years = useMemo(() => yearsFromArticles(articles), [articles]);
+  const totalTests = useMemo(() => testsFromArticles(articles).length, [articles]);
   const [selectedYear, setSelectedYear] = useState(years[0] || '');
   const [selectedMonth, setSelectedMonth] = useState<IELTSMonthKey | ''>('');
   const [selectedTest, setSelectedTest] = useState('');
+  const [readRoutes, setReadRoutes] = useState<Set<string>>(new Set());
+  const [resumeRoute, setResumeRoute] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadReadRoutes = async () => {
+      const nextReadRoutes = new Set<string>();
+
+      await Promise.all(
+        articles.map(async (article) => {
+          const articleRoute = getIELTSPassageReaderUrl(article.year, article.month, article.test, article.passage);
+          if (await isRouteRead(articleRoute)) {
+            nextReadRoutes.add(articleRoute);
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setReadRoutes(nextReadRoutes);
+      }
+    };
+
+    void loadReadRoutes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [articles]);
+
   useEffect(() => {
     const savedRoute = readLastIELTSTestRoute();
     if (!savedRoute) {
@@ -56,8 +87,11 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
       return;
     }
 
-    router.replace(`${parsed.pathname}${parsed.search}`);
-  }, [articles, router]);
+    setSelectedYear(year);
+    setSelectedMonth(month as IELTSMonthKey);
+    setSelectedTest(test);
+    setResumeRoute(`${parsed.pathname}${parsed.search}`);
+  }, [articles]);
 
   const availableMonths = useMemo(() => {
     if (!selectedYear) {
@@ -101,6 +135,11 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
         article.test === selectedTest,
     );
   }, [articles, selectedMonth, selectedTest, selectedYear]);
+
+  const selectedTestLabel =
+    selectedYear && selectedMonth && selectedTest
+      ? `${selectedYear} ${ieltsMonthLabels[selectedMonth] || selectedMonth} · Test ${selectedTest}`
+      : null;
 
   const handleYearChange = (year: string) => {
     if (year === selectedYear) {
@@ -148,27 +187,66 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
   }, [availableTests, selectedTest]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 rounded-3xl border border-sky-100 bg-white/90 p-8 shadow-sm">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">IELTS Reading</p>
-          <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">Browse by year, month, and test</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Choose an exam year, narrow it down to the month, then pick the test number to see the passages ready for Reader.
-          </p>
+    <div className="min-h-screen bg-[#f5f5f7]">
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+        <div className="mb-8 overflow-hidden rounded-[36px] bg-[#1d1d1f] shadow-[0_24px_70px_rgba(0,0,0,0.18)]">
+          <div className="grid gap-6 px-6 py-10 text-white sm:px-8 sm:py-12 lg:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)] lg:items-end lg:px-10">
+            <div>
+              <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#2997ff]">IELTS Reading</p>
+              <h1 className="text-[40px] font-semibold leading-[1.07] tracking-[-0.04em] md:text-[56px]">Find the right test, then pick your passage</h1>
+              <p className="mt-4 max-w-3xl text-[17px] leading-[1.47] tracking-[-0.37px] text-white/72">
+                Stay on the IELTS list page while you filter by year, month, and test. When you are ready, open a specific passage from the list below.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Years</p>
+                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{years.length}</p>
+              </div>
+              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Tests</p>
+                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{totalTests}</p>
+              </div>
+              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Read</p>
+                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{readRoutes.size}</p>
+              </div>
+            </div>
+          </div>
+
+          {(selectedTestLabel || resumeRoute) && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-white/6 px-6 py-4 sm:px-8 lg:px-10">
+              <div>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-white/56">Current Selection</p>
+                <p className="mt-1 text-[14px] font-medium tracking-[-0.22px] text-white/80">
+                  {selectedTestLabel || 'Choose a year, month, and test to start browsing.'}
+                </p>
+              </div>
+
+              {resumeRoute && (
+                <Link
+                  href={resumeRoute}
+                  className="inline-flex items-center rounded-full bg-white px-4 py-2 text-[14px] font-medium tracking-[-0.22px] text-[#1d1d1f] transition-colors hover:bg-white/90"
+                >
+                  Continue last passage
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="mb-8 grid gap-6 lg:grid-cols-3">
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 1</p>
-            <h2 className="mb-4 text-xl font-semibold text-slate-900">Choose year</h2>
-            <div className="flex flex-wrap gap-3">
+        <div className="mb-5 grid gap-4 lg:grid-cols-[0.85fr_1.3fr_0.85fr]">
+          <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 1</p>
+            <h2 className="mb-3 text-lg font-semibold text-slate-900">Choose year</h2>
+            <div className="flex flex-wrap gap-2">
               {years.map((year) => (
                 <button
                   key={year}
                   type="button"
                   onClick={() => handleYearChange(year)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
                     selectedYear === year
                       ? 'bg-sky-600 text-white'
                       : 'bg-slate-100 text-slate-700 hover:bg-sky-50 hover:text-sky-700'
@@ -180,10 +258,10 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 2</p>
-            <h2 className="mb-4 text-xl font-semibold text-slate-900">Choose month</h2>
-            <div className="flex flex-wrap gap-3">
+          <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 2</p>
+            <h2 className="mb-3 text-lg font-semibold text-slate-900">Choose month</h2>
+            <div className="flex flex-wrap gap-2">
               {ieltsMonthOrder.map((month) => {
                 const isAvailable = availableMonths.includes(month);
 
@@ -193,7 +271,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
                     type="button"
                     onClick={() => handleMonthChange(month)}
                     disabled={!isAvailable}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
                       !isAvailable
                         ? 'cursor-not-allowed bg-slate-100 text-slate-300'
                         : selectedMonth === month
@@ -208,16 +286,16 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 3</p>
-            <h2 className="mb-4 text-xl font-semibold text-slate-900">Choose test</h2>
-            <div className="flex flex-wrap gap-3">
+          <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 3</p>
+            <h2 className="mb-3 text-lg font-semibold text-slate-900">Choose test</h2>
+            <div className="flex flex-wrap gap-2">
               {availableTests.map((test) => (
                 <button
                   key={test}
                   type="button"
                   onClick={() => handleTestChange(test)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
                     selectedTest === test
                       ? 'bg-emerald-600 text-white'
                       : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
@@ -230,47 +308,19 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
           </section>
         </div>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Articles</h2>
-              <p className="text-sm text-slate-500">
-                {selectedYear && selectedMonth && selectedTest
-                  ? `${selectedYear} ${ieltsMonthLabels[selectedMonth] || selectedMonth} · Test ${selectedTest}`
-                  : 'Select year, month, and test to view passages'}
-              </p>
-            </div>
-            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">
-              {visibleArticles.length} passage{visibleArticles.length === 1 ? '' : 's'}
-            </span>
-          </div>
-
+        <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
           {selectedYear && selectedMonth && selectedTest && (
-            <div className="mb-5">
-              <Link
-                href={
-                  visibleArticles[0]
-                    ? getIELTSPassageReaderUrl(
-                        visibleArticles[0].year,
-                        visibleArticles[0].month,
-                        visibleArticles[0].test,
-                        visibleArticles[0].passage,
-                      )
-                    : '#'
-                }
-                className="inline-flex items-center rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
-              >
-                Open Full Test Reader
-              </Link>
+            <div className="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+              This page stays on the test list so you can compare passages first. Open the exact passage you want from the cards below.
             </div>
           )}
 
           {visibleArticles.length === 0 ? (
-            <div className="rounded-2xl bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">
+            <div className="rounded-2xl bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
               No passages available for the current selection yet.
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {visibleArticles.map((article) => {
                 const articleRoute = getIELTSPassageReaderUrl(
                   article.year,
@@ -278,15 +328,15 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
                   article.test,
                   article.passage,
                 );
-                const isRead = isRouteRead(articleRoute);
+                const isRead = readRoutes.has(articleRoute);
 
                 return (
                   <Link
                     key={article.id}
                     href={articleRoute}
-                    className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white hover:shadow-md"
+                    className="group rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:bg-white hover:shadow-md"
                   >
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="mb-2 flex items-center justify-between gap-3">
                       <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">
                         Passage {article.passage}
                       </span>
@@ -297,13 +347,17 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
                       )}
                     </div>
 
-                    <h3 className="line-clamp-3 text-lg font-semibold text-slate-900 group-hover:text-sky-700">
+                    <h3 className="line-clamp-3 text-base font-semibold text-slate-900 group-hover:text-sky-700 sm:text-lg">
                       {article.title}
                     </h3>
 
-                    <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-500">
+                    <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-500">
                       <span>{article.wordCount.toLocaleString()} words</span>
                       <span>{article.readingTime} min read</span>
+                    </div>
+
+                    <div className="mt-4 inline-flex items-center text-sm font-semibold text-sky-700">
+                      Open passage
                     </div>
                   </Link>
                 );

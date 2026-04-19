@@ -23,12 +23,12 @@ export default function Navigation() {
     const isExpired = expires && expires < new Date();
 
     const badgeColors = {
-      free: 'bg-gray-100 text-gray-800',
-      pro: 'bg-blue-100 text-blue-800',
+      free: 'bg-[#eef2f7] text-[#1d1d1f]',
+      pro: 'bg-[#0071e3]/12 text-[#0071e3]',
     };
 
     return (
-      <div className={`px-2 py-1 text-xs font-medium rounded-full ${badgeColors[tier as keyof typeof badgeColors]}`}>
+      <div className={`rounded-full px-3 py-1 text-xs font-medium ${badgeColors[tier as keyof typeof badgeColors]}`}>
         {common(`${tier}Plan`)}
         {isExpired && ' (Expired)'}
       </div>
@@ -39,10 +39,10 @@ export default function Navigation() {
     return (
       <Link
         href={href}
-        className={`px-4 py-2 rounded-full text-sm font-medium transition-all
+        className={`rounded-full px-4 py-2 text-sm font-medium transition-all
         ${isActive(href)
-          ? 'bg-blue-50 text-blue-600'
-          : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'
+          ? 'bg-[#e8f2ff] text-[#005bb5] shadow-[inset_0_0_0_1px_rgba(0,113,227,0.08)]'
+          : 'text-[#1d1d1f]/76 hover:bg-[#eff2f6] hover:text-[#1d1d1f]'
         }`}
       >
         {label}
@@ -51,17 +51,17 @@ export default function Navigation() {
   }
 
   return (
-    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 w-full top-0 z-50">
-      <div className="max-w-[1440px] mx-auto px-6">
-        <div className="flex min-h-16 items-center justify-between gap-4 py-3">
+    <nav className="sticky top-0 z-50 w-full px-3 pt-3">
+      <div className="mx-auto max-w-[1440px] px-6">
+        <div className="flex min-h-14 items-center justify-between gap-4 rounded-full border border-[#d7dee9] bg-white/88 px-4 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl">
           <Link 
             href="/" 
-            className="px-4 py-2 text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hover:from-blue-500 hover:to-indigo-500 transition-all"
+            className="px-3 py-2 text-[15px] font-semibold tracking-[-0.02em] text-[#1d1d1f] transition-opacity hover:opacity-80"
           >
             English Reader
           </Link>
           
-          <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <NavigationItem href="/" label={nav('home')} />
             <NavigationItem href="/news" label={nav('news')} />
             <NavigationItem href="/ielts" label="IELTS" />
@@ -71,7 +71,9 @@ export default function Navigation() {
             <NavigationItem href="/history" label={nav('history')} />
             <NavigationItem href="/pricing" label={nav('pricing')} />
 
-            <LanguageSwitcher />
+            <div className="rounded-full bg-[#eef2f7] p-1">
+              <LanguageSwitcher />
+            </div>
 
             {user ? (
               <>

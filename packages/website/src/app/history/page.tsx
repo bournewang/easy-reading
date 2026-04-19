@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookIcon, ClockIcon, Paginator } from '@easy-reading/shared';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
-import { getReadingHistory, type ReadingHistoryItem } from '@/utils/reading-history';
+import { getReadingHistoryAsync, type ReadingHistoryItem } from '@/utils/reading-history';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -18,8 +18,26 @@ export default function HistoryPage() {
   const common = (key: string) => t(`website.common.${key}`);
 
   useEffect(() => {
-    setArticles(getReadingHistory());
-    setLoading(false);
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      try {
+        const items = await getReadingHistoryAsync();
+        if (!cancelled) {
+          setArticles(items);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handlePageChange = (page: number) => {

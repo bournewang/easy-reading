@@ -4,13 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Reader, type Article } from '@easy-reading/shared';
+import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
 import type { IELTSArticleListItem, IELTSReaderTestSummary } from '@/lib/ielts-types';
 import { getIELTSPassageReaderUrl, ieltsMonthLabels, ieltsMonthOrder } from '@/lib/ielts-paths';
 import { saveLastIELTSTestRoute } from '@/lib/ielts-storage';
 import {
   createIELTSHistoryItem,
   isRouteRead,
-  saveReadingHistoryItem,
+  saveReadingHistoryItemAsync,
 } from '@/utils/reading-history';
 
 type IELTSTestReaderClientProps = {
@@ -77,7 +78,20 @@ export default function IELTSTestReaderClient({
   }, [activeArticle]);
 
   useEffect(() => {
-    setIsRead(isRouteRead(activeRouteUrl));
+    let cancelled = false;
+
+    const loadReadState = async () => {
+      const nextIsRead = await isRouteRead(activeRouteUrl);
+      if (!cancelled) {
+        setIsRead(nextIsRead);
+      }
+    };
+
+    void loadReadState();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeRouteUrl]);
 
   const availableYears = useMemo(
@@ -168,12 +182,12 @@ export default function IELTSTestReaderClient({
     );
   };
 
-  const handleMarkAsRead = () => {
+  const handleMarkAsRead = async () => {
     if (!activeArticle || !activePassage) {
       return;
     }
 
-    saveReadingHistoryItem(
+    await saveReadingHistoryItemAsync(
       createIELTSHistoryItem({
         routeUrl: activeRouteUrl,
         title: activeArticle.title,
@@ -322,8 +336,13 @@ export default function IELTSTestReaderClient({
 
           <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             {activeArticle ? (
-              <div className="min-h-0 flex-1 overflow-hidden">
+              <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
+                <div className="shrink-0">
+                  <AnonymousReaderWarning />
+                </div>
+                <div className="min-h-0 flex-1 overflow-hidden">
                 <Reader article={activeArticle} containedScroll contentScrollRef={articleScrollRef} />
+                </div>
               </div>
             ) : (
               <div className="rounded-2xl bg-slate-50 px-5 py-12 text-center text-sm text-slate-500">

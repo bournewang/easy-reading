@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { formatMessage } from '@/lib/i18n';
-import { getReadingHistory, type ReadingHistoryItem } from '@/utils/reading-history';
+import { getReadingHistoryAsync, type ReadingHistoryItem } from '@/utils/reading-history';
 import {
   cancelSubscription,
   getSubscriptionSummary,
@@ -119,7 +119,24 @@ export default function UserCenterPage() {
       return;
     }
 
-    setArticles(getReadingHistory());
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      try {
+        const items = await getReadingHistoryAsync();
+        if (!cancelled) {
+          setArticles(items);
+        }
+      } catch (error) {
+        console.error('Failed to load reading history:', error);
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   useEffect(() => {

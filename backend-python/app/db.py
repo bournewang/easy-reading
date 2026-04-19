@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Iterator
 from urllib.parse import urlparse
 
@@ -17,7 +16,11 @@ except Exception:  # pragma: no cover - dependency may not be installed yet
 from .config import settings
 
 
-DBIntegrityError = sqlite3.IntegrityError
+if pymysql is not None:
+    DBIntegrityError = pymysql.err.IntegrityError
+else:  # pragma: no cover - import failure is handled in get_connection()
+    class DBIntegrityError(Exception):
+        pass
 
 
 def utcnow_iso() -> str:
@@ -28,18 +31,15 @@ def parse_dt(value: str | datetime | None) -> datetime | None:
     if not value:
         return None
     if isinstance(value, datetime):
+        # Ensure datetime is timezone-aware; if naive, assume UTC
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
         return value
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
-
-
-def using_mysql() -> bool:
-    return settings.database_url.startswith("mysql://") or settings.database_url.startswith("mysql+pymysql://")
-
-
-def _translate_sql(sql: str) -> str:
-    if using_mysql():
-        return sql.replace("?", "%s")
-    return sql
+    # Parse ISO format string and ensure it's timezone-aware
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 class CursorAdapter:
@@ -47,7 +47,7 @@ class CursorAdapter:
         self._cursor = cursor
 
     def execute(self, sql: str, params: tuple | list | None = None) -> Any:
-        translated = _translate_sql(sql)
+        translated = sql.replace("?", "%s")
         if params is None:
             return self._cursor.execute(translated)
         return self._cursor.execute(translated, params)
@@ -63,36 +63,36 @@ class CursorAdapter:
 
 
 def get_connection() -> Any:
-    if using_mysql():
-        if pymysql is None:
-            raise RuntimeError("PyMySQL is required for MySQL support. Run `pip install -r requirements.txt`.")
+    if pymysql is None:
+        raise RuntimeError("PyMySQL is required for MySQL support. Run `pip install -r requirements.txt`.")
 
-        parsed = urlparse(settings.database_url)
-        db_name = parsed.path.lstrip("/")
-        try:
-            return pymysql.connect(
-                host=parsed.hostname or "127.0.0.1",
-                port=parsed.port or 3306,
-                user=parsed.username or "root",
-                password=parsed.password or "",
-                database=db_name,
-                charset="utf8mb4",
-                autocommit=False,
-                cursorclass=DictCursor,
-            )
-        except Exception as exc:
-            raise RuntimeError(
-                "MySQL connection failed. "
-                f"host={parsed.hostname or '127.0.0.1'} "
-                f"port={parsed.port or 3306} "
-                f"user={parsed.username or 'root'} "
-                f"database={db_name or '(missing)'} "
-                f"error={exc}"
-            ) from exc
+    if not settings.database_url:
+        raise RuntimeError("DATABASE_URL is required.")
+    if not settings.database_url.startswith(("mysql://", "mysql+pymysql://")):
+        raise RuntimeError("DATABASE_URL must be a MySQL URL.")
 
-    conn = sqlite3.connect(settings.database_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    parsed = urlparse(settings.database_url)
+    db_name = parsed.path.lstrip("/")
+    try:
+        return pymysql.connect(
+            host=parsed.hostname or "127.0.0.1",
+            port=parsed.port or 3306,
+            user=parsed.username or "root",
+            password=parsed.password or "",
+            database=db_name,
+            charset="utf8mb4",
+            autocommit=False,
+            cursorclass=DictCursor,
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            "MySQL connection failed. "
+            f"host={parsed.hostname or '127.0.0.1'} "
+            f"port={parsed.port or 3306} "
+            f"user={parsed.username or 'root'} "
+            f"database={db_name or '(missing)'} "
+            f"error={exc}"
+        ) from exc
 
 
 @contextmanager
@@ -110,188 +110,18 @@ def db_cursor() -> Iterator[CursorAdapter]:
 
 
 def init_db() -> None:
-    if using_mysql():
-        _init_mysql()
-        return
-
-    _init_sqlite()
-
-
-def _sqlite_has_column(cursor: CursorAdapter, table_name: str, column_name: str) -> bool:
-    cursor.execute(f"PRAGMA table_info({table_name})")
-    columns = cursor.fetchall()
-    return any(column["name"] == column_name for column in columns)
-
-
-def _mysql_has_column(cursor: CursorAdapter, table_name: str, column_name: str) -> bool:
-    cursor.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
-        """,
-        (table_name, column_name),
-    )
-    row = row_to_dict(cursor.fetchone()) or {}
-    return bool(row.get("count"))
-
-
-def _init_sqlite() -> None:
     with db_cursor() as cursor:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                full_name TEXT,
-                referral_code TEXT UNIQUE,
-                referred_by_user_id TEXT,
-                subscription_tier TEXT DEFAULT 'free',
-                subscription_expires TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sessions (
-                id TEXT PRIMARY KEY,
-                token TEXT NOT NULL UNIQUE,
-                user_id TEXT NOT NULL,
-                expires_at TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS orders (
-                id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                original_amount REAL NOT NULL DEFAULT 0,
-                sale_amount REAL NOT NULL DEFAULT 0,
-                discount_amount REAL NOT NULL DEFAULT 0,
-                amount REAL NOT NULL,
-                status TEXT NOT NULL,
-                payment_method TEXT NOT NULL,
-                tier TEXT NOT NULL,
-                duration INTEGER NOT NULL,
-                coupon_code TEXT,
-                referral_code TEXT,
-                payment_details TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS subscriptions (
-                id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                tier TEXT NOT NULL,
-                status TEXT NOT NULL,
-                billing_mode TEXT NOT NULL,
-                interval_months INTEGER NOT NULL,
-                auto_renew INTEGER NOT NULL DEFAULT 0,
-                cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
-                started_at TEXT NOT NULL,
-                current_period_start TEXT NOT NULL,
-                current_period_end TEXT NOT NULL,
-                canceled_at TEXT,
-                latest_order_id TEXT,
-                payment_method TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS coupons (
-                id TEXT PRIMARY KEY,
-                code TEXT NOT NULL UNIQUE,
-                description TEXT,
-                discount_type TEXT NOT NULL,
-                discount_value REAL NOT NULL,
-                min_amount REAL NOT NULL DEFAULT 0,
-                max_discount_amount REAL,
-                max_redemptions INTEGER,
-                per_user_limit INTEGER,
-                active INTEGER NOT NULL DEFAULT 1,
-                starts_at TEXT,
-                ends_at TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS coupon_redemptions (
-                id TEXT PRIMARY KEY,
-                coupon_id TEXT NOT NULL,
-                code TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                order_id TEXT,
-                discount_amount REAL NOT NULL DEFAULT 0,
-                status TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS referral_commissions (
-                id TEXT PRIMARY KEY,
-                order_id TEXT NOT NULL,
-                referrer_user_id TEXT NOT NULL,
-                referred_user_id TEXT NOT NULL,
-                referral_code TEXT NOT NULL,
-                commission_rate REAL NOT NULL DEFAULT 0,
-                commission_amount REAL NOT NULL DEFAULT 0,
-                status TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-        if not _sqlite_has_column(cursor, "users", "referral_code"):
-            cursor.execute("ALTER TABLE users ADD COLUMN referral_code TEXT")
-        if not _sqlite_has_column(cursor, "users", "referred_by_user_id"):
-            cursor.execute("ALTER TABLE users ADD COLUMN referred_by_user_id TEXT")
-        if not _sqlite_has_column(cursor, "orders", "original_amount"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN original_amount REAL NOT NULL DEFAULT 0")
-        if not _sqlite_has_column(cursor, "orders", "sale_amount"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN sale_amount REAL NOT NULL DEFAULT 0")
-        if not _sqlite_has_column(cursor, "orders", "discount_amount"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0")
-        if not _sqlite_has_column(cursor, "orders", "coupon_code"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN coupon_code TEXT")
-        if not _sqlite_has_column(cursor, "orders", "referral_code"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN referral_code TEXT")
-
-
-def _init_mysql() -> None:
-    global DBIntegrityError
-    if pymysql is not None:
-        DBIntegrityError = pymysql.err.IntegrityError
-
-    with db_cursor() as cursor:
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id VARCHAR(64) PRIMARY KEY,
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(191) NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 full_name VARCHAR(255) NULL,
                 referral_code VARCHAR(64) NULL UNIQUE,
-                referred_by_user_id VARCHAR(64) NULL,
+                referred_by_user_id BIGINT NULL,
                 subscription_tier VARCHAR(64) DEFAULT 'free',
-                subscription_expires DATETIME NULL,
+                subscription_expires VARCHAR(64) NULL,
                 created_at VARCHAR(64) NOT NULL,
                 updated_at VARCHAR(64) NOT NULL
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
@@ -300,9 +130,9 @@ def _init_mysql() -> None:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS sessions (
-                id VARCHAR(64) PRIMARY KEY,
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 token VARCHAR(191) NOT NULL UNIQUE,
-                user_id VARCHAR(64) NOT NULL,
+                user_id BIGINT NOT NULL,
                 expires_at VARCHAR(64) NOT NULL,
                 created_at VARCHAR(64) NOT NULL,
                 INDEX idx_sessions_user_id (user_id)
@@ -312,8 +142,9 @@ def _init_mysql() -> None:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS orders (
-                id VARCHAR(64) PRIMARY KEY,
-                user_id VARCHAR(64) NOT NULL,
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                order_no VARCHAR(64) NOT NULL UNIQUE,
+                user_id BIGINT NOT NULL,
                 original_amount DOUBLE NOT NULL DEFAULT 0,
                 sale_amount DOUBLE NOT NULL DEFAULT 0,
                 discount_amount DOUBLE NOT NULL DEFAULT 0,
@@ -327,15 +158,54 @@ def _init_mysql() -> None:
                 payment_details LONGTEXT NOT NULL,
                 created_at VARCHAR(64) NOT NULL,
                 updated_at VARCHAR(64) NOT NULL,
+                INDEX idx_orders_order_no (order_no),
                 INDEX idx_orders_user_id (user_id)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
+        ensure_column(cursor, "orders", "order_no", "ALTER TABLE orders ADD COLUMN order_no VARCHAR(64) NULL")
+        ensure_column(
+            cursor,
+            "orders",
+            "original_amount",
+            "ALTER TABLE orders ADD COLUMN original_amount DOUBLE NOT NULL DEFAULT 0",
+        )
+        ensure_column(
+            cursor,
+            "orders",
+            "sale_amount",
+            "ALTER TABLE orders ADD COLUMN sale_amount DOUBLE NOT NULL DEFAULT 0",
+        )
+        ensure_column(
+            cursor,
+            "orders",
+            "discount_amount",
+            "ALTER TABLE orders ADD COLUMN discount_amount DOUBLE NOT NULL DEFAULT 0",
+        )
+        ensure_column(cursor, "orders", "coupon_code", "ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(64) NULL")
+        ensure_column(cursor, "orders", "referral_code", "ALTER TABLE orders ADD COLUMN referral_code VARCHAR(64) NULL")
+        cursor.execute(
+            """
+            UPDATE orders
+            SET order_no = CONCAT(
+                DATE_FORMAT(
+                    COALESCE(
+                        STR_TO_DATE(created_at, '%Y-%m-%dT%H:%i:%sZ'),
+                        UTC_TIMESTAMP()
+                    ),
+                    '%Y%m%d'
+                ),
+                '-',
+                LPAD(CAST(id AS CHAR), 5, '0')
+            )
+            WHERE order_no IS NULL OR order_no = ''
             """
         )
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS subscriptions (
-                id VARCHAR(64) PRIMARY KEY,
-                user_id VARCHAR(64) NOT NULL,
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
                 tier VARCHAR(64) NOT NULL,
                 status VARCHAR(64) NOT NULL,
                 billing_mode VARCHAR(64) NOT NULL,
@@ -346,7 +216,7 @@ def _init_mysql() -> None:
                 current_period_start VARCHAR(64) NOT NULL,
                 current_period_end VARCHAR(64) NOT NULL,
                 canceled_at VARCHAR(64) NULL,
-                latest_order_id VARCHAR(64) NULL,
+                latest_order_id BIGINT NULL,
                 payment_method VARCHAR(64) NULL,
                 created_at VARCHAR(64) NOT NULL,
                 updated_at VARCHAR(64) NOT NULL,
@@ -357,7 +227,7 @@ def _init_mysql() -> None:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS coupons (
-                id VARCHAR(64) PRIMARY KEY,
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 code VARCHAR(64) NOT NULL UNIQUE,
                 description VARCHAR(255) NULL,
                 discount_type VARCHAR(32) NOT NULL,
@@ -377,11 +247,11 @@ def _init_mysql() -> None:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS coupon_redemptions (
-                id VARCHAR(64) PRIMARY KEY,
-                coupon_id VARCHAR(64) NOT NULL,
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                coupon_id BIGINT NOT NULL,
                 code VARCHAR(64) NOT NULL,
-                user_id VARCHAR(64) NOT NULL,
-                order_id VARCHAR(64) NULL,
+                user_id BIGINT NOT NULL,
+                order_id BIGINT NULL,
                 discount_amount DOUBLE NOT NULL DEFAULT 0,
                 status VARCHAR(64) NOT NULL,
                 created_at VARCHAR(64) NOT NULL,
@@ -394,10 +264,10 @@ def _init_mysql() -> None:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS referral_commissions (
-                id VARCHAR(64) PRIMARY KEY,
-                order_id VARCHAR(64) NOT NULL,
-                referrer_user_id VARCHAR(64) NOT NULL,
-                referred_user_id VARCHAR(64) NOT NULL,
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                order_id BIGINT NOT NULL,
+                referrer_user_id BIGINT NOT NULL,
+                referred_user_id BIGINT NOT NULL,
                 referral_code VARCHAR(64) NOT NULL,
                 commission_rate DOUBLE NOT NULL DEFAULT 0,
                 commission_amount DOUBLE NOT NULL DEFAULT 0,
@@ -409,20 +279,142 @@ def _init_mysql() -> None:
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
             """
         )
-        if not _mysql_has_column(cursor, "users", "referral_code"):
-            cursor.execute("ALTER TABLE users ADD COLUMN referral_code VARCHAR(64) NULL UNIQUE")
-        if not _mysql_has_column(cursor, "users", "referred_by_user_id"):
-            cursor.execute("ALTER TABLE users ADD COLUMN referred_by_user_id VARCHAR(64) NULL")
-        if not _mysql_has_column(cursor, "orders", "original_amount"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN original_amount DOUBLE NOT NULL DEFAULT 0")
-        if not _mysql_has_column(cursor, "orders", "sale_amount"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN sale_amount DOUBLE NOT NULL DEFAULT 0")
-        if not _mysql_has_column(cursor, "orders", "discount_amount"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN discount_amount DOUBLE NOT NULL DEFAULT 0")
-        if not _mysql_has_column(cursor, "orders", "coupon_code"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(64) NULL")
-        if not _mysql_has_column(cursor, "orders", "referral_code"):
-            cursor.execute("ALTER TABLE orders ADD COLUMN referral_code VARCHAR(64) NULL")
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS reading_history (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                history_key VARCHAR(255) NOT NULL,
+                kind VARCHAR(64) NOT NULL,
+                route_url VARCHAR(1024) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                subtitle VARCHAR(255) NOT NULL,
+                source_url VARCHAR(1024) NULL,
+                word_count INT NOT NULL DEFAULT 0,
+                reading_time INT NOT NULL DEFAULT 0,
+                timestamp BIGINT NOT NULL DEFAULT 0,
+                created_at VARCHAR(64) NOT NULL,
+                updated_at VARCHAR(64) NOT NULL,
+                UNIQUE KEY uniq_reading_history_user_key (user_id, history_key),
+                INDEX idx_reading_history_user_id (user_id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS wordbook_entries (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                word VARCHAR(191) NOT NULL,
+                created_at VARCHAR(64) NOT NULL,
+                updated_at VARCHAR(64) NOT NULL,
+                UNIQUE KEY uniq_wordbook_user_word (user_id, word),
+                INDEX idx_wordbook_user_id (user_id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS anonymous_usage (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                anonymous_id VARCHAR(191) NOT NULL,
+                feature VARCHAR(64) NOT NULL,
+                usage_date VARCHAR(32) NOT NULL,
+                count INT NOT NULL DEFAULT 0,
+                created_at VARCHAR(64) NOT NULL,
+                updated_at VARCHAR(64) NOT NULL,
+                UNIQUE KEY uniq_anonymous_usage_scope (anonymous_id, feature, usage_date),
+                INDEX idx_anonymous_usage_id (anonymous_id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_usage (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                feature VARCHAR(64) NOT NULL,
+                usage_date VARCHAR(32) NOT NULL,
+                count INT NOT NULL DEFAULT 0,
+                created_at VARCHAR(64) NOT NULL,
+                updated_at VARCHAR(64) NOT NULL,
+                UNIQUE KEY uniq_user_usage_scope (user_id, feature, usage_date),
+                INDEX idx_user_usage_user_id (user_id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS news (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                article_id VARCHAR(255) NOT NULL UNIQUE,
+                slug VARCHAR(255) NULL UNIQUE,
+                title VARCHAR(512) NOT NULL,
+                url VARCHAR(2048) NOT NULL,
+                category VARCHAR(128) NOT NULL,
+                description TEXT NULL,
+                image_url VARCHAR(2048) NULL,
+                source VARCHAR(255) NOT NULL,
+                site_name VARCHAR(255) NULL,
+                word_count INT NOT NULL DEFAULT 0,
+                reading_time INT NOT NULL DEFAULT 0,
+                article_payload LONGTEXT NULL,
+                synced_at VARCHAR(64) NOT NULL,
+                created_at VARCHAR(64) NOT NULL,
+                updated_at VARCHAR(64) NOT NULL,
+                INDEX idx_news_category (category),
+                INDEX idx_news_source (source),
+                INDEX idx_news_synced_at (synced_at)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
+        ensure_column(cursor, "news", "slug", "ALTER TABLE news ADD COLUMN slug VARCHAR(255) NULL UNIQUE")
+        ensure_column(cursor, "news", "site_name", "ALTER TABLE news ADD COLUMN site_name VARCHAR(255) NULL")
+        ensure_column(cursor, "news", "word_count", "ALTER TABLE news ADD COLUMN word_count INT NOT NULL DEFAULT 0")
+        ensure_column(cursor, "news", "article_payload", "ALTER TABLE news ADD COLUMN article_payload LONGTEXT NULL")
+        ensure_auto_increment_bigint_primary_key(cursor, "orders", "id")
+
+
+def ensure_column(cursor: CursorAdapter, table_name: str, column_name: str, alter_sql: str) -> None:
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS count
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+        """,
+        (table_name, column_name),
+    )
+    row = row_to_dict(cursor.fetchone()) or {}
+    if not row.get("count"):
+        cursor.execute(alter_sql)
+
+
+def ensure_auto_increment_bigint_primary_key(
+    cursor: CursorAdapter,
+    table_name: str,
+    column_name: str,
+) -> None:
+    cursor.execute(
+        """
+        SELECT DATA_TYPE, COLUMN_KEY, EXTRA
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+        """,
+        (table_name, column_name),
+    )
+    row = row_to_dict(cursor.fetchone()) or {}
+    data_type = str(row.get("DATA_TYPE") or "").lower()
+    column_key = str(row.get("COLUMN_KEY") or "").upper()
+    extra = str(row.get("EXTRA") or "").lower()
+
+    if data_type == "bigint" and column_key == "PRI" and "auto_increment" in extra:
+        return
+
+    raise RuntimeError(
+        f"Incompatible schema for `{table_name}.{column_name}`. "
+        "This project now requires BIGINT AUTO_INCREMENT primary keys for orders. "
+        "Please reset the payment tables or rebuild the database, then restart the backend."
+    )
 
 
 def row_to_dict(row: Any | None) -> dict[str, Any] | None:

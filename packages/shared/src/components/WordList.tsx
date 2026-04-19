@@ -10,6 +10,7 @@ import { splitIntoSentences } from '../utils/sentenceSplitter';
 import Dictionary from './Dictionary';
 import {Paginator} from './Paginator';
 import { api } from '../utils/api';
+import { showToast } from '../utils/toast';
 import '../styles/tailwind.css';
 
 function WordList() {
@@ -48,6 +49,11 @@ function WordList() {
   const totalPages = Math.ceil(wordArray.length / itemsPerPage);
 
   const isFirstWordOfCurrentSessionRef = useRef(true);
+  const pageButtonBaseClass =
+    'inline-flex items-center justify-center rounded-full px-4 py-2 text-[14px] font-medium tracking-[-0.22px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:ring-offset-2';
+  const primaryButtonClass = `${pageButtonBaseClass} bg-[#0071e3] text-white hover:bg-[#0077ed]`;
+  const secondaryButtonClass = `${pageButtonBaseClass} border border-[#0071e3] bg-transparent text-[#0066cc] hover:bg-[#0071e3]/[0.06]`;
+  const darkButtonClass = `${pageButtonBaseClass} bg-[#1d1d1f] text-white hover:bg-black`;
 
   // Effect to RESET states when the practice word changes or practice mode starts/ends
   useEffect(() => {
@@ -96,7 +102,7 @@ function WordList() {
   const startPracticeSession = (practiceCurrentPageOnly: boolean = false) => {
     const allWords = practiceCurrentPageOnly ? currentWordsForDisplay : Array.from(words);
     if (allWords.length === 0) {
-      alert("Please add some words to your list first!");
+      showToast('Please add some words to your list first.', { variant: 'info' });
       return;
     }
 
@@ -225,44 +231,51 @@ function WordList() {
   const renderWordItem = (word: string, isCloudView: boolean = false) => {
     const stats = getPracticeStats(word);
     const proficiencyColor = getProficiencyColor(stats.proficiency, stats.tier);
+    const isSelected = selectedWord === word;
 
     if (isCloudView) {
         const fontSize = Math.random() * (1.5 - 0.8) + 0.8;
         const rotation = Math.random() * 20 - 10;
         return (
-            <button
+            <div
               key={word}
-              className={`group inline-flex items-center ${proficiencyColor}`}
+              className="group inline-flex items-center"
               style={{ transform: `rotate(${rotation}deg)`, fontSize: `${fontSize}rem` }}
-              onClick={() => setSelectedWord(word)}
             >
-              <span className={`px-3 py-1 rounded-full transition-colors duration-200 ${selectedWord === word ? 'ring-2 ring-indigo-500' : ''}`}>
-                {word}
-              </span>
               <button
+                type="button"
+                className={`rounded-full px-4 py-2 transition-all duration-200 ${proficiencyColor} ${isSelected ? 'ring-2 ring-[#0071e3] ring-offset-2 ring-offset-[#f5f5f7]' : 'hover:scale-[1.02]'}`}
+                onClick={() => setSelectedWord(word)}
+              >
+                {word}
+              </button>
+              <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); removeWord(word); }}
-                className="ml-1 opacity-0 group-hover:opacity-100 w-4 h-4 inline-flex items-center justify-center rounded-full bg-red-100 text-red-600 text-xs hover:bg-red-200 hover:text-red-700 transition-all"
+                className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-white text-[13px] text-black/55 opacity-0 transition-all hover:border-black/20 hover:text-black/80 group-hover:opacity-100"
                 title="Remove word"
               >
                 ✕
               </button>
-            </button>
+            </div>
         );
     }
     return (
       <div
         key={word}
-        className={`group flex items-center justify-between p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border-t border-l border-r border-gray-100 ${proficiencyColor}`}
+        className={`group flex items-center justify-between rounded-[24px] border border-black/6 px-5 py-4 transition-all duration-200 ${proficiencyColor} ${isSelected ? 'ring-2 ring-[#0071e3] ring-offset-2 ring-offset-[#f5f5f7]' : 'hover:border-black/12 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]'}`}
       >
         <button
-          className="flex-1 text-left font-medium hover:text-indigo-600 transition-colors"
+          type="button"
+          className="flex-1 text-left text-[17px] font-medium tracking-[-0.37px] text-[#1d1d1f] transition-colors hover:text-[#0066cc]"
           onClick={() => setSelectedWord(word)}
         >
           {word}
         </button>
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); removeWord(word); }}
-          className="ml-1 opacity-0 group-hover:opacity-100 w-4 h-4 inline-flex items-center justify-center rounded-full bg-red-100 text-red-600 text-xs hover:bg-red-200 hover:text-red-700 transition-all"
+          className="ml-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white text-[13px] text-black/55 opacity-0 transition-all hover:border-black/20 hover:text-black/80 group-hover:opacity-100"
           title="Remove word"
         >
           ✕
@@ -272,12 +285,12 @@ function WordList() {
   };
 
   const renderProficiencyLegend = () => (
-    <div className="mb-4 p-3 bg-white/50 rounded-lg shadow-sm">
-      <h3 className="text-sm font-medium text-gray-700 mb-2">Proficiency Levels:</h3>
+    <div className="rounded-[28px] bg-white px-6 py-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+      <h3 className="mb-3 text-[14px] font-semibold tracking-[-0.22px] text-black/80">Proficiency Levels</h3>
       <div className="flex flex-wrap gap-2">
         {proficiencyConfig.filter(config => config.tier !== '').map(config => (
-          <div key={config.tier} className={`flex items-center px-3 py-1 rounded-lg ${config.classes}`}>
-            <span className="text-xs">{config.tier} ({config.range})</span>
+          <div key={config.tier} className={`flex items-center rounded-full px-3 py-1.5 ${config.classes}`}>
+            <span className="text-[12px] tracking-[-0.12px]">{config.tier} ({config.range})</span>
           </div>
         ))}
       </div>
@@ -286,7 +299,7 @@ function WordList() {
 
   const newRenderGridView = () => (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {currentWordsForDisplay.map(word => renderWordItem(word))}
       </div>
     </>
@@ -294,7 +307,7 @@ function WordList() {
 
   const newRenderCloudView = () => (
     <>
-      <div className="min-h-[300px] flex flex-wrap gap-3 justify-center items-center p-4">
+      <div className="flex min-h-[320px] flex-wrap items-center justify-center gap-4 rounded-[28px] bg-[#fbfbfd] px-6 py-8">
         {currentWordsForDisplay.map(word => renderWordItem(word, true))} 
       </div>
     </>
@@ -304,14 +317,14 @@ function WordList() {
   const renderPracticeView = () => {
     if (practiceSessionSummary) {
         return (
-            <div className="w-full max-w-md mx-auto mt-8 p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl shadow-xl text-center">
-                <div className="mb-4 text-3xl">🎓</div>
-                <h3 className="text-2xl font-semibold text-indigo-700 mb-4">Practice Completed!</h3>
-                <p className="text-gray-700 mb-2">Words Practiced: {practiceSessionSummary.wordsPracticed}</p>
-                <p className="text-sm text-gray-500 mb-6">(Keep practicing to improve your proficiency)</p>
+            <div className="mx-auto mt-8 w-full max-w-xl rounded-[32px] bg-white p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+                <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Session Complete</div>
+                <h3 className="mb-3 text-[40px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">Nice work.</h3>
+                <p className="mb-2 text-[17px] tracking-[-0.37px] text-black/80">Words practiced: {practiceSessionSummary.wordsPracticed}</p>
+                <p className="mb-6 text-[14px] tracking-[-0.22px] text-black/56">Keep reviewing to move more words into the advanced tiers.</p>
                 <button 
                     onClick={() => { setIsPracticeModeActive(false); setPracticeSessionSummary(null); }}
-                    className="mt-2 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg">
+                    className={primaryButtonClass}>
                     Back to Word List
                 </button>
             </div>
@@ -323,12 +336,12 @@ function WordList() {
 
     if (noWordsToPractice) {
         return (
-            <div className="w-full max-w-md mx-auto mt-8 p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl shadow-xl text-center">
-                <div className="text-3xl mb-4">📝</div>
-                <p className="text-gray-700 mb-4">Your word list is empty. Add some words to practice!</p>
+            <div className="mx-auto mt-8 w-full max-w-xl rounded-[32px] bg-white p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+                <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Practice</div>
+                <p className="mb-4 text-[17px] tracking-[-0.37px] text-black/80">Your word list is empty. Add some words to practice.</p>
                 <button 
                     onClick={() => setIsPracticeModeActive(false)} 
-                    className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg">
+                    className={primaryButtonClass}>
                     Back to Word List
                 </button>
             </div>
@@ -338,13 +351,13 @@ function WordList() {
     if (practiceFinished) {
          if(practiceFeedback.includes("completed") || practiceFeedback.includes("end")) {
             return (
-                <div className="w-full max-w-md mx-auto mt-8 p-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl shadow-xl text-center">
-                    <div className="text-4xl mb-6">🎉</div>
-                    <h3 className="text-2xl font-semibold text-green-600 mb-4">Practice Complete!</h3>
-                    <p className="text-gray-700 mb-6">{practiceFeedback}</p>
+                <div className="mx-auto mt-8 w-full max-w-xl rounded-[32px] bg-white p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+                    <div className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Practice</div>
+                    <h3 className="mb-4 text-[40px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">Practice complete.</h3>
+                    <p className="mb-6 text-[17px] tracking-[-0.37px] text-black/80">{practiceFeedback}</p>
                     <button 
                         onClick={exitPracticeSession}
-                        className="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg">
+                        className={primaryButtonClass}>
                         View Summary & Exit
                     </button>
                 </div>
@@ -356,37 +369,34 @@ function WordList() {
     const currentWordToPractice = practiceWords[currentPracticeIndex];
 
     return (
-      <div className="max-w-md mx-auto mt-4 overflow-hidden">
-        {/* Progress bar */}
-        <div className="bg-white rounded-xl shadow-md mb-4 p-4">
+      <div className="mx-auto mt-4 max-w-xl overflow-hidden">
+        <div className="mb-4 rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-bold text-indigo-700">
+            <h3 className="text-[21px] font-semibold tracking-[-0.02em] text-[#1d1d1f]">
               Practice Session
             </h3>
-            <span className="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-1 rounded-full">
+            <span className="rounded-full bg-[#f5f5f7] px-3 py-1 text-[12px] font-semibold tracking-[-0.12px] text-black/72">
               {currentPracticeIndex + 1} of {practiceWords.length}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div className="h-2.5 w-full rounded-full bg-black/8">
             <div 
-              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" 
+              className="h-2.5 rounded-full bg-[#0071e3] transition-all duration-300" 
               style={{ width: `${((currentPracticeIndex + 1) / practiceWords.length) * 100}%` }}
             ></div>
           </div>
         </div>
         
-        {/* Main practice card */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Audio section */}
-          <div className="bg-indigo-200 p-6 text-center">
+        <div className="overflow-hidden rounded-[32px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+          <div className="bg-[#1d1d1f] p-8 text-center text-white">
             <button 
               onClick={handlePlayCurrentWordAudio} 
               disabled={ttsSpeaking || !currentWordToPractice}
-              className="bg-white/90 hover:bg-white text-indigo-700 font-semibold py-3 px-6 rounded-full transition-all duration-200 disabled:opacity-50 flex items-center justify-center mx-auto shadow-md hover:shadow-lg disabled:cursor-not-allowed"
+              className="mx-auto flex items-center justify-center rounded-full border border-white/20 bg-white px-6 py-3 text-[17px] font-medium tracking-[-0.37px] text-[#1d1d1f] transition-all duration-200 hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {ttsSpeaking ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-[#0071e3]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -394,7 +404,7 @@ function WordList() {
                 </>
               ) : (
                 <>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="mr-2 h-6 w-6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
                   </svg>
                   Listen
@@ -406,10 +416,10 @@ function WordList() {
           <div className="p-6">
             {/* Word reveal area */}
             <div 
-              className={`mb-4 p-4 rounded-lg flex items-center justify-center min-h-[60px] border-0 transition-all duration-200 cursor-pointer ${
+              className={`mb-5 flex min-h-[84px] cursor-pointer items-center justify-center rounded-[24px] p-5 transition-all duration-200 ${
                 isWordRevealed 
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-medium'
-                  : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+                  ? 'bg-[#f5f9ff] text-[#0066cc]'
+                  : 'bg-[#f5f5f7] text-black/50 hover:bg-black/5'
               }`}
               onClick={() => {
                 if (!isWordRevealed) {
@@ -420,7 +430,7 @@ function WordList() {
               }}
             >
               {isWordRevealed ? (
-                <div className="text-2xl font-semibold">{currentWordToPractice}</div>
+                <div className="text-[28px] font-semibold tracking-[0.01em]">{currentWordToPractice}</div>
               ) : (
                 <div className="flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
@@ -434,7 +444,7 @@ function WordList() {
 
             {/* Input area */}
             <form onSubmit={handlePracticeSubmit} className="mb-4">
-              <label htmlFor="practice-input" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="practice-input" className="mb-2 block text-[14px] font-semibold tracking-[-0.22px] text-black/72">
                 Type what you hear:
               </label>
               <input 
@@ -443,7 +453,7 @@ function WordList() {
                 type="text" 
                 value={practiceInputValue}
                 onChange={(e) => setPracticeInputValue(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                className="w-full rounded-[18px] border border-black/10 bg-[#fafafc] px-4 py-3 text-[17px] tracking-[-0.37px] text-[#1d1d1f] transition-all focus:border-[#0071e3] focus:outline-none focus:ring-2 focus:ring-[#0071e3]"
                 placeholder="Type the word..."
                 autoFocus
                 disabled={ttsSpeaking || (practiceFeedback.startsWith('Correct') && !isWordRevealed)}
@@ -453,27 +463,26 @@ function WordList() {
 
             {/* Feedback area */}
             {practiceFeedback && (
-              <div className={`mb-4 p-3 rounded-lg text-center font-medium ${
+              <div className={`mb-5 rounded-[18px] p-3 text-center text-[15px] font-medium tracking-[-0.24px] ${
                 practiceFeedback.startsWith('Correct') 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
+                  ? 'bg-[#e8f5e9] text-[#215732]' 
+                  : 'bg-[#fff1f0] text-[#8b2b1d]'
               }`}>
                 {practiceFeedback}
               </div>
             )}
 
-            {/* Action buttons */}
             <div className="flex gap-2">
               <button 
                 onClick={handlePracticeNextWord} 
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex-1 ${secondaryButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
                 disabled={ttsSpeaking}
               >
                 Skip / Next
               </button>
               <button
                 onClick={exitPracticeSession}
-                className="flex-1 text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 font-medium py-2 px-4 rounded-lg transition-all"
+                className={`flex-1 ${darkButtonClass}`}
               >
                 Exit Practice
               </button>
@@ -679,24 +688,24 @@ function WordList() {
   const renderStoryView = () => {
     return (
       <div className="mx-auto mt-4 overflow-hidden">
-        <div className="bg-white rounded-xl shadow-md mb-4 p-4">
+        <div className="mb-4 rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-bold text-indigo-700">
+            <h3 className="text-[21px] font-semibold tracking-[-0.02em] text-[#1d1d1f]">
               Story with Your Words
             </h3>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="bg-indigo-200 p-3 text-center">
-            <h3 className="font-medium text-indigo-700">
+        <div className="overflow-hidden rounded-[32px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+          <div className="bg-[#1d1d1f] p-4 text-center">
+            <h3 className="text-[17px] font-medium tracking-[-0.37px] text-white">
               {isGeneratingStory ? 'Generating a story with your words...' : 'Story Generated!'}
             </h3>
           </div>
 
           <div className="p-6">
             {storyError ? (
-              <div className="p-3 bg-red-100 text-red-800 rounded-lg">
+              <div className="rounded-[18px] bg-[#fff1f0] p-3 text-[#8b2b1d]">
                 {storyError}
               </div>
             ) : isGeneratingStory ? (
@@ -721,7 +730,7 @@ function WordList() {
                       />
                       
                       {state.translation && (
-                        <div className="mt-2 text-slate-600 bg-slate-50 p-2 rounded prose prose-sm max-w-none"
+                        <div className="mt-2 max-w-none rounded-[18px] bg-[#f5f5f7] p-3 prose prose-sm text-slate-600"
                           dangerouslySetInnerHTML={{ __html: state.translation.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-indigo-700">$1</strong>') }}
                         />
                       )}
@@ -729,7 +738,7 @@ function WordList() {
                       <div className="absolute right-0 top-0 flex flex-row gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => handleSpeakSentence(index, sentence)}
-                          className="w-7 h-7 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white text-gray-600 transition-all duration-200 hover:border-black/20 hover:text-black"
                           title="Text to Speech"
                           disabled={state.speaking}
                         >
@@ -739,7 +748,7 @@ function WordList() {
                         </button>
                         <button
                           onClick={() => handleTranslateSentence(index, sentence)}
-                          className="w-7 h-7 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white text-gray-600 transition-all duration-200 hover:border-black/20 hover:text-black"
                           title="Translate"
                           disabled={state.translating}
                         >
@@ -794,38 +803,44 @@ function WordList() {
 
   const renderWordBook = () => {
     return (
-      <div className={`bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-xl ${practiceSessionSummary ? 'mt-4' : ''}`}>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Saved Words <span className="text-sm text-gray-500">({words.size})</span>
-          </h2>
-          <div className="flex gap-2">
+      <section className={`rounded-[32px] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.10)] md:p-8 ${practiceSessionSummary ? 'mt-4' : ''}`}>
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Saved Vocabulary</p>
+            <h2 className="text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">
+              Your words, ready to review.
+            </h2>
+            <p className="mt-2 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/72">
+              {words.size} saved word{words.size === 1 ? '' : 's'} across reading sessions.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button
+              type="button"
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg transition-colors ${ viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-gray-100 text-gray-600'}`}
+              className={viewMode === 'grid' ? primaryButtonClass : secondaryButtonClass}
               title="Grid view"
             >
-              Grid ⊞
+              Grid View
             </button>
             <button
+              type="button"
               onClick={() => setViewMode('cloud')}
-              className={`p-2 rounded-lg transition-colors ${ viewMode === 'cloud' ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-gray-100 text-gray-600'}`}
+              className={viewMode === 'cloud' ? primaryButtonClass : secondaryButtonClass}
               title="Cloud view"
             >
-              Cloud ☁️
+              Cloud View
             </button>
           </div>
         </div>
 
-        {renderProficiencyLegend()}
+        <div className="mb-6">{renderProficiencyLegend()}</div>
         
         {words.size === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-4">📚</div>
-            <p className="text-gray-500">
-              Your word list is empty.
-              <br />
-              <span className="text-sm">Click on words while reading to add them to your list.</span>
+          <div className="rounded-[28px] bg-[#f5f5f7] px-6 py-14 text-center">
+            <h3 className="text-[28px] font-semibold tracking-[0.01em] text-[#1d1d1f]">Your word book is empty.</h3>
+            <p className="mx-auto mt-3 max-w-lg text-[17px] leading-[1.47] tracking-[-0.37px] text-black/64">
+              Tap any word while reading and it will show up here for review, lookup, and practice.
             </p>
           </div>
         ) : viewMode === 'grid' ? (
@@ -839,23 +854,26 @@ function WordList() {
             <Paginator currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
           </div>
         )}
-      </div>      
+      </section>      
     )
   } 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
-      <div className="container mx-auto p-2">
-        <header className="flex justify-between items-center py-2">
-          <div className="text-left">
-            <h1 className="text-3xl font-bold text-indigo-900 mb-1">Word Book</h1>
-            <p className="text-gray-600 text-sm">Track and review your learning progress</p>
+    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
+      <div className="mx-auto max-w-[1440px] px-4 pb-8 pt-6 md:px-6 md:pb-12 md:pt-10">
+        <header className="mb-8 rounded-[36px] bg-[#1d1d1f] px-6 py-10 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-10 md:py-14">
+          <div className="max-w-3xl">
+            <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#2997ff]">Word Book</p>
+            <h1 className="text-[40px] font-semibold leading-[1.07] tracking-[-0.04em] md:text-[56px]">Build a vocabulary you can return to.</h1>
+            <p className="mt-4 max-w-2xl text-[17px] leading-[1.47] tracking-[-0.37px] text-white/72">
+              Review saved words, practice pronunciation, and keep your reading progress moving without losing context.
+            </p>
           </div>
         </header>
         
-        <div className="flex flex-col md:flex-row gap-4 relative min-h-screen w-full">
-          <div className="flex-1 mb-4 md:mb-0">
-            <div className="flex justify-end gap-2 mb-4">
+        <div className="relative flex min-h-screen w-full flex-col gap-5 xl:flex-row xl:items-start">
+          <div className="flex-1">
+            <div className="mb-4 flex flex-wrap justify-end gap-2">
               {!isPracticeModeActive && !isStoryModeActive && (
                 <>
                   {/* <button 
@@ -867,7 +885,7 @@ function WordList() {
                   </button> */}
                   <button 
                     onClick={() => startPracticeSession(true)}
-                    className="bg-blue-400 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"
+                    className={primaryButtonClass}
                     disabled={currentWordsForDisplay.length === 0}
                   >
                     Practice
@@ -877,7 +895,7 @@ function WordList() {
               {isPracticeModeActive && (
                 <button 
                   onClick={exitPracticeSession}
-                  className="bg-red-400 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"
+                  className={darkButtonClass}
                 >
                   Exit Practice
                 </button>
@@ -885,7 +903,7 @@ function WordList() {
               {isStoryModeActive && (
                 <button 
                   onClick={exitStoryMode}
-                  className="bg-red-400 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:shadow-md transition-all duration-150"
+                  className={darkButtonClass}
                 >
                   Exit Story
                 </button>
@@ -897,7 +915,7 @@ function WordList() {
             {!isPracticeModeActive && !isStoryModeActive && renderWordBook()}
           </div>
 
-          <div className={`fixed md:sticky bottom-0 md:top-0 left-0 right-0 md:w-1/3 h-[200px] md:h-screen bg-white md:bg-slate-50 overflow-y-auto border-t border-slate-200 md:border-l md:border-t-0 shadow-lg md:shadow-none z-50`}>
+          <div className="fixed bottom-0 left-0 right-0 z-50 h-[220px] overflow-y-auto border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:static md:h-auto md:max-h-[calc(100vh-2.5rem)] md:w-full xl:sticky xl:top-6 xl:w-[360px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:bg-white xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
             <Dictionary selectedWord={selectedWord} />
           </div>
         </div>

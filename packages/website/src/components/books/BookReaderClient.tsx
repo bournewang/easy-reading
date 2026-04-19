@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChapterSelector } from '@/components/ChapterSelector';
 import BookChaptersSidebar from '@/components/books/BookChaptersSidebar';
+import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
 import type { BookChapterManifestItem, BookRecord } from '@/lib/books';
 import { getBookChapterReaderUrl } from '@/lib/reading-routes';
 import { Reader, type Article } from '@easy-reading/shared';
 import {
   createBookHistoryItem,
   isRouteRead,
-  saveReadingHistoryItem,
+  saveReadingHistoryItemAsync,
 } from '@/utils/reading-history';
 
 type BookReaderClientProps = {
@@ -89,15 +90,28 @@ export default function BookReaderClient({
   }, [article]);
 
   useEffect(() => {
-    setIsRead(isRouteRead(currentRouteUrl));
+    let cancelled = false;
+
+    const loadReadState = async () => {
+      const nextIsRead = await isRouteRead(currentRouteUrl);
+      if (!cancelled) {
+        setIsRead(nextIsRead);
+      }
+    };
+
+    void loadReadState();
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentRouteUrl]);
 
-  const handleMarkAsRead = () => {
+  const handleMarkAsRead = async () => {
     if (!currentChapterMeta) {
       return;
     }
 
-    saveReadingHistoryItem(
+    await saveReadingHistoryItemAsync(
       createBookHistoryItem({
         routeUrl: currentRouteUrl,
         title: article.title,
@@ -143,6 +157,9 @@ export default function BookReaderClient({
                 {error}
               </div>
             )}
+            <div className="shrink-0">
+              <AnonymousReaderWarning />
+            </div>
 
             <div className="min-h-0 flex-1 overflow-hidden">
               <Reader article={article} containedScroll contentScrollRef={articleScrollRef} />

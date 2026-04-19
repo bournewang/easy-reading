@@ -26,7 +26,28 @@ export function AlipayPayment({
   const checkout = (key: string) => t(`website.checkoutPage.${key}`);
 
   const handlePayment = async () => {
-    const paymentTab = typeof window !== 'undefined' ? window.open('', '_blank', 'noopener,noreferrer') : null;
+    const paymentTab = typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
+
+    if (paymentTab) {
+      try {
+        paymentTab.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${checkout('redirectingToAlipay')}</title>
+              <meta charset="utf-8" />
+            </head>
+            <body style="font-family: sans-serif; padding: 24px; color: #1f2937;">
+              <p>${checkout('redirectingToAlipay')}</p>
+            </body>
+          </html>
+        `);
+        paymentTab.document.close();
+      } catch {
+        // Ignore document access issues and rely on the later redirect fallback.
+      }
+    }
+
     try {
       setLoading(true);
       const response = await createAlipayOrder({
@@ -39,8 +60,9 @@ export function AlipayPayment({
       });
 
       if (response.paymentUrl) {
-        if (paymentTab) {
-          paymentTab.location.href = response.paymentUrl;
+        if (paymentTab && !paymentTab.closed) {
+          paymentTab.location.replace(response.paymentUrl);
+          paymentTab.focus();
         } else {
           window.location.assign(response.paymentUrl);
         }
