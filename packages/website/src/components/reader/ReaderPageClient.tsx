@@ -5,6 +5,7 @@ import { BackIcon, CheckIcon, Reader } from '@easy-reading/shared';
 import type { Article, Paragraph } from '@easy-reading/shared';
 import { useArticleExtractor } from '@/hooks/useArticleExtractor';
 import { useRouter, useSearchParams } from 'next/navigation';
+import ReaderShell from '@/components/ReaderShell';
 import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
 import { api } from '@/utils/api';
 import {
@@ -348,27 +349,29 @@ function ReaderContent({
 
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 pb-2 pt-5 md:px-6 md:pt-6">
-        <button onClick={() => router.push(backPath)} className={outlineButtonClass}>
-          <BackIcon className="h-4 w-4" />
-          Back
-        </button>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-black/56">
-            {article.site_name || (newsId ? 'News' : 'Reader')}
-          </span>
-          {article.reading_time ? (
-            <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] tracking-[-0.12px] text-black/56">
-              {article.reading_time} min read
+      <ReaderShell>
+        <div className="flex items-center justify-between gap-3 pb-2 pt-5 md:pt-6">
+          <button onClick={() => router.push(backPath)} className={outlineButtonClass}>
+            <BackIcon className="h-4 w-4" />
+            Back
+          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-black/56">
+              {article.site_name || (newsId ? 'News' : 'Reader')}
             </span>
-          ) : null}
+            {article.reading_time ? (
+              <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] tracking-[-0.12px] text-black/56">
+                {article.reading_time} min read
+              </span>
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      <div className="mx-auto max-w-[1440px] px-4 pb-28 pt-3 md:px-6 md:pb-32 md:pt-4">
-        <AnonymousReaderWarning />
-        <Reader article={article} />
-      </div>
+        <div className="pb-28 pt-3 md:pb-32 md:pt-4">
+          <AnonymousReaderWarning />
+          <Reader article={article} />
+        </div>
+      </ReaderShell>
 
       <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3 px-4">
         {showMarkAsRead && (

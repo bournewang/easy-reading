@@ -9,6 +9,7 @@ export * from './types';
 export * from './types/services';
 export * from './utils/helper';
 export * from './utils/reader-warning';
+export * from './utils/daily-usage';
 export * from './utils/toast';
 export * from './hooks/useTranslation';
 export * from './hooks/useTTS';

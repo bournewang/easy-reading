@@ -18,7 +18,7 @@ export default function BookChaptersSidebar({
   const progress = Math.round(((currentChapter + 1) / totalChapters) * 100);
 
   return (
-    <aside className="hidden h-full min-h-0 lg:block">
+    <aside className="hidden h-full min-h-0 xl:block">
       <div className="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="shrink-0 border-b border-slate-100 pb-3">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{levelLabel}</p>

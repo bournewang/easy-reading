@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Reader, type Article } from '@easy-reading/shared';
+import ReaderShell from '@/components/ReaderShell';
 import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
 import type { IELTSArticleListItem, IELTSReaderTestSummary } from '@/lib/ielts-types';
 import { getIELTSPassageReaderUrl, ieltsMonthLabels, ieltsMonthOrder } from '@/lib/ielts-paths';
@@ -41,10 +42,17 @@ export default function IELTSTestReaderClient({
   const [isRead, setIsRead] = useState(false);
   const activePassage =
     passages.find((passage) => passage.passage === initialPassage) || passages[0] || null;
+  const activePassageIndex = activePassage
+    ? passages.findIndex((passage) => passage.id === activePassage.id)
+    : -1;
   const activeArticle = activePassage ? articlesById[activePassage.id] || null : null;
   const activeRouteUrl = activePassage
     ? getIELTSPassageReaderUrl(summary.year, summary.month, summary.test, activePassage.passage)
     : '';
+  const previousPassage = activePassageIndex > 0 ? passages[activePassageIndex - 1] : null;
+  const nextPassage = activePassageIndex >= 0 && activePassageIndex < passages.length - 1
+    ? passages[activePassageIndex + 1]
+    : null;
 
   useEffect(() => {
     if (!activePassage) {
@@ -216,7 +224,7 @@ export default function IELTSTestReaderClient({
 
   return (
     <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] overflow-hidden bg-gradient-to-br from-sky-50 via-white to-indigo-50">
-      <div className="mx-auto flex h-full max-w-[1600px] min-h-0 flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+      <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-[calc(88px+0.5rem)] sm:py-4 sm:pb-[calc(88px+0.5rem)] xl:pb-4">
         <div className="mb-3 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-4 shadow-sm sm:p-5">
           <nav className="mb-3 flex flex-wrap items-center gap-1 text-sm text-slate-500">
             <Link href="/ielts" className="hover:text-sky-700">
@@ -296,8 +304,8 @@ export default function IELTSTestReaderClient({
           </p>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="hidden h-full min-h-0 lg:block">
+        <div className="grid min-h-0 flex-1 gap-3 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="hidden h-full min-h-0 xl:block">
             <div className="flex h-full min-h-0 flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 shrink-0">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Passages</p>
@@ -334,7 +342,7 @@ export default function IELTSTestReaderClient({
             </div>
           </aside>
 
-          <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+          <section className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
             {activeArticle ? (
               <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
                 <div className="shrink-0">
@@ -351,15 +359,43 @@ export default function IELTSTestReaderClient({
             )}
           </section>
         </div>
-      </div>
+      </ReaderShell>
+
+      {activePassage && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur xl:hidden">
+          <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-5">
+            <button
+              type="button"
+              onClick={() => previousPassage && handlePassageChange(previousPassage)}
+              disabled={!previousPassage}
+              className="inline-flex min-w-[92px] items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <div className="min-w-0 text-center text-sm text-slate-600">
+              <span className="font-medium text-slate-900">Passage {activePassage.passage}</span>
+              <span className="mx-1 text-slate-300">/</span>
+              <span>{passages.length}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => nextPassage && handlePassageChange(nextPassage)}
+              disabled={!nextPassage}
+              className="inline-flex min-w-[92px] items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {showMarkAsRead && activeArticle && (
         <button
           type="button"
           onClick={handleMarkAsRead}
-          className={`fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all ${
+          className={`fixed right-6 z-50 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all xl:bottom-6 ${
             isRead ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-sky-600 hover:bg-sky-700'
-          }`}
+          } bottom-[5.5rem]`}
         >
           {isRead ? 'Read' : 'Mark as read'}
         </button>

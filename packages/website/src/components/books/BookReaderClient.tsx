@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChapterSelector } from '@/components/ChapterSelector';
+import ReaderShell from '@/components/ReaderShell';
 import BookChaptersSidebar from '@/components/books/BookChaptersSidebar';
 import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
 import type { BookChapterManifestItem, BookRecord } from '@/lib/books';
@@ -47,6 +47,8 @@ export default function BookReaderClient({
   const [showMarkAsRead, setShowMarkAsRead] = useState(false);
   const [isRead, setIsRead] = useState(false);
   const currentChapterMeta = chapters[currentChapter] || null;
+  const previousChapterIndex = currentChapter > 0 ? currentChapter - 1 : null;
+  const nextChapterIndex = currentChapter < chapters.length - 1 ? currentChapter + 1 : null;
   const currentRouteUrl = currentChapterMeta
     ? getBookChapterReaderUrl(book.level, book.slug, currentChapterMeta.chapterNumber)
     : getBookChapterReaderUrl(book.level, book.slug, initialChapterNumber);
@@ -125,7 +127,7 @@ export default function BookReaderClient({
 
   return (
     <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] overflow-hidden bg-gray-50">
-      <div className="container mx-auto flex h-full min-h-0 flex-col px-3 py-3 pb-[calc(112px+0.5rem)] sm:px-4 sm:py-4 sm:pb-[calc(132px+0.5rem)] lg:px-5 lg:py-4 lg:pb-4">
+      <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-[calc(88px+0.5rem)] sm:py-4 sm:pb-[calc(88px+0.5rem)] xl:pb-4">
         <nav className="mb-3 shrink-0 text-sm text-gray-500">
           <Link href="/books" className="hover:text-blue-600">
             Books
@@ -138,7 +140,7 @@ export default function BookReaderClient({
           <span className="text-gray-700">{book.title}</span>
         </nav>
 
-        <div className="min-h-0 flex-1 overflow-hidden lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-3">
+        <div className="min-h-0 flex-1 overflow-hidden xl:grid xl:grid-cols-[260px_minmax(0,1fr)] xl:items-start xl:gap-3">
           <BookChaptersSidebar
             bookTitle={book.title}
             levelLabel={levelLabel}
@@ -148,7 +150,7 @@ export default function BookReaderClient({
             loading={loading}
           />
 
-          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm">
+          <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm">
             {loading && (
               <div className="mb-3 shrink-0 text-right text-sm text-blue-600">Loading chapter...</div>
             )}
@@ -166,22 +168,41 @@ export default function BookReaderClient({
             </div>
           </div>
         </div>
-      </div>
+      </ReaderShell>
 
-      <ChapterSelector
-        currentChapter={currentChapter}
-        totalChapters={chapters.length}
-        onChapterChange={changeChapter}
-        showDesktop={false}
-      />
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-5">
+          <button
+            type="button"
+            onClick={() => previousChapterIndex !== null && changeChapter(previousChapterIndex)}
+            disabled={loading || previousChapterIndex === null}
+            className="inline-flex min-w-[92px] items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <div className="min-w-0 text-center text-sm text-slate-600">
+            <span className="font-medium text-slate-900">Chapter {currentChapter + 1}</span>
+            <span className="mx-1 text-slate-300">/</span>
+            <span>{chapters.length}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => nextChapterIndex !== null && changeChapter(nextChapterIndex)}
+            disabled={loading || nextChapterIndex === null}
+            className="inline-flex min-w-[92px] items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
 
       {showMarkAsRead && (
         <button
           type="button"
           onClick={handleMarkAsRead}
-          className={`fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all ${
+          className={`fixed right-6 z-50 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all xl:bottom-6 ${
             isRead ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-sky-600 hover:bg-sky-700'
-          }`}
+          } bottom-[5.5rem]`}
         >
           {isRead ? 'Read' : 'Mark as read'}
         </button>

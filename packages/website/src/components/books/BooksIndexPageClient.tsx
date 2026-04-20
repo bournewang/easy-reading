@@ -26,22 +26,22 @@ export function BooksIndexPageClient({ levels }: { levels: Level[] }) {
 
   return (
     <div className="bg-[#f5f5f7] py-8 sm:py-10">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-        <header className="mb-8 rounded-[36px] bg-[#1d1d1f] px-6 py-10 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-10 md:py-14">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_360px] lg:items-end">
+      <div className="w-full">
+        <header className="mb-6 rounded-[36px] bg-[linear-gradient(135deg,#312e81_0%,#4c1d95_52%,#4338ca_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_340px] lg:items-end">
             <div className="max-w-3xl">
-              <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#2997ff]">Books</p>
-              <h1 className="text-[40px] font-semibold leading-[1.07] tracking-[-0.04em] md:text-[56px]">{booksText('title')}</h1>
-              <p className="mt-4 text-[17px] leading-[1.47] tracking-[-0.37px] text-white/72">{booksText('subtitle')}</p>
+              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-indigo-100/90">Books</p>
+              <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">{booksText('title')}</h1>
+              <p className="mt-3 text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">{booksText('subtitle')}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+              <div className="rounded-[24px] bg-indigo-100/15 p-3.5 ring-1 ring-indigo-100/30">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Levels</p>
-                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{levels.length}</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{levels.length}</p>
               </div>
-              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+              <div className="rounded-[24px] bg-violet-100/15 p-3.5 ring-1 ring-violet-100/30">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Books</p>
-                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{levels.reduce((sum, level) => sum + level.total, 0)}</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{levels.reduce((sum, level) => sum + level.total, 0)}</p>
               </div>
             </div>
           </div>

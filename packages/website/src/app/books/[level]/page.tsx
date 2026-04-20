@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import PageShell from '@/components/PageShell';
 import { absoluteUrl } from '@/lib/seo';
 import { BOOK_LEVELS, getBookLevel, getBooksForLevel } from '@/lib/books';
 import { BookLevelPageClient } from '@/components/books/BookLevelPageClient';
@@ -44,9 +45,11 @@ export default async function BookLevelPage({ params }: Props) {
   }
 
   return (
-    <BookLevelPageClient
-      levelData={levelData}
-      levels={BOOK_LEVELS.map((level) => ({ id: level.id, shortLabel: level.shortLabel }))}
-    />
+    <PageShell>
+      <BookLevelPageClient
+        levelData={levelData}
+        levels={BOOK_LEVELS.map((level) => ({ id: level.id, shortLabel: level.shortLabel }))}
+      />
+    </PageShell>
   );
 }

@@ -1,4 +1,5 @@
 import Script from 'next/script';
+import PageShell from '@/components/PageShell';
 import { absoluteUrl, createPageMetadata, siteConfig } from '@/lib/seo';
 import { getAllBookLevels } from '@/lib/books';
 import { BooksIndexPageClient } from '@/components/books/BooksIndexPageClient';
@@ -40,7 +41,9 @@ export default async function BooksIndexPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <BooksIndexPageClient levels={levels} />
+      <PageShell>
+        <BooksIndexPageClient levels={levels} />
+      </PageShell>
     </>
   );
 }

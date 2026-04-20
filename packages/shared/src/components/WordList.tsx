@@ -860,14 +860,23 @@ function WordList() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
-      <div className="mx-auto max-w-[1440px] px-4 pb-8 pt-6 md:px-6 md:pb-12 md:pt-10">
-        <header className="mb-8 rounded-[36px] bg-[#1d1d1f] px-6 py-10 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-10 md:py-14">
-          <div className="max-w-3xl">
-            <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#2997ff]">Word Book</p>
-            <h1 className="text-[40px] font-semibold leading-[1.07] tracking-[-0.04em] md:text-[56px]">Build a vocabulary you can return to.</h1>
-            <p className="mt-4 max-w-2xl text-[17px] leading-[1.47] tracking-[-0.37px] text-white/72">
-              Review saved words, practice pronunciation, and keep your reading progress moving without losing context.
-            </p>
+      <div className="w-full pb-8 pt-4 md:pb-12 md:pt-6">
+        <header className="mb-6 rounded-[36px] bg-[linear-gradient(135deg,#1f2937_0%,#166534_52%,#0f766e_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_220px] lg:items-end">
+            <div className="max-w-3xl">
+              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-emerald-100/90">Word Book</p>
+              <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">Build a vocabulary you can return to.</h1>
+              <p className="mt-3 max-w-2xl text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">
+                Review saved words, practice pronunciation, and keep your reading progress moving without losing context.
+              </p>
+            </div>
+
+            <div>
+              <div className="rounded-[24px] bg-emerald-100/15 p-3.5 ring-1 ring-emerald-100/30">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Words</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{wordArray.length}</p>
+              </div>
+            </div>
           </div>
         </header>
         

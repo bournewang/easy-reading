@@ -211,17 +211,17 @@ export function BookLevelPageClient({ levelData, levels }: { levelData: LevelDat
 
   return (
     <div className="bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.16),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(45,212,191,0.12),_transparent_26%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_100%)] py-6 sm:py-8">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <nav className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+      <div className="w-full">
+        {/* <nav className="mb-4 flex flex-wrap items-center gap-2 text-sm text-slate-500">
           <Link href="/books" className="font-medium hover:text-blue-600">
             {common('books')}
           </Link>
           <span>/</span>
           <span className="text-slate-700">{levelData.shortLabel}</span>
-        </nav>
+        </nav> */}
 
         <section className="overflow-hidden rounded-[34px] border border-white/60 bg-white/80 shadow-[0_24px_80px_-42px_rgba(15,23,42,0.45)] backdrop-blur">
-          <div className="grid gap-5 border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-5 py-6 text-white sm:px-6 sm:py-7 lg:grid-cols-[1.3fr_0.7fr] lg:px-8 lg:py-8">
+          <div className="grid gap-5 border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-5 py-6 text-white sm:px-6 sm:py-7 lg:grid-cols-[minmax(0,1.35fr)_220px] lg:items-end lg:px-8 lg:py-8">
             <div>
               <div className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-blue-100 ring-1 ring-white/15">
                 {formatMessage(levelText('collection'), { level: levelData.shortLabel })}
@@ -234,15 +234,17 @@ export function BookLevelPageClient({ levelData, levels }: { levelData: LevelDat
             </div>
 
             <div>
-              <div className="rounded-[24px] bg-white/10 p-4 ring-1 ring-white/10">
-                <p className="text-sm text-slate-300">{levelText('booksInLevel')}</p>
-                <p className="mt-1.5 text-3xl font-semibold text-white">{levelData.total}</p>
-                <p className="mt-1.5 text-sm leading-6 text-slate-300">{levelText('booksInLevelBody')}</p>
+              <div className="rounded-[24px] bg-indigo-100/15 p-3.5 ring-1 ring-indigo-100/30">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">{levelText('booksInLevel')}</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{levelData.total}</p>
               </div>
             </div>
           </div>
 
-          <div className="px-5 py-4 sm:px-6 sm:py-5 lg:px-8">
+          
+        </section>
+
+          <div className="px-5 py-4 sm:px-6 sm:py-5 lg:px-8 bg-white/80 mt-6 border-x border-b border-white/60 rounded-[34px] shadow-[0_24px_80px_-42px_rgba(15,23,42,0.45)] backdrop-blur">
             <div className="flex flex-wrap gap-2">
               {levels.map((level) => {
                 const isActive = level.id === levelData.id;
@@ -264,8 +266,6 @@ export function BookLevelPageClient({ levelData, levels }: { levelData: LevelDat
               })}
             </div>
           </div>
-        </section>
-
         <section className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {levelData.books.map((book) => (
             <div

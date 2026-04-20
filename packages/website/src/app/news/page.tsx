@@ -2,6 +2,7 @@
 
 import React, { useEffect, Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import PageShell from '@/components/PageShell';
 import { useArticles } from '@/hooks/useArticles';
 import type { NewsArticle } from '@/types/news';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
@@ -184,24 +185,24 @@ function UrlReaderContent() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
-      <div className="mx-auto max-w-[1440px] px-4 pb-10 pt-6 md:px-6 md:pb-14 md:pt-10">
-        <section className="mb-8 rounded-[36px] bg-[#1d1d1f] px-6 py-10 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-10 md:py-14">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_360px] lg:items-end">
+      <PageShell className="pb-10 pt-4 md:pb-14 md:pt-6">
+        <section className="mb-6 rounded-[36px] bg-[linear-gradient(135deg,#1e3a8a_0%,#0f4c81_52%,#0b7285_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_340px] lg:items-end">
             <div className="max-w-3xl">
-              <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#2997ff]">News</p>
-              <h1 className="text-[40px] font-semibold leading-[1.07] tracking-[-0.04em] md:text-[56px]">{news('title')}</h1>
-              <p className="mt-4 text-[17px] leading-[1.47] tracking-[-0.37px] text-white/72">
+              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-sky-100/90">News</p>
+              <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">{news('title')}</h1>
+              <p className="mt-3 text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">
                 Read current English articles in a cleaner flow, then open any story with built-in dictionary, translation, and word saving support.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+              <div className="rounded-[24px] bg-sky-100/15 p-3.5 ring-1 ring-sky-100/30">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Articles</p>
-                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{metadata.total}</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{metadata.total}</p>
               </div>
-              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+              <div className="rounded-[24px] bg-emerald-100/15 p-3.5 ring-1 ring-emerald-100/30">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Read</p>
-                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{readArticles.size}</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{readArticles.size}</p>
               </div>
             </div>
           </div>
@@ -323,7 +324,7 @@ function UrlReaderContent() {
             ) : null}
           </>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

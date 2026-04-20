@@ -188,34 +188,34 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
 
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-        <div className="mb-8 overflow-hidden rounded-[36px] bg-[#1d1d1f] shadow-[0_24px_70px_rgba(0,0,0,0.18)]">
-          <div className="grid gap-6 px-6 py-10 text-white sm:px-8 sm:py-12 lg:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)] lg:items-end lg:px-10">
+      <div className="w-full py-4 sm:py-5">
+        <div className="mb-6 overflow-hidden rounded-[36px] bg-[linear-gradient(135deg,#1f2937_0%,#0f766e_52%,#155e75_100%)] shadow-[0_24px_70px_rgba(0,0,0,0.18)]">
+          <div className="grid gap-5 px-6 py-8 text-white sm:px-8 sm:py-9 lg:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)] lg:items-end lg:px-10">
             <div>
-              <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-[#2997ff]">IELTS Reading</p>
-              <h1 className="text-[40px] font-semibold leading-[1.07] tracking-[-0.04em] md:text-[56px]">Find the right test, then pick your passage</h1>
-              <p className="mt-4 max-w-3xl text-[17px] leading-[1.47] tracking-[-0.37px] text-white/72">
+              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-teal-100/90">IELTS Reading</p>
+              <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">Find the right test, then pick your passage</h1>
+              <p className="mt-3 max-w-3xl text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">
                 Stay on the IELTS list page while you filter by year, month, and test. When you are ready, open a specific passage from the list below.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+              <div className="rounded-[24px] bg-sky-100/15 p-3.5 ring-1 ring-sky-100/30">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Years</p>
-                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{years.length}</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{years.length}</p>
               </div>
-              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+              <div className="rounded-[24px] bg-indigo-100/15 p-3.5 ring-1 ring-indigo-100/30">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Tests</p>
-                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{totalTests}</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{totalTests}</p>
               </div>
-              <div className="rounded-[24px] bg-white/8 p-4 ring-1 ring-white/10">
+              <div className="rounded-[24px] bg-emerald-100/15 p-3.5 ring-1 ring-emerald-100/30">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Read</p>
-                <p className="mt-2 text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{readRoutes.size}</p>
+                <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{readRoutes.size}</p>
               </div>
             </div>
           </div>
 
-          {(selectedTestLabel || resumeRoute) && (
+          {false && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-white/6 px-6 py-4 sm:px-8 lg:px-10">
               <div>
                 <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-white/56">Current Selection</p>
@@ -237,7 +237,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
         </div>
 
         <div className="mb-5 grid gap-4 lg:grid-cols-[0.85fr_1.3fr_0.85fr]">
-          <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+          <section className="rounded-[28px] border border-sky-100 bg-sky-50/55 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 1</p>
             <h2 className="mb-3 text-lg font-semibold text-slate-900">Choose year</h2>
             <div className="flex flex-wrap gap-2">
@@ -258,7 +258,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
             </div>
           </section>
 
-          <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+          <section className="rounded-[28px] border border-indigo-100 bg-indigo-50/55 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 2</p>
             <h2 className="mb-3 text-lg font-semibold text-slate-900">Choose month</h2>
             <div className="flex flex-wrap gap-2">
@@ -286,7 +286,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
             </div>
           </section>
 
-          <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
+          <section className="rounded-[28px] border border-emerald-100 bg-emerald-50/55 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Step 3</p>
             <h2 className="mb-3 text-lg font-semibold text-slate-900">Choose test</h2>
             <div className="flex flex-wrap gap-2">
