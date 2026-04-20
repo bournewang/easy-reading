@@ -315,6 +315,18 @@ def init_db() -> None:
         )
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS vocab_book_settings (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL UNIQUE,
+                selected_book_ids LONGTEXT NOT NULL,
+                created_at VARCHAR(64) NOT NULL,
+                updated_at VARCHAR(64) NOT NULL,
+                INDEX idx_vocab_book_settings_user_id (user_id)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS anonymous_usage (
                 id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 anonymous_id VARCHAR(191) NOT NULL,

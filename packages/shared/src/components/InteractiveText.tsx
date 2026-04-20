@@ -17,6 +17,8 @@ interface InteractiveTextProps {
     isMarkdown: boolean;
     onWordClick: (word: string) => void;
     isVisible?: boolean; // New prop to track visibility
+    vocabularyHighlightColorByWord?: Record<string, string>;
+    vocabularyBookIdsByWord?: Record<string, string[]>;
 }
 
 interface SentenceState {
@@ -25,7 +27,15 @@ interface SentenceState {
     translating: boolean;
 }
 
-export function InteractiveText({ text, id, isMarkdown, onWordClick, isVisible = true }: InteractiveTextProps) {
+export function InteractiveText({
+    text,
+    id,
+    isMarkdown,
+    onWordClick,
+    isVisible = true,
+    vocabularyHighlightColorByWord = {},
+    vocabularyBookIdsByWord = {},
+}: InteractiveTextProps) {
     const [sentenceStates, setSentenceStates] = useState<Record<number, SentenceState>>({});
     const [sentences, setSentences] = useState<string[]>([]);
     const [isLoadingSentences, setIsLoadingSentences] = useState(false);
@@ -129,17 +139,37 @@ export function InteractiveText({ text, id, isMarkdown, onWordClick, isVisible =
                 {textParts.map((word, index) => {
                     const cleanPart = cleanWord(word);
                     if (cleanPart) {
+                        const bookColor = vocabularyHighlightColorByWord[cleanPart];
+                        const bookIds = vocabularyBookIdsByWord[cleanPart] || [];
+                        const isInWordbook = wordList.has(cleanPart);
+                        const primaryBookId = bookIds[0]?.replace(/\.json$/i, '');
+                        const extraBookCount = bookIds.length > 1 ? bookIds.length - 1 : 0;
+                        const markerLabel = primaryBookId
+                            ? extraBookCount > 0
+                                ? `${primaryBookId} +${extraBookCount}`
+                                : primaryBookId
+                            : '';
+
                         return (
-                            <span
-                                key={index}
-                                onClick={() => handleWordClick(word)}
-                                className={`cursor-pointer ${
-                                    wordList.has(cleanPart)
-                                        ? 'bg-yellow-100 hover:bg-yellow-200'
-                                        : 'hover:bg-gray-100'
-                                } transition-colors duration-200`}
-                            >
-                                {word}
+                            <span key={index} className="inline-flex items-start gap-1 align-baseline">
+                                <span
+                                    onClick={() => handleWordClick(word)}
+                                    title={bookIds.length > 0 ? `Vocabulary books: ${bookIds.join(', ')}` : undefined}
+                                    className={`cursor-pointer rounded-[6px] px-0.5 transition-colors duration-200 ${
+                                        isInWordbook ? 'bg-yellow-100 hover:bg-yellow-200' : 'hover:bg-gray-100'
+                                    }`}
+                                    style={!isInWordbook && bookColor ? { backgroundColor: bookColor } : undefined}
+                                >
+                                    {word}
+                                </span>
+                                {markerLabel ? (
+                                    <span
+                                        className="mt-0.5 inline-flex max-w-[7rem] shrink-0 rounded-full border border-black/8 bg-white/92 px-1.5 py-[1px] text-[9px] font-semibold leading-[1.2] tracking-[0.04em] text-black/56"
+                                        title={bookIds.join(', ')}
+                                    >
+                                        {markerLabel}
+                                    </span>
+                                ) : null}
                             </span>
                         );
                     }

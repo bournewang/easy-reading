@@ -10,19 +10,31 @@ import type { Article } from '../types';
 import { cleanWord } from '../utils/helper';
 import { ChatWindow } from './ChatWindow';
 import { InteractiveText } from './InteractiveText';
+import VocabularyBookPanel from './VocabularyBookPanel';
 import { BookIcon, ClockIcon } from './icons/ReaderIcons';
+import type { VocabularyBookWordDetails } from '../types/vocabularyBook';
 import '../styles/tailwind.css';
 
 export interface ReaderProps {
   article: Article;
   containedScroll?: boolean;
   contentScrollRef?: React.RefObject<HTMLDivElement>;
+  vocabularyHighlightColorByWord?: Record<string, string>;
+  vocabularyBookIdsByWord?: Record<string, string[]>;
+  vocabularyWordDetailsByWord?: Record<string, VocabularyBookWordDetails[]>;
 }
 const spinAnimation = `
   @keyframes spin-slow {from {transform: rotate(0deg);}to {transform: rotate(360deg);}}
   .animate-spin-slow {animation: spin-slow 2s linear infinite;}`;
 
-const Reader: React.FC<ReaderProps> = ({ article, containedScroll = false, contentScrollRef }) => {
+const Reader: React.FC<ReaderProps> = ({
+  article,
+  containedScroll = false,
+  contentScrollRef,
+  vocabularyHighlightColorByWord = {},
+  vocabularyBookIdsByWord = {},
+  vocabularyWordDetailsByWord = {},
+}) => {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const { words, addWord, removeWord } = useWordList();
   const [showChat, setShowChat] = useState(false);
@@ -79,15 +91,13 @@ const Reader: React.FC<ReaderProps> = ({ article, containedScroll = false, conte
   }, [article]);
 
   const handleWordClick = (word: string) => {
-    console.log('Clicked word:', word);
     const cleanedWord = cleanWord(word);
-    setSelectedWord(cleanedWord);
     if (words.has(cleanedWord)) {
       removeWord(cleanedWord);
     } else {
       addWord(cleanedWord);
     }
-    setSelectedWord(word);
+    setSelectedWord(cleanedWord);
   };
 
   const handleChatClick = () => {
@@ -98,6 +108,11 @@ const Reader: React.FC<ReaderProps> = ({ article, containedScroll = false, conte
   const setParagraphRef = useCallback((element: HTMLDivElement | null, id: string) => {
     paragraphRefs.current[id] = element;
   }, []);
+
+  const selectedWordDetails = selectedWord
+    ? vocabularyWordDetailsByWord[cleanWord(selectedWord)] || []
+    : [];
+  const isVocabularyWord = selectedWordDetails.length > 0;
 
   return (
     <>
@@ -150,6 +165,8 @@ const Reader: React.FC<ReaderProps> = ({ article, containedScroll = false, conte
                             id={id}
                             onWordClick={handleWordClick}
                             isVisible={containedScroll ? visibleParagraphs[id] ?? true : visibleParagraphs[id]}
+                            vocabularyHighlightColorByWord={vocabularyHighlightColorByWord}
+                            vocabularyBookIdsByWord={vocabularyBookIdsByWord}
                           />
                         </div>
                       ) : paragraph.type === 'image' ? (
@@ -182,8 +199,12 @@ const Reader: React.FC<ReaderProps> = ({ article, containedScroll = false, conte
             )}
           </div>
         </div>
-        <div className={`${containedScroll ? 'hidden xl:block xl:h-full xl:w-2/5 xl:overflow-y-auto xl:border-l xl:border-black/6 xl:bg-white 2xl:w-1/3' : 'fixed bottom-0 left-0 right-0 z-10 h-[220px] overflow-y-auto border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:static md:h-auto md:w-full md:shadow-none xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:w-[360px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]'} ${!selectedWord ? (containedScroll ? 'hidden xl:block' : 'hidden md:block') : ''}`}>
-          <Dictionary selectedWord={selectedWord} />
+        <div className={`${containedScroll ? 'hidden h-full overflow-y-auto border-l border-black/6 bg-white md:block md:w-2/5 lg:w-1/3' : 'fixed bottom-0 left-0 right-0 z-10 h-[220px] overflow-y-auto border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:static md:h-auto md:w-full md:shadow-none xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:w-[640px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]'} ${!selectedWord ? 'hidden md:block' : ''}`}>
+          {isVocabularyWord ? (
+            <VocabularyBookPanel selectedWord={selectedWord} details={selectedWordDetails} />
+          ) : (
+            <Dictionary selectedWord={selectedWord} />
+          )}
           {!selectedWord && <div className="m-3 rounded-[24px] bg-[#f5f5f7]"><Tips /></div>}
         </div>
       </div>

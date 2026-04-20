@@ -151,6 +151,14 @@ class WordbookSyncRequest(BaseModel):
     words: list[str] = Field(default_factory=list)
 
 
+class VocabBookSettingsResponse(BaseModel):
+    selectedBookIds: list[str] = Field(default_factory=list)
+
+
+class VocabBookSettingsRequest(BaseModel):
+    selectedBookIds: list[str] = Field(default_factory=list)
+
+
 class AnonymousLimitsResponse(BaseModel):
     translationDailyLimit: int
     ttsDailyLimit: int

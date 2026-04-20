@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from typing import Any
 
 from ..db import db_cursor, row_to_dict, utcnow_iso
@@ -47,6 +49,11 @@ class UserDataService:
     @staticmethod
     def _normalize_word(word: str) -> str | None:
         normalized = str(word or "").strip().lower()
+        return normalized or None
+
+    @staticmethod
+    def _normalize_book_id(book_id: str) -> str | None:
+        normalized = str(book_id or "").strip()
         return normalized or None
 
     def list_history(self, user_id: int) -> list[dict[str, Any]]:
@@ -217,6 +224,65 @@ class UserDataService:
             if normalized:
                 self.add_word(user_id, normalized)
         return self.list_wordbook(user_id)
+
+    def list_vocab_book_settings(self, user_id: int) -> list[str]:
+        with db_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT selected_book_ids
+                FROM vocab_book_settings
+                WHERE user_id = ?
+                """,
+                (user_id,),
+            )
+            row = row_to_dict(cursor.fetchone()) or {}
+
+        raw = row.get("selected_book_ids")
+        if not raw:
+            return []
+
+        try:
+            parsed = raw if isinstance(raw, list) else json.loads(raw)
+        except Exception:
+            return []
+
+        if not isinstance(parsed, list):
+            return []
+
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for item in parsed:
+            book_id = self._normalize_book_id(str(item))
+            if not book_id or book_id in seen:
+                continue
+            seen.add(book_id)
+            normalized.append(book_id)
+        return normalized
+
+    def replace_vocab_book_settings(self, user_id: int, selected_book_ids: list[str]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for item in selected_book_ids:
+            book_id = self._normalize_book_id(item)
+            if not book_id or book_id in seen:
+                continue
+            seen.add(book_id)
+            normalized.append(book_id)
+
+        now = utcnow_iso()
+        payload = json.dumps(normalized, ensure_ascii=False)
+
+        with db_cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO vocab_book_settings (user_id, selected_book_ids, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE selected_book_ids = VALUES(selected_book_ids), updated_at = VALUES(updated_at)
+                """,
+                (user_id, payload, now, now),
+            )
+
+        return normalized
 
 
 user_data_service = UserDataService()

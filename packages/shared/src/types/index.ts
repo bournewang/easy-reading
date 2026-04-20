@@ -6,6 +6,7 @@ export * from './user';
 export * from './wordList';
 export * from './progress';
 export * from "./api";
+export * from './vocabularyBook';
 
 // API types - import directly from specific files
 // export * from './api/auth';

@@ -14,6 +14,7 @@ import {
   isRouteRead,
   saveReadingHistoryItemAsync,
 } from '@/utils/reading-history';
+import { useVocabularyBooks } from '@/hooks/useVocabularyBooks';
 
 type ReaderPageClientProps = {
   initialArticle?: Article | null;
@@ -133,6 +134,7 @@ function ReaderContent({
   const [isRead, setIsRead] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
   const [queryLoading, setQueryLoading] = useState(false);
+  const { readerVocabularyData } = useVocabularyBooks({ loadWordDetails: true });
   const { extractArticle, loading, error } = useArticleExtractor();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -369,7 +371,12 @@ function ReaderContent({
 
         <div className="pb-28 pt-3 md:pb-32 md:pt-4">
           <AnonymousReaderWarning />
-          <Reader article={article} />
+          <Reader
+            article={article}
+            vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
+            vocabularyBookIdsByWord={readerVocabularyData.vocabularyBookIdsByWord}
+            vocabularyWordDetailsByWord={readerVocabularyData.vocabularyWordDetailsByWord}
+          />
         </div>
       </ReaderShell>
 

@@ -39,6 +39,8 @@ from .models import (
     TranslateRequest,
     TranslateResponse,
     UserPayload,
+    VocabBookSettingsRequest,
+    VocabBookSettingsResponse,
     WordbookEntryModel,
     WordbookReplaceRequest,
     WordbookSyncRequest,
@@ -455,6 +457,24 @@ def add_wordbook_word(word: str, user: dict = Depends(require_user)) -> Wordbook
 def delete_wordbook_word(word: str, user: dict = Depends(require_user)) -> dict:
     user_data_service.remove_word(user["id"], word)
     return {"success": True}
+
+
+@app.get("/api/vocab-book-settings", response_model=VocabBookSettingsResponse)
+def get_vocab_book_settings(user: dict = Depends(require_user)) -> VocabBookSettingsResponse:
+    selected_book_ids = user_data_service.list_vocab_book_settings(user["id"])
+    return VocabBookSettingsResponse(selectedBookIds=selected_book_ids)
+
+
+@app.put("/api/vocab-book-settings", response_model=VocabBookSettingsResponse)
+def replace_vocab_book_settings(
+    payload: VocabBookSettingsRequest,
+    user: dict = Depends(require_user),
+) -> VocabBookSettingsResponse:
+    selected_book_ids = user_data_service.replace_vocab_book_settings(
+        user["id"],
+        payload.selectedBookIds,
+    )
+    return VocabBookSettingsResponse(selectedBookIds=selected_book_ids)
 
 
 @app.get("/api/subscription", response_model=SubscriptionResponse)

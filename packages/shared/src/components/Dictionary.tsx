@@ -20,6 +20,8 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
   const { speak } = useTTS();
   const { locale } = useLocaleContext();
   const language: DictionaryLanguage = locale === 'zh' ? 'zh' : 'en';
+  const sfDisplay = '"SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
+  const sfText = '"SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
 
   useEffect(() => {
     if (selectedWord) {
@@ -53,23 +55,28 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
 
   return (
     <>
-    <div className="sticky top-0 z-10 border-b border-black/6 bg-white py-3 text-center text-[12px] font-semibold uppercase tracking-[0.12em] text-black/56">
+    <div
+      className="sticky top-0 z-10 border-b border-black/6 bg-white py-3 text-center text-[12px] font-semibold uppercase text-black/56"
+      style={{ fontFamily: sfText, letterSpacing: '-0.12px', lineHeight: '1.33' }}
+    >
         {locale === 'zh' ? '词典' : 'Dictionary'}
     </div>
-    <div className="bg-white p-3 md:p-5 xl:h-full xl:overflow-y-auto">
+    <div className="bg1-[#f5f5f7] p-3 md:p-4 xl:h-full xl:overflow-y-auto">
       <div className='hidden md:block'>
-        <form onSubmit={handleSubmit} className="mb-4">
+        <form onSubmit={handleSubmit} className="mb-4 rounded-[12px] bg-white p-3 shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]">
           <div className="flex gap-2">
             <input
               type="text"
               value={word}
               onChange={(e) => setWord(e.target.value)}
               placeholder={locale === 'zh' ? '输入要查询的单词' : 'Enter a word to look up'}
-              className="flex-1 rounded-[18px] border border-black/10 bg-[#fafafc] px-4 py-3 text-[17px] tracking-[-0.37px] text-[#1d1d1f] focus:border-[#0071e3] focus:outline-none focus:ring-2 focus:ring-[#0071e3]"
+              className="flex-1 rounded-[11px] border border-black/10 bg-[#fafafc] px-4 py-3 text-[17px] text-[#1d1d1f] focus:border-[#0071e3] focus:outline-none focus:ring-2 focus:ring-[#0071e3]"
+              style={{ fontFamily: sfText, letterSpacing: '-0.374px', lineHeight: '1.47' }}
             />
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-full px-4 py-2 text-[14px] font-medium tracking-[-0.22px] text-white transition-colors duration-200 hover:bg-green-300 disabled:bg-slate-300"
+              className="inline-flex items-center justify-center rounded-[980px] border border-[#0071e3] bg-[#0071e3] px-4 py-2 text-[14px] font-normal text-white transition-colors duration-200 hover:bg-[#0066cc] disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-300"
+              style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
               disabled={loading || !word.trim()}
               title={locale === 'zh' ? '查询单词' : 'Look up word'}
             >
@@ -82,24 +89,38 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-[18px] bg-[#fff1f0] p-3 text-[#8b2b1d]">
+        <div
+          className="mb-4 rounded-[12px] bg-white p-3 text-[#8b2b1d] shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]"
+          style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
+        >
           {error}
         </div>
       )}
 
       {result && (
         <div className="">
-          <div className="mb-4 rounded-[24px] bg-[#f5f5f7] p-5">
-            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
-              <h2 className="whitespace-nowrap text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">{result.word}</h2>
+          <div className=" rounded-[12px] bg-white p-2 shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]">
+            <div className="flex flex-wrap items-start justify-start gap-x-3 gap-y-2">
+              <h3
+                className="whitespace-nowrap text-[28px] font-semibold text-[#1d1d1f]"
+                style={{ fontFamily: sfDisplay, letterSpacing: '-0.28px', lineHeight: '1.1' }}
+              >
+                {result.word}
+              </h3>
               {result.phonetics
                 .filter(phonetic => phonetic.text && phonetic.audio)
                 .map((phonetic, index) => (
                   <div key={index} className="flex items-center space-x-2 whitespace-nowrap">
-                    <span className="text-[14px] tracking-[-0.22px] text-black/64">{phonetic.text}</span>
+                    {/* <span
+                      className="text-[14px] text-black/64"
+                      style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
+                    >
+                      {phonetic.text}
+                    </span> */}
                     <button
                       onClick={() => new Audio(phonetic.audio).play()}
-                      className="rounded-full border border-black/10 bg-white px-2 py-1 text-[#0066cc] transition-colors hover:border-black/20 hover:text-[#0071e3]"
+                      className="rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1 text-[14px] text-[#0066cc] transition-colors hover:underline"
+                      style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
                     >
                       🔊
                     </button>
@@ -109,8 +130,11 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
           </div>
 
           {result.meanings.map((meaning, index) => (
-            <div key={index} className="mb-4 rounded-[24px] bg-[#fbfbfd] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
-              <h3 className="mb-2 text-[21px] font-semibold tracking-[-0.02em] text-[#0066cc]">
+            <div key={index} className="mb-4 rounded-[12px] bg-white p-4 shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]">
+              <h3
+                className="mb-2 text-[21px] font-semibold text-[#0066cc]"
+                style={{ fontFamily: sfDisplay, letterSpacing: '0.231px', lineHeight: '1.19' }}
+              >
                 {meaning.partOfSpeech}
               </h3>
 
@@ -119,22 +143,37 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
                   <li key={defIndex} className="text-slate-700">
                     <div className="flex-1">
                       {language === 'en' ? (
-                        <p className="text-[15px] leading-[1.5] tracking-[-0.24px] text-black/80">{defIndex + 1}. {def.definition}</p>
+                        <p
+                          className="text-[15px] text-black/80"
+                          style={{ fontFamily: sfText, letterSpacing: '-0.24px', lineHeight: '1.5' }}
+                        >
+                          {defIndex + 1}. {def.definition}
+                        </p>
                       ) : def.translation ? (
-                        <p className="text-[15px] leading-[1.5] tracking-[-0.24px] text-black/80">
+                        <p
+                          className="text-[15px] text-black/80"
+                          style={{ fontFamily: sfText, letterSpacing: '-0.24px', lineHeight: '1.5' }}
+                        >
                           {defIndex + 1}. {def.translation}
                         </p>
                       ) : (
-                        <p className="rounded-[16px] bg-white p-2 text-[14px] tracking-[-0.22px] text-black/40">
+                        <p
+                          className="rounded-[8px] bg-[#f5f5f7] p-2 text-[14px] text-black/40"
+                          style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
+                        >
                           {defIndex + 1}. {locale === 'zh' ? '暂无中文释义。' : 'No Chinese definition available.'}
                         </p>
                       )}
                       {def.example && (
-                        <p className="mt-2 flex items-center justify-between rounded-[16px] bg-white p-3 text-[14px] italic tracking-[-0.22px] text-black/64">
+                        <p
+                          className="mt-2 flex items-center justify-between rounded-[8px] bg-[#f5f5f7] p-3 text-[14px] italic text-black/64"
+                          style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
+                        >
                           <span>{def.example}</span>
                           <button
                             onClick={() => def.example && speak(def.example)}
-                            className="ml-2 rounded-full border border-black/10 bg-[#fafafc] px-2 py-1 text-[#0066cc] transition-colors hover:border-black/20 hover:text-[#0071e3]"
+                            className="ml-2 rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1 text-[14px] text-[#0066cc] transition-colors hover:underline"
+                            style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
                             title={locale === 'zh' ? '朗读例句' : 'Listen to example'}
                           >
                             🔊
@@ -142,7 +181,10 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
                         </p>
                       )}
                       {def.synonyms.length > 0 && (
-                        <p className="mt-2 text-[14px] tracking-[-0.22px] text-black/64">
+                        <p
+                          className="mt-2 text-[14px] text-black/64"
+                          style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
+                        >
                           <span className="font-medium">{locale === 'zh' ? '近义词: ' : 'Synonyms: '}</span>
                           <span className="text-[#0066cc]">{def.synonyms.join(', ')}</span>
                         </p>
@@ -153,7 +195,10 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
               </ul>
 
               {meaning.synonyms.length > 0 && (
-                <div className="mt-3 rounded-[16px] bg-white p-3 text-[14px] tracking-[-0.22px]">
+                <div
+                  className="mt-3 rounded-[8px] bg-[#f5f5f7] p-3 text-[14px]"
+                  style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
+                >
                   <span className="font-medium text-black/72">{locale === 'zh' ? '近义词: ' : 'Synonyms: '}</span>
                   <span className="text-[#0066cc]">{meaning.synonyms.join(', ')}</span>
                 </div>

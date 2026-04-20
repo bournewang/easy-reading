@@ -14,6 +14,7 @@ import {
   isRouteRead,
   saveReadingHistoryItemAsync,
 } from '@/utils/reading-history';
+import { useVocabularyBooks } from '@/hooks/useVocabularyBooks';
 
 type BookReaderClientProps = {
   book: BookRecord;
@@ -46,6 +47,7 @@ export default function BookReaderClient({
   const [error, setError] = useState<string | null>(null);
   const [showMarkAsRead, setShowMarkAsRead] = useState(false);
   const [isRead, setIsRead] = useState(false);
+  const { readerVocabularyData } = useVocabularyBooks({ loadWordDetails: true });
   const currentChapterMeta = chapters[currentChapter] || null;
   const previousChapterIndex = currentChapter > 0 ? currentChapter - 1 : null;
   const nextChapterIndex = currentChapter < chapters.length - 1 ? currentChapter + 1 : null;
@@ -164,7 +166,14 @@ export default function BookReaderClient({
             </div>
 
             <div className="min-h-0 flex-1 overflow-hidden">
-              <Reader article={article} containedScroll contentScrollRef={articleScrollRef} />
+              <Reader
+                article={article}
+                containedScroll
+                contentScrollRef={articleScrollRef}
+                vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
+                vocabularyBookIdsByWord={readerVocabularyData.vocabularyBookIdsByWord}
+                vocabularyWordDetailsByWord={readerVocabularyData.vocabularyWordDetailsByWord}
+              />
             </div>
           </div>
         </div>

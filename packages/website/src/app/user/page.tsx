@@ -14,6 +14,7 @@ import {
   type SubscriptionSummary,
 } from '@/lib/api/subscription';
 import { getReferralSummary, type ReferralSummary } from '@/lib/api/referral';
+import { useVocabularyBooks } from '@/hooks/useVocabularyBooks';
 
 type ActivityStat = {
   label: string;
@@ -105,6 +106,13 @@ export default function UserCenterPage() {
   const [referralInfo, setReferralInfo] = useState<ReferralSummary | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const {
+    catalog: vocabularyBookCatalog,
+    selectedBookIds,
+    loadingCatalog: loadingVocabularyBookCatalog,
+    savingSelection: savingVocabularyBookSelection,
+    toggleBookSelection,
+  } = useVocabularyBooks();
   const userText = (key: string) => t(`website.userPage.${key}`);
   const common = (key: string) => t(`website.common.${key}`);
 
@@ -516,6 +524,69 @@ export default function UserCenterPage() {
                 </div>
                 {subscriptionLoading && (
                   <p className="text-sm text-slate-500">Refreshing subscription details...</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[30px] border border-slate-200/70 bg-white p-6 shadow-[0_24px_80px_-42px_rgba(15,23,42,0.4)]">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Vocabulary Books
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">Reader highlights</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Select up to 3 vocabulary books to auto-highlight words in the reader and show phrase/example details next to the dictionary.
+              </p>
+
+              <div className="mt-5 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+                {loadingVocabularyBookCatalog ? (
+                  <p className="text-sm text-slate-500">Loading vocabulary books...</p>
+                ) : vocabularyBookCatalog.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No vocabulary books found. Make sure vocabulary-books folder is properly linked.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-slate-400 mb-2">
+                      Selected: {selectedBookIds.length} / 3
+                    </p>
+                    {vocabularyBookCatalog.map((book) => {
+                      const checked = selectedBookIds.includes(book.id);
+                      const isAtLimit = selectedBookIds.length >= 3 && !checked;
+
+                      return (
+                        <button
+                          key={book.id}
+                          type="button"
+                          disabled={savingVocabularyBookSelection || isAtLimit}
+                          onClick={() => {
+                            void toggleBookSelection(book.id);
+                          }}
+                          className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left transition-colors ${
+                            checked
+                              ? 'border-blue-300 bg-blue-50'
+                              : isAtLimit
+                                ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                                : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
+                          } ${savingVocabularyBookSelection ? 'opacity-60' : ''}`}
+                        >
+                          <div
+                            className={`h-4 w-4 rounded border ${
+                              checked ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
+                            }`}
+                          />
+                          {book.image ? (
+                            <img src={book.image} alt={book.title} className="h-10 w-10 rounded-lg object-cover" loading="lazy" />
+                          ) : (
+                            <div className="h-10 w-10 rounded-lg bg-slate-200" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-slate-900">{book.title}</p>
+                            <p className="text-xs text-slate-500">{book.wordCount.toLocaleString()} words</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
                 )}
               </div>
             </div>
