@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ReaderShell from '@/components/ReaderShell';
-import BookChaptersSidebar from '@/components/books/BookChaptersSidebar';
 import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
+import ReaderWorkspace from '@/components/reader/ReaderWorkspace';
+import { BOOK_LEVELS } from '@/lib/book-levels';
 import type { BookChapterManifestItem, BookRecord } from '@/lib/books';
 import { getBookChapterReaderUrl } from '@/lib/reading-routes';
-import { Reader, type Article } from '@easy-reading/shared';
+import { type Article } from '@easy-reading/shared';
 import {
   createBookHistoryItem,
   isRouteRead,
@@ -135,87 +136,89 @@ export default function BookReaderClient({
             Books
           </Link>
           <span className="mx-2">/</span>
-          <Link href={`/books/${book.level}`} className="hover:text-blue-600">
-            {levelLabel}
-          </Link>
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            {BOOK_LEVELS.map((level, index) => {
+              const isCurrentLevel = level.id === book.level;
+
+              return (
+                <span key={level.id} className="inline-flex items-center gap-1.5">
+                  {index > 0 ? <span className="text-gray-300">/</span> : null}
+                  <Link
+                    href={`/books/${level.id}`}
+                    aria-current={isCurrentLevel ? 'page' : undefined}
+                    className={isCurrentLevel ? 'rounded-full bg-sky-100 px-2 py-0.5 font-semibold text-sky-700' : 'hover:text-blue-600'}
+                  >
+                    {level.shortLabel}
+                  </Link>
+                </span>
+              );
+            })}
+          </span>
           <span className="mx-2">/</span>
           <span className="text-gray-700">{book.title}</span>
         </nav>
 
-        <div className="min-h-0 flex-1 overflow-hidden xl:grid xl:grid-cols-[260px_minmax(0,1fr)] xl:items-start xl:gap-3">
-          <BookChaptersSidebar
-            bookTitle={book.title}
-            levelLabel={levelLabel}
-            currentChapter={currentChapter}
-            totalChapters={chapters.length}
-            onChapterChange={changeChapter}
-            loading={loading}
-          />
-
-          <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm">
-            {loading && (
-              <div className="mb-3 shrink-0 text-right text-sm text-blue-600">Loading chapter...</div>
-            )}
-            {error && (
-              <div className="mb-3 shrink-0 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-            <div className="shrink-0">
+        <ReaderWorkspace
+          article={article}
+          containedScroll
+          contentScrollRef={articleScrollRef}
+          outerClassName="min-h-0 flex-1 overflow-hidden xl:grid xl:grid-cols-[260px_minmax(0,1fr)] xl:items-start xl:gap-3"
+          navigation={{
+            title: levelLabel,
+            description: book.title,
+            items: chapters.map((chapter, index) => ({
+              id: chapter.id,
+              overline: `Chapter ${chapter.chapterNumber}`,
+              title: chapter.chapterTitle || `Chapter ${chapter.chapterNumber}`,
+              meta: `${chapter.readingTime} min`,
+              active: index === currentChapter,
+              onSelect: () => void changeChapter(index),
+            })),
+            previous: {
+              label: 'Prev',
+              onSelect: () => previousChapterIndex !== null && void changeChapter(previousChapterIndex),
+              disabled: loading || previousChapterIndex === null,
+            },
+            next: {
+              label: 'Next',
+              onSelect: () => nextChapterIndex !== null && void changeChapter(nextChapterIndex),
+              disabled: loading || nextChapterIndex === null,
+            },
+            currentLabel: `Chapter ${currentChapter + 1} / ${chapters.length}`,
+            desktopClassName: 'hidden h-full min-h-0 xl:block',
+            mobileClassName: 'fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden',
+          }}
+          warning={(
+            <>
+              {loading && (
+                <div className="mb-3 shrink-0 text-right text-sm text-blue-600">Loading chapter...</div>
+              )}
+              {error && (
+                <div className="mb-3 shrink-0 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
               <AnonymousReaderWarning />
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <Reader
-                article={article}
-                containedScroll
-                contentScrollRef={articleScrollRef}
-                vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
-                vocabularyBookIdsByWord={readerVocabularyData.vocabularyBookIdsByWord}
-                vocabularyWordDetailsByWord={readerVocabularyData.vocabularyWordDetailsByWord}
-              />
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+          floatingAction={showMarkAsRead ? (
+            <button
+              type="button"
+              onClick={handleMarkAsRead}
+              className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all ${
+                isRead ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-sky-600 hover:bg-sky-700'
+              }`}
+            >
+              {isRead ? 'Read' : 'Mark as read'}
+            </button>
+          ) : null}
+          panelClassName="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm"
+          readerContainerClassName="min-h-0 flex-1 overflow-hidden"
+          vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
+          vocabularyBookIdsByWord={readerVocabularyData.vocabularyBookIdsByWord}
+          vocabularyWordDetailsByWord={readerVocabularyData.vocabularyWordDetailsByWord}
+        />
       </ReaderShell>
-
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-5">
-          <button
-            type="button"
-            onClick={() => previousChapterIndex !== null && changeChapter(previousChapterIndex)}
-            disabled={loading || previousChapterIndex === null}
-            className="inline-flex min-w-[92px] items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Prev
-          </button>
-          <div className="min-w-0 text-center text-sm text-slate-600">
-            <span className="font-medium text-slate-900">Chapter {currentChapter + 1}</span>
-            <span className="mx-1 text-slate-300">/</span>
-            <span>{chapters.length}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => nextChapterIndex !== null && changeChapter(nextChapterIndex)}
-            disabled={loading || nextChapterIndex === null}
-            className="inline-flex min-w-[92px] items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
-      </div>
-
-      {showMarkAsRead && (
-        <button
-          type="button"
-          onClick={handleMarkAsRead}
-          className={`fixed right-6 z-50 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all xl:bottom-6 ${
-            isRead ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-sky-600 hover:bg-sky-700'
-          } bottom-[5.5rem]`}
-        >
-          {isRead ? 'Read' : 'Mark as read'}
-        </button>
-      )}
     </div>
   );
 }

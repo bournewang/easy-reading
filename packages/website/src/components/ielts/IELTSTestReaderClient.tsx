@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Reader, type Article } from '@easy-reading/shared';
+import { type Article } from '@easy-reading/shared';
 import ReaderShell from '@/components/ReaderShell';
 import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
+import ReaderWorkspace from '@/components/reader/ReaderWorkspace';
 import type { IELTSArticleListItem, IELTSReaderTestSummary } from '@/lib/ielts-types';
 import { getIELTSPassageReaderUrl, ieltsMonthLabels, ieltsMonthOrder } from '@/lib/ielts-paths';
 import { saveLastIELTSTestRoute } from '@/lib/ielts-storage';
@@ -14,6 +15,7 @@ import {
   isRouteRead,
   saveReadingHistoryItemAsync,
 } from '@/utils/reading-history';
+import { useVocabularyBooks } from '@/hooks/useVocabularyBooks';
 
 type IELTSTestReaderClientProps = {
   summary: IELTSReaderTestSummary;
@@ -40,6 +42,7 @@ export default function IELTSTestReaderClient({
   const articleScrollRef = useRef<HTMLDivElement>(null);
   const [showMarkAsRead, setShowMarkAsRead] = useState(false);
   const [isRead, setIsRead] = useState(false);
+  const { readerVocabularyData } = useVocabularyBooks({ loadWordDetails: true });
   const activePassage =
     passages.find((passage) => passage.passage === initialPassage) || passages[0] || null;
   const activePassageIndex = activePassage
@@ -304,102 +307,58 @@ export default function IELTSTestReaderClient({
           </p>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-3 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="hidden h-full min-h-0 xl:block">
-            <div className="flex h-full min-h-0 flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 shrink-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Passages</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-900">All reading passages</h2>
+        <ReaderWorkspace
+          article={activeArticle}
+          containedScroll
+          contentScrollRef={articleScrollRef}
+          outerClassName="grid min-h-0 flex-1 gap-3 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]"
+          navigation={{
+            title: 'Passages',
+            description: 'All reading passages',
+            items: passages.map((passage) => ({
+              id: passage.id,
+              overline: `Passage ${passage.passage}`,
+              title: passage.title,
+              meta: `${passage.readingTime} min`,
+              active: passage.id === activePassage?.id,
+              onSelect: () => handlePassageChange(passage),
+            })),
+            previous: {
+              label: 'Prev',
+              onSelect: () => previousPassage && handlePassageChange(previousPassage),
+              disabled: !previousPassage,
+            },
+            next: {
+              label: 'Next',
+              onSelect: () => nextPassage && handlePassageChange(nextPassage),
+              disabled: !nextPassage,
+            },
+            currentLabel: activePassage ? `Passage ${activePassage.passage} / ${passages.length}` : '',
+          }}
+          warning={<AnonymousReaderWarning />}
+          floatingAction={showMarkAsRead && activeArticle ? (
+            <button
+              type="button"
+              onClick={handleMarkAsRead}
+              className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all ${
+                isRead ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-sky-600 hover:bg-sky-700'
+              }`}
+            >
+              {isRead ? 'Read' : 'Mark as read'}
+            </button>
+          ) : null}
+          emptyState={(
+            <div className="rounded-2xl bg-slate-50 px-5 py-12 text-center text-sm text-slate-500">
+              Select a passage to start reading.
             </div>
-
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-              {passages.map((passage) => {
-                const isActive = passage.id === activePassage?.id;
-
-                return (
-                  <button
-                    key={passage.id}
-                    type="button"
-                    onClick={() => handlePassageChange(passage)}
-                    className={`w-full rounded-2xl border p-3 text-left transition-all ${
-                      isActive
-                        ? 'border-sky-200 bg-sky-50 shadow-sm'
-                        : 'border-slate-200 bg-slate-50 hover:border-sky-100 hover:bg-white'
-                    }`}
-                  >
-                    <div className="mb-1.5 flex items-center justify-between gap-3">
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">
-                        Passage {passage.passage}
-                      </span>
-                      <span className="text-xs text-slate-500">{passage.readingTime} min</span>
-                    </div>
-                    <h3 className="text-sm font-semibold leading-6 text-slate-900">{passage.title}</h3>
-                    <p className="mt-2 text-xs text-slate-500">{passage.wordCount.toLocaleString()} words</p>
-                  </button>
-                );
-              })}
-            </div>
-            </div>
-          </aside>
-
-          <section className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-            {activeArticle ? (
-              <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
-                <div className="shrink-0">
-                  <AnonymousReaderWarning />
-                </div>
-                <div className="min-h-0 flex-1 overflow-hidden">
-                <Reader article={activeArticle} containedScroll contentScrollRef={articleScrollRef} />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-slate-50 px-5 py-12 text-center text-sm text-slate-500">
-                Select a passage to start reading.
-              </div>
-            )}
-          </section>
-        </div>
+          )}
+          panelClassName="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
+          readerContainerClassName="min-h-0 flex-1 overflow-hidden"
+          vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
+          vocabularyBookIdsByWord={readerVocabularyData.vocabularyBookIdsByWord}
+          vocabularyWordDetailsByWord={readerVocabularyData.vocabularyWordDetailsByWord}
+        />
       </ReaderShell>
-
-      {activePassage && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur xl:hidden">
-          <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-5">
-            <button
-              type="button"
-              onClick={() => previousPassage && handlePassageChange(previousPassage)}
-              disabled={!previousPassage}
-              className="inline-flex min-w-[92px] items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <div className="min-w-0 text-center text-sm text-slate-600">
-              <span className="font-medium text-slate-900">Passage {activePassage.passage}</span>
-              <span className="mx-1 text-slate-300">/</span>
-              <span>{passages.length}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => nextPassage && handlePassageChange(nextPassage)}
-              disabled={!nextPassage}
-              className="inline-flex min-w-[92px] items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showMarkAsRead && activeArticle && (
-        <button
-          type="button"
-          onClick={handleMarkAsRead}
-          className={`fixed right-6 z-50 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all xl:bottom-6 ${
-            isRead ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-sky-600 hover:bg-sky-700'
-          } bottom-[5.5rem]`}
-        >
-          {isRead ? 'Read' : 'Mark as read'}
-        </button>
-      )}
     </div>
   );
 }

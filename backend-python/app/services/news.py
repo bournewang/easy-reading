@@ -29,14 +29,11 @@ class NewsService:
         slug = re.sub(r"[^a-z0-9]+", "-", ascii_title).strip("-")
         return slug or "news-article"
 
-    def _assign_slugs(self, articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        slug_counts: dict[str, int] = {}
-        for article in articles:
-            base_slug = self._base_slug(article["title"])
-            count = slug_counts.get(base_slug, 0)
-            slug_counts[base_slug] = count + 1
-            article["slug"] = base_slug if count == 0 else f"{base_slug}-{count + 1}"
-        return articles
+    def _build_unique_slug(self, title: str, slug_counts: dict[str, int]) -> str:
+        base_slug = self._base_slug(title)
+        count = slug_counts.get(base_slug, 0)
+        slug_counts[base_slug] = count + 1
+        return base_slug if count == 0 else f"{base_slug}-{count + 1}"
 
     @staticmethod
     def _normalize_article(article: dict[str, Any]) -> dict[str, Any]:
@@ -90,7 +87,7 @@ class NewsService:
         if not articles:
             raise NewsSyncError("News feed returned no articles.")
 
-        return self._assign_slugs(articles)
+        return articles
 
     @staticmethod
     def _normalize_article_payload(payload: dict[str, Any], article: dict[str, Any]) -> dict[str, Any]:
@@ -186,6 +183,7 @@ class NewsService:
 
             articles = self._fetch_remote_articles()
             synced_at = utcnow_iso()
+            slug_counts: dict[str, int] = {}
 
             with db_cursor() as cursor:
                 cursor.execute("DELETE FROM news")
@@ -211,6 +209,8 @@ class NewsService:
                         f"word_count={article_payload['word_count']} "
                         f"paragraphs={len(article_payload['paragraphs'])}"
                     )
+                    final_title = str(article_payload.get("title") or article["title"]).strip() or article["title"]
+                    final_slug = self._build_unique_slug(final_title, slug_counts)
                     cursor.execute(
                         """
                         INSERT INTO news (
@@ -221,8 +221,8 @@ class NewsService:
                         """,
                         (
                             article["id"],
-                            article["slug"],
-                            article["title"],
+                            final_slug,
+                            final_title,
                             article["url"],
                             article["category"],
                             article["description"],
@@ -240,6 +240,7 @@ class NewsService:
                     print(
                         "[news-sync] inserted article "
                         f"id={article['id']} category={article['category']} "
+                        f"slug={final_slug} title={final_title!r} "
                         f"reading_time={article_payload['reading_time'] or article['readingTime']} "
                         f"synced_at={synced_at}"
                     )

@@ -5,6 +5,7 @@ import { useDictionary } from '../hooks/useDictionary';
 import type { DictResponse } from '../types/dictionary';
 import { useTTS } from '../hooks/useTTS';
 import { useLocaleContext } from '../contexts/LocaleContext';
+import Tips from './Tips';
 import '../styles/tailwind.css';
 
 interface DictionaryProps {
@@ -22,6 +23,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
   const language: DictionaryLanguage = locale === 'zh' ? 'zh' : 'en';
   const sfDisplay = '"SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
   const sfText = '"SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
+  const showTips = !selectedWord && !result && !loading && !error;
 
   useEffect(() => {
     if (selectedWord) {
@@ -94,6 +96,12 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
           style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
         >
           {error}
+        </div>
+      )}
+
+      {showTips && (
+        <div className="rounded-[24px] bg-[#f5f5f7]">
+          <Tips />
         </div>
       )}
 

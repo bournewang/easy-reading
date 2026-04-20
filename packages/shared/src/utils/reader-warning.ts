@@ -2,6 +2,7 @@ export type ReaderWarningFeature = 'translation' | 'tts';
 
 export type ReaderWarning = {
   feature: ReaderWarningFeature;
+  features?: ReaderWarningFeature[];
   message: string;
   activeDate: string;
 };
@@ -47,9 +48,19 @@ export function getStoredReaderWarning(): ReaderWarning | null {
       return null;
     }
 
+    const features = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(parsed.features) ? parsed.features : []),
+          parsed.feature,
+        ].filter((value): value is ReaderWarningFeature => value === 'translation' || value === 'tts'),
+      ),
+    );
+
     return {
       message: parsed.message,
       feature: parsed.feature,
+      features,
       activeDate: parsed.activeDate,
     };
   } catch {
@@ -63,8 +74,14 @@ export function setStoredReaderWarning(feature: ReaderWarningFeature, message: s
     return;
   }
 
+  const existingWarning = getStoredReaderWarning();
+  const existingFeatures = existingWarning?.activeDate === getLocalDateString()
+    ? existingWarning.features || [existingWarning.feature]
+    : [];
+
   const warning: ReaderWarning = {
     feature,
+    features: Array.from(new Set([...existingFeatures, feature])),
     message,
     activeDate: getLocalDateString(),
   };

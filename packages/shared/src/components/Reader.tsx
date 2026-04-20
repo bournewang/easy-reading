@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Dictionary from './Dictionary';
-import Tips from './Tips';
 import { useTTS } from '../hooks/useTTS';
 import { useTranslation } from '../hooks/useTranslation';
 import { useWordList } from '../hooks/useWordList';
@@ -117,8 +116,8 @@ const Reader: React.FC<ReaderProps> = ({
   return (
     <>
       <style>{spinAnimation}</style>
-      <div className={`relative flex w-full flex-col gap-5 xl:flex-row ${containedScroll ? 'h-full min-h-0 overflow-hidden' : ''}`}>
-        <div className={`flex-1 ${containedScroll ? 'min-h-0 overflow-hidden' : ''}`}>
+      <div className={`relative flex w-full flex-col gap-5 ${containedScroll ? 'h-full min-h-0 overflow-hidden min-[800px]:flex-row' : 'xl:flex-row'}`}>
+        <div className={`min-w-0 flex-1 ${containedScroll ? 'min-h-0 overflow-hidden' : ''}`}>
           <div className={`overflow-hidden rounded-[32px] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.10)] ${containedScroll ? 'flex h-full min-h-0 flex-col overflow-hidden' : ''}`}>
             {!showChat ? (
               <div
@@ -199,13 +198,12 @@ const Reader: React.FC<ReaderProps> = ({
             )}
           </div>
         </div>
-        <div className={`${containedScroll ? 'hidden h-full overflow-y-auto border-l border-black/6 bg-white md:block md:w-2/5 lg:w-1/3' : 'fixed bottom-0 left-0 right-0 z-10 h-[220px] overflow-y-auto border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:static md:h-auto md:w-full md:shadow-none xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:w-[640px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]'} ${!selectedWord ? 'hidden md:block' : ''}`}>
+        <div className={`${containedScroll ? 'hidden h-full min-h-0 overflow-y-auto border-l border-black/6 bg-white min-[800px]:block min-[800px]:w-2/5 min-[800px]:flex-none lg:w-1/3' : 'fixed bottom-0 left-0 right-0 z-10 h-[220px] overflow-y-auto border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:static md:h-auto md:w-full md:shadow-none xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:w-[640px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]'} ${!selectedWord ? 'hidden md:block min-[800px]:block' : ''}`}>
           {isVocabularyWord ? (
             <VocabularyBookPanel selectedWord={selectedWord} details={selectedWordDetails} />
           ) : (
             <Dictionary selectedWord={selectedWord} />
           )}
-          {!selectedWord && <div className="m-3 rounded-[24px] bg-[#f5f5f7]"><Tips /></div>}
         </div>
       </div>
     </>

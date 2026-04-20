@@ -10,6 +10,8 @@ interface UseArticlesOptions {
   pageSize?: number;
 }
 
+const articleListInFlightRequests = new Map<string, Promise<NewsListResponse>>();
+
 const EMPTY_RESPONSE: NewsListResponse = {
   items: [],
   page: 1,
@@ -20,6 +22,44 @@ const EMPTY_RESPONSE: NewsListResponse = {
   sources: [],
   lastSyncedAt: null,
 };
+
+function buildRequestKey(options: UseArticlesOptions) {
+  return JSON.stringify({
+    category: options.category && options.category !== 'all' ? options.category : undefined,
+    source: options.source || undefined,
+    search: options.search || undefined,
+    page: options.page || 1,
+    pageSize: options.pageSize || 20,
+  });
+}
+
+async function fetchArticlesRequest(options: UseArticlesOptions) {
+  const requestKey = buildRequestKey(options);
+  const inflightRequest = articleListInFlightRequests.get(requestKey);
+
+  if (inflightRequest) {
+    return inflightRequest;
+  }
+
+  const request = api
+    .get<NewsListResponse>('/news', {
+      params: {
+        category: options.category && options.category !== 'all' ? options.category : undefined,
+        source: options.source || undefined,
+        search: options.search || undefined,
+        page: options.page || 1,
+        pageSize: options.pageSize || 20,
+      },
+    })
+    .then((response) => response.data)
+    .finally(() => {
+      articleListInFlightRequests.delete(requestKey);
+    });
+
+  articleListInFlightRequests.set(requestKey, request);
+
+  return request;
+}
 
 export function useArticles(options: UseArticlesOptions = {}) {
   const [data, setData] = useState<NewsListResponse>(EMPTY_RESPONSE);
@@ -34,18 +74,10 @@ export function useArticles(options: UseArticlesOptions = {}) {
       setError(null);
 
       try {
-        const response = await api.get<NewsListResponse>('/news', {
-          params: {
-            category: options.category && options.category !== 'all' ? options.category : undefined,
-            source: options.source || undefined,
-            search: options.search || undefined,
-            page: options.page || 1,
-            pageSize: options.pageSize || 20,
-          },
-        });
+        const response = await fetchArticlesRequest(options);
 
         if (!cancelled) {
-          setData(response.data);
+          setData(response);
         }
       } catch (err) {
         if (!cancelled) {

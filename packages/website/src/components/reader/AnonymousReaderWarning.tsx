@@ -76,13 +76,54 @@ export default function AnonymousReaderWarning() {
       ? readerWarning('title')
       : readerWarning('usageTitle');
 
-  const message = isLimitReached
-    ? (warning?.feature === 'tts'
+  const reachedFeatures = new Set(warning?.features || (warning?.feature ? [warning.feature] : []));
+
+  const normalizedTtsUsed = reachedFeatures.has('tts')
+    ? Math.max(ttsUsed, limits.ttsDailyLimit)
+    : ttsUsed;
+  const normalizedTranslationUsed = reachedFeatures.has('translation')
+    ? Math.max(translationUsed, limits.translationDailyLimit)
+    : translationUsed;
+
+  const normalizedTtsAtLimit = normalizedTtsUsed >= limits.ttsDailyLimit;
+  const normalizedTranslationAtLimit = normalizedTranslationUsed >= limits.translationDailyLimit;
+
+  const limitRows = [
+    normalizedTtsAtLimit
+      ? {
+          key: 'tts',
+          message: readerWarning('ttsReached'),
+          label: 'TTS',
+          used: normalizedTtsUsed,
+          limit: limits.ttsDailyLimit,
+        }
+      : null,
+    normalizedTranslationAtLimit
+      ? {
+          key: 'translation',
+          message: readerWarning('translationReached'),
+          label: 'Trans.',
+          used: normalizedTranslationUsed,
+          limit: limits.translationDailyLimit,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: 'tts' | 'translation';
+    message: string;
+    label: string;
+    used: number;
+    limit: number;
+  }>;
+
+  const message = hasExpiredPro
+    ? readerWarning('expiredPlan')
+    : isLimitReached && limitRows.length === 0
+      ? warning?.feature === 'tts'
         ? readerWarning('ttsReached')
         : warning?.feature === 'translation'
           ? readerWarning('translationReached')
-          : readerWarning('expiredPlan'))
-    : null;
+          : null
+      : null;
 
   return (
     <div className="mb-3">
@@ -95,16 +136,29 @@ export default function AnonymousReaderWarning() {
             {message}
           </span>
         )}
-        {/* Usage counts: TTS X/Y · Trans. X/Y */}
-        <div className="flex items-center gap-2 text-[13px] tracking-[-0.16px]">
-          <span className={`tabular-nums ${ttsAtLimit ? 'text-[#ff3b30]' : 'text-black/50'}`}>
-            TTS&nbsp;<strong className={ttsAtLimit ? 'text-[#ff3b30]' : 'text-[#1d1d1f]'}>{ttsUsed}</strong>/{limits.ttsDailyLimit}
-          </span>
-          <span className="text-black/20">·</span>
-          <span className={`tabular-nums ${translationAtLimit ? 'text-[#ff3b30]' : 'text-black/50'}`}>
-            Trans.&nbsp;<strong className={translationAtLimit ? 'text-[#ff3b30]' : 'text-[#1d1d1f]'}>{translationUsed}</strong>/{limits.translationDailyLimit}
-          </span>
-        </div>
+        {limitRows.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] leading-snug tracking-[-0.224px] text-[#1d1d1f]">
+            {limitRows.map((row) => (
+              <span key={row.key} className="inline-flex flex-wrap items-center gap-1.5">
+                <span>{row.message}</span>
+                <span className="tabular-nums whitespace-nowrap text-[#ff3b30]">
+                  &nbsp;
+                  <strong className="text-[#ff3b30]">{row.used}</strong>/{row.limit}
+                </span>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-[13px] tracking-[-0.16px]">
+            <span className={`tabular-nums ${normalizedTtsAtLimit ? 'text-[#ff3b30]' : 'text-black/50'}`}>
+              TTS&nbsp;<strong className={normalizedTtsAtLimit ? 'text-[#ff3b30]' : 'text-[#1d1d1f]'}>{normalizedTtsUsed}</strong>/{limits.ttsDailyLimit}
+            </span>
+            <span className="text-black/20">·</span>
+            <span className={`tabular-nums ${normalizedTranslationAtLimit ? 'text-[#ff3b30]' : 'text-black/50'}`}>
+              Trans.&nbsp;<strong className={normalizedTranslationAtLimit ? 'text-[#ff3b30]' : 'text-[#1d1d1f]'}>{normalizedTranslationUsed}</strong>/{limits.translationDailyLimit}
+            </span>
+          </div>
+        )}
         <div className="ml-auto flex shrink-0 gap-2">
           {isLoggedIn ? (
             <Link

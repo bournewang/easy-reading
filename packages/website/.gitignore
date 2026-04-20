@@ -5,3 +5,5 @@ dist
 public/books
 resource
 tsconfig.tsbuildinfo
+vocabulary-books
+public/vocabulary-books

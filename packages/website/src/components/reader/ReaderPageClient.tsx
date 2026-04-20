@@ -1,12 +1,12 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
-import { BackIcon, CheckIcon, Reader } from '@easy-reading/shared';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
+import { BackIcon, CheckIcon } from '@easy-reading/shared';
 import type { Article, Paragraph } from '@easy-reading/shared';
 import { useArticleExtractor } from '@/hooks/useArticleExtractor';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ReaderShell from '@/components/ReaderShell';
-import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
+import NewsReader from '@/components/reader/NewsReader';
 import { api } from '@/utils/api';
 import {
   createIELTSHistoryItem,
@@ -20,6 +20,7 @@ type ReaderPageClientProps = {
   initialArticle?: Article | null;
   initialBackPath?: string;
   localArticleMode?: boolean;
+  initialNewsSlug?: string | null;
 };
 
 type IELTSArticleResource = {
@@ -35,6 +36,9 @@ type NewsArticleResource = {
   article: Article;
   syncedAt?: string | null;
 };
+
+const newsArticleCache = new Map<string, Article | null>();
+const newsArticleInFlightRequests = new Map<string, Promise<Article | null>>();
 
 const DEFAULT_IELTS_ARTICLE_BASE_URL = '/ielts-articles';
 
@@ -104,25 +108,48 @@ async function fetchIELTSArticle(articleId: string): Promise<Article | null> {
 }
 
 async function fetchNewsArticle(newsId: string): Promise<Article | null> {
-  try {
-    const response = await api.get<NewsArticleResource>(`/news/${encodeURIComponent(newsId)}`);
-    const article = response.data?.article;
-    if (!article) {
-      return null;
-    }
-    if (!article.reading_time) {
-      article.reading_time = Math.max(1, Math.ceil((article.word_count || 0) / 150));
-    }
-    return article;
-  } catch {
-    return null;
+  const cachedArticle = newsArticleCache.get(newsId);
+  if (cachedArticle !== undefined) {
+    return cachedArticle;
   }
+
+  const inflightRequest = newsArticleInFlightRequests.get(newsId);
+  if (inflightRequest) {
+    return inflightRequest;
+  }
+
+  const request = (async () => {
+    try {
+      const response = await api.get<NewsArticleResource>(`/news/${encodeURIComponent(newsId)}`);
+      const article = response.data?.article;
+      if (!article) {
+        newsArticleCache.set(newsId, null);
+        return null;
+      }
+      if (!article.reading_time) {
+        article.reading_time = Math.max(1, Math.ceil((article.word_count || 0) / 150));
+      }
+      newsArticleCache.set(newsId, article);
+      return article;
+    } catch {
+      newsArticleCache.set(newsId, null);
+      return null;
+    } finally {
+      newsArticleInFlightRequests.delete(newsId);
+    }
+  })();
+
+  newsArticleInFlightRequests.set(newsId, request);
+
+  return request;
+
 }
 
 function ReaderContent({
   initialArticle = null,
   initialBackPath = '/news',
   localArticleMode = false,
+  initialNewsSlug = null,
 }: ReaderPageClientProps) {
   const baseButtonClass =
     'inline-flex items-center gap-2 rounded-full px-4 py-2 text-[14px] font-medium tracking-[-0.22px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:ring-offset-2';
@@ -134,12 +161,13 @@ function ReaderContent({
   const [isRead, setIsRead] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
   const [queryLoading, setQueryLoading] = useState(false);
+  const articleScrollRef = useRef<HTMLDivElement>(null);
   const { readerVocabularyData } = useVocabularyBooks({ loadWordDetails: true });
   const { extractArticle, loading, error } = useArticleExtractor();
   const searchParams = useSearchParams();
   const router = useRouter();
   const articleId = searchParams.get('articleId');
-  const newsId = searchParams.get('newsId');
+  const newsSlug = initialNewsSlug || searchParams.get('newsId');
   const urlParam = searchParams.get('url');
   const backPath = articleId || localArticleMode ? '/ielts' : initialBackPath;
 
@@ -170,11 +198,11 @@ function ReaderContent({
       return;
     }
 
-    if (newsId) {
+    if (newsSlug) {
       setQueryLoading(true);
       setQueryError(null);
 
-      fetchNewsArticle(newsId)
+      fetchNewsArticle(newsSlug)
         .then((data) => {
           if (!data) {
             setQueryError('This news article could not be found.');
@@ -206,21 +234,33 @@ function ReaderContent({
 
       setArticle(data);
     });
-  }, [articleId, extractArticle, initialArticle, localArticleMode, newsId, urlParam]);
+  }, [articleId, extractArticle, initialArticle, localArticleMode, newsSlug, urlParam]);
 
   useEffect(() => {
     if (!article) {
       return;
     }
 
+    const container = articleScrollRef.current;
+    if (!container) {
+      return;
+    }
+
     const handleScroll = () => {
-      const scrollPosition = window.scrollY + window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
+      const scrollPosition = container.scrollTop + container.clientHeight;
+      const documentHeight = container.scrollHeight;
       setShowMarkAsRead(scrollPosition >= documentHeight - 100);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    container.addEventListener('scroll', handleScroll);
+    handleScroll();
+
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [article]);
+
+  useEffect(() => {
+    articleScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    setShowMarkAsRead(false);
   }, [article]);
 
   useEffect(() => {
@@ -240,15 +280,15 @@ function ReaderContent({
       }
 
       if (urlParam) {
-        const nextIsRead = await isRouteRead(`/reader?url=${encodeURIComponent(urlParam)}`);
+        const nextIsRead = await isRouteRead(`/news-reader?url=${encodeURIComponent(urlParam)}`);
         if (!cancelled) {
           setIsRead(nextIsRead);
         }
         return;
       }
 
-      if (newsId) {
-        const nextIsRead = await isRouteRead(`/reader?newsId=${encodeURIComponent(newsId)}`);
+      if (newsSlug) {
+        const nextIsRead = await isRouteRead(`/news-reader/${encodeURIComponent(newsSlug)}`);
         if (!cancelled) {
           setIsRead(nextIsRead);
         }
@@ -260,7 +300,7 @@ function ReaderContent({
     return () => {
       cancelled = true;
     };
-  }, [article, articleId, newsId, urlParam]);
+  }, [article, articleId, newsSlug, urlParam]);
 
   const handleMarkAsRead = async () => {
     if (!article) {
@@ -282,7 +322,7 @@ function ReaderContent({
     }
 
     if (!urlParam) {
-      if (!newsId) {
+      if (!newsSlug) {
         return;
       }
     }
@@ -290,7 +330,7 @@ function ReaderContent({
     await saveReadingHistoryItemAsync(
       createNewsHistoryItem({
         article,
-        routeUrl: newsId ? `/reader?newsId=${encodeURIComponent(newsId)}` : undefined,
+        routeUrl: newsSlug ? `/news-reader/${encodeURIComponent(newsSlug)}` : undefined,
       }),
     );
     setIsRead(true);
@@ -350,16 +390,16 @@ function ReaderContent({
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7]">
-      <ReaderShell>
-        <div className="flex items-center justify-between gap-3 pb-2 pt-5 md:pt-6">
+    <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] overflow-hidden bg-[#f5f5f7]">
+      <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-6 sm:py-4 xl:pb-4">
+        {/* <div className="flex items-center justify-between gap-3 pb-2 pt-5 md:pt-6">
           <button onClick={() => router.push(backPath)} className={outlineButtonClass}>
             <BackIcon className="h-4 w-4" />
             Back
           </button>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-black/56">
-              {article.site_name || (newsId ? 'News' : 'Reader')}
+              {article.site_name || (newsSlug ? 'News' : 'Reader')}
             </span>
             {article.reading_time ? (
               <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] tracking-[-0.12px] text-black/56">
@@ -367,36 +407,35 @@ function ReaderContent({
               </span>
             ) : null}
           </div>
-        </div>
+        </div> */}
 
-        <div className="pb-28 pt-3 md:pb-32 md:pt-4">
-          <AnonymousReaderWarning />
-          <Reader
+        <div className="min-h-0 flex-1 overflow-hidden pt-3 md:pt-4">
+          <NewsReader
             article={article}
+            activeNewsId={newsSlug}
+            activeArticleUrl={article.url || urlParam}
+            contentScrollRef={articleScrollRef}
             vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
             vocabularyBookIdsByWord={readerVocabularyData.vocabularyBookIdsByWord}
             vocabularyWordDetailsByWord={readerVocabularyData.vocabularyWordDetailsByWord}
+            floatingAction={showMarkAsRead ? (
+              <button
+                onClick={handleMarkAsRead}
+                className={isRead ? `${darkButtonClass} shadow-[0_10px_30px_rgba(0,0,0,0.18)]` : `${primaryButtonClass} shadow-[0_10px_30px_rgba(0,113,227,0.28)]`}
+              >
+                {isRead ? (
+                  <>
+                    <CheckIcon className="w-4 h-4 stroke-white" />
+                    Article Read
+                  </>
+                ) : (
+                  'Mark as Read'
+                )}
+              </button>
+            ) : null}
           />
         </div>
       </ReaderShell>
-
-      <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3 px-4">
-        {showMarkAsRead && (
-          <button
-            onClick={handleMarkAsRead}
-            className={isRead ? `${darkButtonClass} shadow-[0_10px_30px_rgba(0,0,0,0.18)]` : `${primaryButtonClass} shadow-[0_10px_30px_rgba(0,113,227,0.28)]`}
-          >
-            {isRead ? (
-              <>
-                <CheckIcon className="w-4 h-4 stroke-white" />
-                Article Read
-              </>
-            ) : (
-              'Mark as Read'
-            )}
-          </button>
-        )}
-      </div>
     </div>
   );
 }

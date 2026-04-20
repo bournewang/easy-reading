@@ -142,10 +142,10 @@ function UrlReaderContent() {
   const handleArticleClick = async (articleUrl: string) => {
     const selectedArticle = featuredArticles.find((article) => article.url === articleUrl);
     if (selectedArticle?.id) {
-      router.push(`/reader?newsId=${encodeURIComponent(selectedArticle.id)}`);
+      router.push(`/news-reader/${encodeURIComponent(selectedArticle.id)}`);
       return;
     }
-    router.push(`/reader?url=${encodeURIComponent(articleUrl)}`);
+    router.push(`/news-reader?url=${encodeURIComponent(articleUrl)}`);
   };
 
   useEffect(() => {

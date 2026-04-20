@@ -181,7 +181,7 @@ function migrateLegacyHistory(): ReadingHistoryItem[] {
       ? `/reader?articleId=${encodeURIComponent(url.replace(/^ielts:\/\//, ''))}`
       : isLegacyBook
         ? '/books'
-        : `/reader?url=${encodeURIComponent(url)}`;
+        : `/news-reader?url=${encodeURIComponent(url)}`;
     const kind: ReadingHistoryKind = isLegacyIelts ? 'ielts' : isLegacyBook ? 'book' : 'news';
     const subtitle = isLegacyIelts
       ? details.site_name || 'IELTS Reading'
@@ -346,7 +346,7 @@ export function createNewsHistoryItem({
   routeUrl?: string;
   timestamp?: number;
 }) {
-  const resolvedRouteUrl = routeUrl || `/reader?url=${encodeURIComponent(article.url)}`;
+  const resolvedRouteUrl = routeUrl || `/news-reader?url=${encodeURIComponent(article.url)}`;
 
   return createHistoryItem({
     key: resolvedRouteUrl,
@@ -428,6 +428,21 @@ export function migrateHistoryRouteUrl(routeUrl: string) {
   if (readerIeltsMatch) {
     const [, articleId] = readerIeltsMatch;
     return `/reader?articleId=${articleId}`;
+  }
+
+  const readerNewsMatch = routeUrl.match(/^\/reader\?(newsId|url)=(.+)$/);
+  if (readerNewsMatch) {
+    const [, key, value] = readerNewsMatch;
+    if (key === 'newsId') {
+      return `/news-reader/${value}`;
+    }
+    return `/news-reader?${key}=${value}`;
+  }
+
+  const newsReaderQueryMatch = routeUrl.match(/^\/news-reader\?newsId=(.+)$/);
+  if (newsReaderQueryMatch) {
+    const [, slug] = newsReaderQueryMatch;
+    return `/news-reader/${slug}`;
   }
 
   const ieltsMatch = routeUrl.match(/^\/ielts-reader\/([^/]+)\/([^/]+)\/([^/]+)\?passage=([^&]+)$/);
