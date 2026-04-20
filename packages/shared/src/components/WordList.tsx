@@ -807,14 +807,14 @@ function WordList() {
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Saved Vocabulary</p>
-            <h2 className="text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">
+            {/* <h2 className="text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">
               Your words, ready to review.
-            </h2>
-            <p className="mt-2 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/72">
+            </h2> */}
+            {/* <p className="mt-2 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/72">
               {words.size} saved word{words.size === 1 ? '' : 's'} across reading sessions.
-            </p>
+            </p> */}
           </div>
-          <div className="flex flex-wrap gap-2">
+          {/* <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
@@ -831,7 +831,14 @@ function WordList() {
             >
               Cloud View
             </button>
-          </div>
+          </div> */}
+          <button 
+              onClick={() => startPracticeSession(true)}
+              className={primaryButtonClass}
+              disabled={currentWordsForDisplay.length === 0}
+            >
+              Practice
+            </button>
         </div>
 
         <div className="mb-6">{renderProficiencyLegend()}</div>
@@ -865,7 +872,7 @@ function WordList() {
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_220px] lg:items-end">
             <div className="max-w-3xl">
               <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-emerald-100/90">Word Book</p>
-              <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">Build a vocabulary you can return to.</h1>
+              <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">Your words, ready to review.</h1>
               <p className="mt-3 max-w-2xl text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">
                 Review saved words, practice pronunciation, and keep your reading progress moving without losing context.
               </p>
@@ -892,13 +899,13 @@ function WordList() {
                   >
                     Make a Story
                   </button> */}
-                  <button 
+                  {/* <button 
                     onClick={() => startPracticeSession(true)}
                     className={primaryButtonClass}
                     disabled={currentWordsForDisplay.length === 0}
                   >
                     Practice
-                  </button>
+                  </button> */}
                 </>
               )}
               {isPracticeModeActive && (

@@ -69,7 +69,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
             />
             <button
               type="submit"
-              className="inline-flex items-center justify-center rounded-full bg-[#0071e3] px-4 py-2 text-[14px] font-medium tracking-[-0.22px] text-white transition-colors duration-200 hover:bg-[#0077ed] disabled:bg-slate-300"
+              className="inline-flex items-center justify-center rounded-full px-4 py-2 text-[14px] font-medium tracking-[-0.22px] text-white transition-colors duration-200 hover:bg-green-300 disabled:bg-slate-300"
               disabled={loading || !word.trim()}
               title={locale === 'zh' ? '查询单词' : 'Look up word'}
             >
