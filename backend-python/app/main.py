@@ -12,6 +12,7 @@ from .auth import (
     delete_session,
     extract_bearer_token,
     get_current_user,
+    get_user_by_referral_code,
     get_user_by_username,
 )
 from .config import settings
@@ -357,8 +358,12 @@ def register(payload: RegisterRequest, request: Request, response: Response) -> 
     if get_user_by_username(payload.username):
         raise HTTPException(status_code=400, detail="Username already taken")
 
+    normalized_referral_code = payload.referralCode.strip().upper() if payload.referralCode else None
+    if normalized_referral_code and not get_user_by_referral_code(normalized_referral_code):
+        raise HTTPException(status_code=400, detail="Referral code is invalid")
+
     try:
-        user = create_user(payload.username, payload.password, payload.fullName)
+        user = create_user(payload.username, payload.password, payload.fullName, normalized_referral_code)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     token = create_session(user["id"])

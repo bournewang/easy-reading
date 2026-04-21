@@ -246,6 +246,19 @@ class PaymentService:
             cursor.execute("SELECT * FROM users WHERE referral_code = ?", (normalized,))
             return row_to_dict(cursor.fetchone())
 
+    def get_user_referrer(self, user_id: int) -> dict | None:
+        with db_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT referrer.*
+                FROM users AS referred
+                JOIN users AS referrer ON referrer.id = referred.referred_by_user_id
+                WHERE referred.id = ?
+                """,
+                (user_id,),
+            )
+            return row_to_dict(cursor.fetchone())
+
     def has_successful_order(self, user_id: int) -> bool:
         with db_cursor() as cursor:
             cursor.execute(
@@ -584,6 +597,16 @@ class PaymentService:
         referrer_user_id = order["payment_details"].get("referrerUserId")
         referral_code = order["payment_details"].get("referralCode")
         commission_amount = float(order["payment_details"].get("commissionAmount") or 0)
+        commission_rate = float(order["payment_details"].get("commissionRate") or 0)
+
+        if not referrer_user_id or not referral_code:
+            registered_referrer = self.get_user_referrer(int(order["user_id"]))
+            if registered_referrer:
+                referrer_user_id = registered_referrer["id"]
+                referral_code = registered_referrer.get("referral_code")
+                commission_rate = DEFAULT_COMMISSION_RATE
+                commission_amount = round(float(order["amount"] or 0) * DEFAULT_COMMISSION_RATE, 2)
+
         if not referrer_user_id or not referral_code or commission_amount <= 0:
             return
         now = utcnow_iso()
@@ -608,7 +631,7 @@ class PaymentService:
                     referrer_user_id,
                     order["user_id"],
                     referral_code,
-                    float(order["payment_details"].get("commissionRate") or 0),
+                    commission_rate,
                     commission_amount,
                     now,
                     now,
@@ -984,7 +1007,7 @@ class PaymentService:
         referral_code = str(user["referral_code"])
         return {
             "referralCode": referral_code,
-            "referralLink": f"{settings.app_base_url.rstrip('/')}/pricing?ref={referral_code}",
+            "referralLink": f"{settings.app_base_url.rstrip('/')}/register?ref={referral_code}",
             "totalReferrals": total_referrals,
             "successfulReferrals": successful_referrals,
             "pendingCommission": float(totals.get("pending_commission") or 0),

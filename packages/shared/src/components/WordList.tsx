@@ -11,9 +11,11 @@ import Dictionary from './Dictionary';
 import {Paginator} from './Paginator';
 import { api } from '../utils/api';
 import { showToast } from '../utils/toast';
+import { useLocaleContext } from '../contexts/LocaleContext';
 import '../styles/tailwind.css';
 
 function WordList() {
+  const { wordList } = useLocaleContext();
   const { words, removeWord } = useWordList();
   const { practiceData, getPracticeStats, recordAttempt } = useWordPractice();
   const { speak, speaking: ttsSpeaking } = useTTS();
@@ -102,7 +104,7 @@ function WordList() {
   const startPracticeSession = (practiceCurrentPageOnly: boolean = false) => {
     const allWords = practiceCurrentPageOnly ? currentWordsForDisplay : Array.from(words);
     if (allWords.length === 0) {
-      showToast('Please add some words to your list first.', { variant: 'info' });
+      showToast(wordList('clickToAddWords'), { variant: 'info' });
       return;
     }
 
@@ -845,9 +847,9 @@ function WordList() {
         
         {words.size === 0 ? (
           <div className="rounded-[28px] bg-[#f5f5f7] px-6 py-14 text-center">
-            <h3 className="text-[28px] font-semibold tracking-[0.01em] text-[#1d1d1f]">Your word book is empty.</h3>
+            <h3 className="text-[28px] font-semibold tracking-[0.01em] text-[#1d1d1f]">{wordList('noWordsAvailable')}</h3>
             <p className="mx-auto mt-3 max-w-lg text-[17px] leading-[1.47] tracking-[-0.37px] text-black/64">
-              Tap any word while reading and it will show up here for review, lookup, and practice.
+              {wordList('clickToAddWords')}
             </p>
           </div>
         ) : viewMode === 'grid' ? (
@@ -871,16 +873,16 @@ function WordList() {
         <header className="mb-6 rounded-[36px] bg-[linear-gradient(135deg,#1f2937_0%,#166534_52%,#0f766e_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_220px] lg:items-end">
             <div className="max-w-3xl">
-              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-emerald-100/90">Word Book</p>
-              <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">Your words, ready to review.</h1>
+              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-emerald-100/90">{wordList('title')}</p>
+              <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">{wordList('heroTitle')}</h1>
               <p className="mt-3 max-w-2xl text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">
-                Review saved words, practice pronunciation, and keep your reading progress moving without losing context.
+                {wordList('heroSubtitle')}
               </p>
             </div>
 
             <div>
               <div className="rounded-[24px] bg-emerald-100/15 p-3.5 ring-1 ring-emerald-100/30">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Words</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">{wordList('savedWords')}</p>
                 <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{wordArray.length}</p>
               </div>
             </div>
@@ -913,7 +915,7 @@ function WordList() {
                   onClick={exitPracticeSession}
                   className={darkButtonClass}
                 >
-                  Exit Practice
+                  {wordList('exitPractice')}
                 </button>
               )}
               {isStoryModeActive && (
@@ -921,7 +923,7 @@ function WordList() {
                   onClick={exitStoryMode}
                   className={darkButtonClass}
                 >
-                  Exit Story
+                  {wordList('exitStory')}
                 </button>
               )}
             </div>

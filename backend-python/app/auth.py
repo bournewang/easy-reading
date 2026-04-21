@@ -68,24 +68,41 @@ def get_user_by_id(user_id: int) -> dict | None:
         return row_to_dict(cursor.fetchone())
 
 
+def get_user_by_referral_code(referral_code: str | None) -> dict | None:
+    normalized = (referral_code or "").strip().upper()
+    if not normalized:
+        return None
+
+    with db_cursor() as cursor:
+        cursor.execute("SELECT * FROM users WHERE referral_code = ?", (normalized,))
+        return row_to_dict(cursor.fetchone())
+
+
 def generate_referral_code(username: str) -> str:
     base = "".join(ch for ch in username.upper() if ch.isalnum())[:6] or "EASY"
     suffix = secrets.token_hex(3).upper()
     return f"{base}{suffix}"
 
 
-def create_user(username: str, password: str, full_name: str | None) -> dict:
+def create_user(username: str, password: str, full_name: str | None, referral_code: str | None = None) -> dict:
     now = utcnow_iso()
-    referral_code = generate_referral_code(username)
+    user_referral_code = generate_referral_code(username)
+    referrer = get_user_by_referral_code(referral_code)
+    referred_by_user_id = referrer["id"] if referrer else None
+
+    if referral_code and not referrer:
+        raise ValueError("Referral code is invalid")
+
     try:
         with db_cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO users (
-                    username, password_hash, full_name, referral_code, subscription_tier, subscription_expires, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, 'free', NULL, ?, ?)
+                    username, password_hash, full_name, referral_code, referred_by_user_id,
+                    subscription_tier, subscription_expires, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'free', NULL, ?, ?)
                 """,
-                (username, hash_password(password), full_name, referral_code, now, now),
+                (username, hash_password(password), full_name, user_referral_code, referred_by_user_id, now, now),
             )
             user_id = int(cursor.lastrowid)
     except DBIntegrityError as exc:

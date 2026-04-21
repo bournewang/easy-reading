@@ -30,17 +30,17 @@ export function BooksIndexPageClient({ levels }: { levels: Level[] }) {
         <header className="mb-6 rounded-[36px] bg-[linear-gradient(135deg,#312e81_0%,#4c1d95_52%,#4338ca_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_340px] lg:items-end">
             <div className="max-w-3xl">
-              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-indigo-100/90">Books</p>
+              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-indigo-100/90">{booksText('badge')}</p>
               <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">{booksText('title')}</h1>
               <p className="mt-3 text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">{booksText('subtitle')}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-[24px] bg-indigo-100/15 p-3.5 ring-1 ring-indigo-100/30">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Levels</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">{booksText('levelCount')}</p>
                 <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{levels.length}</p>
               </div>
               <div className="rounded-[24px] bg-violet-100/15 p-3.5 ring-1 ring-violet-100/30">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Books</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">{booksText('bookCount')}</p>
                 <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{levels.reduce((sum, level) => sum + level.total, 0)}</p>
               </div>
             </div>

@@ -235,7 +235,7 @@ export function BookLevelPageClient({ levelData, levels }: { levelData: LevelDat
 
             <div>
               <div className="rounded-[24px] bg-indigo-100/15 p-3.5 ring-1 ring-indigo-100/30">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">{levelText('booksInLevel')}</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">{levelText('bookCount')}</p>
                 <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{levelData.total}</p>
               </div>
             </div>

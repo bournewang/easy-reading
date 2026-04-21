@@ -5,9 +5,10 @@ import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 interface AuthFormProps {
   mode: 'login' | 'register';
   onSubmit: (data: any) => Promise<void>;
+  initialReferralCode?: string;
 }
 
-export function AuthForm({ mode, onSubmit }: AuthFormProps) {
+export function AuthForm({ mode, onSubmit, initialReferralCode = '' }: AuthFormProps) {
   const router = useRouter();
   const { t } = useLocaleContext();
   const [error, setError] = useState<string>('');
@@ -24,6 +25,7 @@ export function AuthForm({ mode, onSubmit }: AuthFormProps) {
       username: formData.get('username') as string,
       password: formData.get('password') as string,
       ...(mode === 'register' && { fullName: formData.get('fullName') as string }),
+      ...(mode === 'register' && initialReferralCode && { referralCode: initialReferralCode }),
     };
 
     try {

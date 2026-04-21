@@ -29,11 +29,41 @@ class NewsService:
         slug = re.sub(r"[^a-z0-9]+", "-", ascii_title).strip("-")
         return slug or "news-article"
 
-    def _build_unique_slug(self, title: str, slug_counts: dict[str, int]) -> str:
+    def _build_unique_slug(self, title: str, existing_slugs: set[str]) -> str:
         base_slug = self._base_slug(title)
-        count = slug_counts.get(base_slug, 0)
-        slug_counts[base_slug] = count + 1
-        return base_slug if count == 0 else f"{base_slug}-{count + 1}"
+        candidate = base_slug
+        suffix = 2
+
+        while candidate in existing_slugs:
+            candidate = f"{base_slug}-{suffix}"
+            suffix += 1
+
+        existing_slugs.add(candidate)
+        return candidate
+
+    def _get_existing_article_ids(self) -> set[str]:
+        with db_cursor() as cursor:
+            cursor.execute("SELECT article_id FROM news")
+            rows = cursor.fetchall()
+
+        return {
+            str(row.get("article_id") or "").strip()
+            for raw_row in rows
+            for row in [row_to_dict(raw_row) or {}]
+            if str(row.get("article_id") or "").strip()
+        }
+
+    def _get_existing_slugs(self) -> set[str]:
+        with db_cursor() as cursor:
+            cursor.execute("SELECT slug FROM news WHERE slug IS NOT NULL AND slug != ''")
+            rows = cursor.fetchall()
+
+        return {
+            str(row.get("slug") or "").strip()
+            for raw_row in rows
+            for row in [row_to_dict(raw_row) or {}]
+            if str(row.get("slug") or "").strip()
+        }
 
     @staticmethod
     def _normalize_article(article: dict[str, Any]) -> dict[str, Any]:
@@ -183,13 +213,21 @@ class NewsService:
 
             articles = self._fetch_remote_articles()
             synced_at = utcnow_iso()
-            slug_counts: dict[str, int] = {}
+            existing_article_ids = self._get_existing_article_ids()
+            existing_slugs = self._get_existing_slugs()
 
             with db_cursor() as cursor:
-                cursor.execute("DELETE FROM news")
                 inserted_count = 0
                 skipped_count = 0
                 for article in articles:
+                    if article["id"] in existing_article_ids:
+                        skipped_count += 1
+                        print(
+                            "[news-sync] skipped existing article "
+                            f"id={article['id']} url={article['url']}"
+                        )
+                        continue
+
                     print(
                         f"[news-sync] parsing article id={article['id']} source={article['source']} url={article['url']}"
                     )
@@ -210,7 +248,7 @@ class NewsService:
                         f"paragraphs={len(article_payload['paragraphs'])}"
                     )
                     final_title = str(article_payload.get("title") or article["title"]).strip() or article["title"]
-                    final_slug = self._build_unique_slug(final_title, slug_counts)
+                    final_slug = self._build_unique_slug(final_title, existing_slugs)
                     cursor.execute(
                         """
                         INSERT INTO news (
@@ -244,6 +282,7 @@ class NewsService:
                         f"reading_time={article_payload['reading_time'] or article['readingTime']} "
                         f"synced_at={synced_at}"
                     )
+                    existing_article_ids.add(article["id"])
                     inserted_count += 1
 
                 print(

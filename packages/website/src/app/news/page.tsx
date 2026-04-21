@@ -7,6 +7,7 @@ import { useArticles } from '@/hooks/useArticles';
 import type { NewsArticle } from '@/types/news';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { isSourceRead } from '@/utils/reading-history';
+import { formatMessage } from '@/lib/i18n';
 
 const backgroundColors = {
   general: '#3B82F6',
@@ -189,19 +190,19 @@ function UrlReaderContent() {
         <section className="mb-6 rounded-[36px] bg-[linear-gradient(135deg,#1e3a8a_0%,#0f4c81_52%,#0b7285_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_340px] lg:items-end">
             <div className="max-w-3xl">
-              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-sky-100/90">News</p>
+              <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-sky-100/90">{news('badge')}</p>
               <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">{news('title')}</h1>
               <p className="mt-3 text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">
-                Read current English articles in a cleaner flow, then open any story with built-in dictionary, translation, and word saving support.
+                {news('heroSubtitle')}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-[24px] bg-sky-100/15 p-3.5 ring-1 ring-sky-100/30">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Articles</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">{news('articleCount')}</p>
                 <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{metadata.total}</p>
               </div>
               <div className="rounded-[24px] bg-emerald-100/15 p-3.5 ring-1 ring-emerald-100/30">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">Read</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/56">{news('readCount')}</p>
                 <p className="mt-1.5 text-[30px] font-semibold leading-[1.1] tracking-[-0.04em] text-white">{readArticles.size}</p>
               </div>
             </div>
@@ -257,10 +258,10 @@ function UrlReaderContent() {
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3 text-[14px] tracking-[-0.22px] text-black/56">
               <span>
-                {metadata.total} article{metadata.total === 1 ? '' : 's'}
+                {formatMessage(news(metadata.total === 1 ? 'totalArticles_one' : 'totalArticles'), { count: metadata.total })}
               </span>
               {metadata.lastSyncedAt ? (
-                <span>Updated {new Date(metadata.lastSyncedAt).toLocaleString()}</span>
+                <span>{formatMessage(news('updatedAt'), { time: new Date(metadata.lastSyncedAt).toLocaleString() })}</span>
               ) : null}
             </div>
 
@@ -303,10 +304,10 @@ function UrlReaderContent() {
                   disabled={currentPage <= 1}
                   className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Previous
+                  {news('previousPage')}
                 </button>
                 <span className="text-sm text-slate-600">
-                  Page {metadata.page} / {metadata.totalPages}
+                  {formatMessage(news('currentPage'), { page: metadata.page, totalPages: metadata.totalPages })}
                 </span>
                 <button
                   type="button"
@@ -318,7 +319,7 @@ function UrlReaderContent() {
                   disabled={currentPage >= metadata.totalPages}
                   className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Next
+                  {news('nextPage')}
                 </button>
               </div>
             ) : null}

@@ -1,5 +1,7 @@
 'use client';
 
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AuthForm } from '@/components/auth/AuthForm';
 // import { API_URLS } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,9 +18,11 @@ function getErrorMessage(error: any, fallback: string) {
   );
 }
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const { checkAuth, setAuthToken } = useAuth();
   const { t } = useLocaleContext();
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get('ref')?.trim().toUpperCase() || '';
 
   const handleRegister = async (data: any) => {
     try {
@@ -36,5 +40,13 @@ export default function RegisterPage() {
     }
   };
 
-  return <AuthForm mode="register" onSubmit={handleRegister} />;
+  return <AuthForm mode="register" onSubmit={handleRegister} initialReferralCode={referralCode} />;
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageContent />
+    </Suspense>
+  );
 }

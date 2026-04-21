@@ -40,6 +40,56 @@ function uniqStrings(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
+function inferVocabularyBookTags(title: string, file: string) {
+  const source = `${title} ${file}`;
+  const tags: string[] = [];
+
+  if (/小学|XiaoXue/i.test(source)) {
+    tags.push('primary-school');
+  }
+  if (/初中|中考|ChuZhong/i.test(source)) {
+    tags.push('middle-school');
+  }
+  if (/高中|高考|GaoZhong/i.test(source)) {
+    tags.push('high-school');
+  }
+  if (/四级|CET4/i.test(source)) {
+    tags.push('cet4');
+  }
+  if (/六级|CET6/i.test(source)) {
+    tags.push('cet6');
+  }
+  if (/雅思|IELTS/i.test(source)) {
+    tags.push('ielts');
+  }
+  if (/TOEFL/i.test(source)) {
+    tags.push('toefl');
+  }
+  if (/GRE/i.test(source)) {
+    tags.push('gre');
+  }
+  if (/SAT/i.test(source)) {
+    tags.push('sat');
+  }
+  if (/GMAT/i.test(source)) {
+    tags.push('gmat');
+  }
+  if (/考研|KaoYan/i.test(source)) {
+    tags.push('postgraduate');
+  }
+  if (/专四|Level4/i.test(source)) {
+    tags.push('tem4');
+  }
+  if (/专八|Level8/i.test(source)) {
+    tags.push('tem8');
+  }
+  if (/BEC/i.test(source)) {
+    tags.push('bec');
+  }
+
+  return uniqStrings(tags.length > 0 ? tags : ['other']);
+}
+
 async function fetchFromVocabularyBooks(filename: string): Promise<string> {
   const url = `/vocabulary-books/${filename}`;
   const response = await fetch(url, { cache: 'force-cache' });
@@ -99,7 +149,7 @@ function parseVocabularyBookIndexFromJson(items: Array<{
       title: item.title || '',
       image: item.coverImg || '',
       wordCount: item.wordCount || 0,
-      tags: [],
+      tags: inferVocabularyBookTags(item.title || '', item.file || ''),
     }));
 }
 

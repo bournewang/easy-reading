@@ -139,6 +139,8 @@ def init_db() -> None:
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
             """
         )
+        ensure_column(cursor, "users", "referral_code", "ALTER TABLE users ADD COLUMN referral_code VARCHAR(64) NULL UNIQUE")
+        ensure_column(cursor, "users", "referred_by_user_id", "ALTER TABLE users ADD COLUMN referred_by_user_id BIGINT NULL")
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS orders (

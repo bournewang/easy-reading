@@ -20,6 +20,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=6, max_length=256)
     fullName: str | None = Field(default=None, max_length=128)
+    referralCode: str | None = Field(default=None, max_length=64)
 
 
 class LoginRequest(BaseModel):
