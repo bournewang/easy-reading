@@ -44,6 +44,10 @@ class Settings:
     session_cookie_name: str = os.getenv("SESSION_COOKIE_NAME", "session")
     session_ttl_days: int = int(os.getenv("SESSION_TTL_DAYS", "7"))
     app_base_url: str = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000")
+    website_base_url: str = os.getenv(
+        "WEBSITE_BASE_URL",
+        os.getenv("NEXT_PUBLIC_SITE_URL", os.getenv("APP_BASE_URL", "http://127.0.0.1:3000")),
+    )
     payment_signing_secret: str = os.getenv("PAYMENT_SIGNING_SECRET", "easy-reading-dev-secret")
     alipay_app_id: str = os.getenv("ALIPAY_APP_ID", "")
     alipay_private_key: str = os.getenv("ALIPAY_PRIVATE_KEY", "")

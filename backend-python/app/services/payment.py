@@ -1007,7 +1007,7 @@ class PaymentService:
         referral_code = str(user["referral_code"])
         return {
             "referralCode": referral_code,
-            "referralLink": f"{settings.app_base_url.rstrip('/')}/register?ref={referral_code}",
+            "referralLink": f"{settings.website_base_url.rstrip('/')}/register?ref={referral_code}",
             "totalReferrals": total_referrals,
             "successfulReferrals": successful_referrals,
             "pendingCommission": float(totals.get("pending_commission") or 0),
