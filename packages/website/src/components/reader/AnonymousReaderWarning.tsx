@@ -20,9 +20,17 @@ export default function AnonymousReaderWarning() {
   const { user, entitlements } = useAuth();
   const readerWarning = (key: string) => t(`website.readerWarning.${key}`);
   const anonymousLimits = getCachedAnonymousLimits();
+  const subscriptionTier = user?.subscriptionTier?.toLowerCase() || null;
+  const hasPaidPlan = Boolean(subscriptionTier && subscriptionTier !== 'free');
+  const hasUnlimitedTranslation = entitlements?.hasUnlimitedTranslation === true;
+  const hasUnlimitedTts = entitlements?.hasUnlimitedTextToSpeech === true;
   const limits = {
-    translationDailyLimit: entitlements?.translationDailyLimit ?? anonymousLimits.translationDailyLimit,
-    ttsDailyLimit: entitlements?.ttsDailyLimit ?? anonymousLimits.ttsDailyLimit,
+    translationDailyLimit: hasUnlimitedTranslation
+      ? null
+      : (entitlements?.translationDailyLimit ?? anonymousLimits.translationDailyLimit),
+    ttsDailyLimit: hasUnlimitedTts
+      ? null
+      : (entitlements?.ttsDailyLimit ?? anonymousLimits.ttsDailyLimit),
   };
   const isLoggedIn = Boolean(user);
   const subscriptionExpires = user?.subscriptionExpires ? new Date(user.subscriptionExpires) : null;
@@ -30,6 +38,10 @@ export default function AnonymousReaderWarning() {
     Boolean(user)
     && user?.subscriptionTier === 'free'
     && Boolean(subscriptionExpires && !Number.isNaN(subscriptionExpires.getTime()) && subscriptionExpires.getTime() <= Date.now());
+
+  if (hasPaidPlan) {
+    return null;
+  }
 
   useEffect(() => {
     setWarning(getStoredReaderWarning());
@@ -53,17 +65,52 @@ export default function AnonymousReaderWarning() {
     };
   }, []);
 
-  // Clamp displayed count to at least the limit when that feature hit the limit
-  const ttsUsed = warning?.feature === 'tts'
-    ? Math.max(usedCounts.tts, limits.ttsDailyLimit)
-    : usedCounts.tts;
-  const translationUsed = warning?.feature === 'translation'
-    ? Math.max(usedCounts.translation, limits.translationDailyLimit)
-    : usedCounts.translation;
+  const activeWarningFeatures = Array.from(
+    new Set(warning?.features || (warning?.feature ? [warning.feature] : [])),
+  ).filter((feature) => {
+    if (feature === 'translation') {
+      return !hasUnlimitedTranslation;
+    }
 
-  const isLimitReached = Boolean(warning) || hasExpiredPro;
-  const ttsAtLimit = ttsUsed >= limits.ttsDailyLimit;
-  const translationAtLimit = translationUsed >= limits.translationDailyLimit;
+    if (feature === 'tts') {
+      return !hasUnlimitedTts;
+    }
+
+    return false;
+  });
+
+  const effectiveWarning = activeWarningFeatures.length > 0 && warning
+    ? {
+        ...warning,
+        feature: activeWarningFeatures[0],
+        features: activeWarningFeatures,
+      }
+    : null;
+
+  const clampUsedCount = (used: number, limit: number | null, feature: 'translation' | 'tts') => {
+    if (limit === null) {
+      return used;
+    }
+
+    return effectiveWarning?.feature === feature
+      ? Math.max(used, limit)
+      : used;
+  };
+
+  const isAtLimit = (used: number, limit: number | null) => limit !== null && used >= limit;
+
+  // Clamp displayed count to at least the limit when that feature hit the limit
+  const ttsUsed = clampUsedCount(usedCounts.tts, limits.ttsDailyLimit, 'tts');
+  const translationUsed = clampUsedCount(usedCounts.translation, limits.translationDailyLimit, 'translation');
+
+  const isLimitReached = Boolean(effectiveWarning) || hasExpiredPro;
+  const ttsAtLimit = isAtLimit(ttsUsed, limits.ttsDailyLimit);
+  const translationAtLimit = isAtLimit(translationUsed, limits.translationDailyLimit);
+  const hasVisibleDailyLimits = limits.ttsDailyLimit !== null || limits.translationDailyLimit !== null;
+
+  if (!hasExpiredPro && !effectiveWarning && !hasVisibleDailyLimits) {
+    return null;
+  }
 
   // Hide before the user has used anything and no limit/expiry is active
   if (!isLimitReached && ttsUsed === 0 && translationUsed === 0) {
@@ -76,20 +123,20 @@ export default function AnonymousReaderWarning() {
       ? readerWarning('title')
       : readerWarning('usageTitle');
 
-  const reachedFeatures = new Set(warning?.features || (warning?.feature ? [warning.feature] : []));
+  const reachedFeatures = new Set(effectiveWarning?.features || (effectiveWarning?.feature ? [effectiveWarning.feature] : []));
 
-  const normalizedTtsUsed = reachedFeatures.has('tts')
+  const normalizedTtsUsed = reachedFeatures.has('tts') && limits.ttsDailyLimit !== null
     ? Math.max(ttsUsed, limits.ttsDailyLimit)
     : ttsUsed;
-  const normalizedTranslationUsed = reachedFeatures.has('translation')
+  const normalizedTranslationUsed = reachedFeatures.has('translation') && limits.translationDailyLimit !== null
     ? Math.max(translationUsed, limits.translationDailyLimit)
     : translationUsed;
 
-  const normalizedTtsAtLimit = normalizedTtsUsed >= limits.ttsDailyLimit;
-  const normalizedTranslationAtLimit = normalizedTranslationUsed >= limits.translationDailyLimit;
+  const normalizedTtsAtLimit = isAtLimit(normalizedTtsUsed, limits.ttsDailyLimit);
+  const normalizedTranslationAtLimit = isAtLimit(normalizedTranslationUsed, limits.translationDailyLimit);
 
   const limitRows = [
-    normalizedTtsAtLimit
+    normalizedTtsAtLimit && limits.ttsDailyLimit !== null
       ? {
           key: 'tts',
           message: readerWarning('ttsReached'),
@@ -98,7 +145,7 @@ export default function AnonymousReaderWarning() {
           limit: limits.ttsDailyLimit,
         }
       : null,
-    normalizedTranslationAtLimit
+    normalizedTranslationAtLimit && limits.translationDailyLimit !== null
       ? {
           key: 'translation',
           message: readerWarning('translationReached'),
@@ -118,9 +165,9 @@ export default function AnonymousReaderWarning() {
   const message = hasExpiredPro
     ? readerWarning('expiredPlan')
     : isLimitReached && limitRows.length === 0
-      ? warning?.feature === 'tts'
+      ? effectiveWarning?.feature === 'tts'
         ? readerWarning('ttsReached')
-        : warning?.feature === 'translation'
+        : effectiveWarning?.feature === 'translation'
           ? readerWarning('translationReached')
           : null
       : null;
@@ -148,17 +195,17 @@ export default function AnonymousReaderWarning() {
               </span>
             ))}
           </div>
-        ) : (
+        ) : hasVisibleDailyLimits ? (
           <div className="flex items-center gap-2 text-[13px] tracking-[-0.16px]">
             <span className={`tabular-nums ${normalizedTtsAtLimit ? 'text-[#ff3b30]' : 'text-black/50'}`}>
-              TTS&nbsp;<strong className={normalizedTtsAtLimit ? 'text-[#ff3b30]' : 'text-[#1d1d1f]'}>{normalizedTtsUsed}</strong>/{limits.ttsDailyLimit}
+              TTS&nbsp;<strong className={normalizedTtsAtLimit ? 'text-[#ff3b30]' : 'text-[#1d1d1f]'}>{normalizedTtsUsed}</strong>/{limits.ttsDailyLimit ?? '∞'}
             </span>
             <span className="text-black/20">·</span>
             <span className={`tabular-nums ${normalizedTranslationAtLimit ? 'text-[#ff3b30]' : 'text-black/50'}`}>
-              Trans.&nbsp;<strong className={normalizedTranslationAtLimit ? 'text-[#ff3b30]' : 'text-[#1d1d1f]'}>{normalizedTranslationUsed}</strong>/{limits.translationDailyLimit}
+              Trans.&nbsp;<strong className={normalizedTranslationAtLimit ? 'text-[#ff3b30]' : 'text-[#1d1d1f]'}>{normalizedTranslationUsed}</strong>/{limits.translationDailyLimit ?? '∞'}
             </span>
           </div>
-        )}
+        ) : null}
         <div className="ml-auto flex shrink-0 gap-2">
           {isLoggedIn ? (
             <Link

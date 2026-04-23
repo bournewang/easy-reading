@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { formatMessage } from '@/lib/i18n';
+import { getBookChapterReaderUrl } from '@/lib/reading-routes';
 
 type Level = {
   id: string;
@@ -72,7 +73,7 @@ export function BooksIndexPageClient({ levels }: { levels: Level[] }) {
                 {level.books.slice(0, 3).map((book) => (
                   <Link
                     key={book.slug}
-                    href={`/books/${level.id}/${book.slug}/${book.firstChapterNumber ?? 1}`}
+                    href={getBookChapterReaderUrl(level.id, book.slug, book.firstChapterNumber ?? 1)}
                     className="flex items-center justify-between rounded-[22px] border border-black/6 px-4 py-3 transition hover:border-[#0071e3]/20 hover:bg-[#f5f9ff]"
                   >
                     <div>

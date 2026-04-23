@@ -1,4 +1,4 @@
-import ReaderPageClient from '@/components/reader/ReaderPageClient';
+import NewsReaderClient from '@/components/news/NewsReaderClient';
 
 type NewsListItem = {
   id: string;
@@ -74,5 +74,5 @@ export async function generateStaticParams() {
 export default async function NewsReaderCategorySlugPage({ params }: NewsReaderCategorySlugPageProps) {
   const { category, slug } = await params;
 
-  return <ReaderPageClient initialBackPath="/news" initialNewsSlug={slug} initialCategory={category} />;
+  return <NewsReaderClient initialBackPath="/news" initialNewsSlug={slug} initialCategory={category} />;
 }

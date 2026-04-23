@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { formatMessage } from '@/lib/i18n';
+import { getBookChapterReaderUrl } from '@/lib/reading-routes';
 
 type LevelData = {
   id: string;
@@ -275,7 +276,7 @@ export function BookLevelPageClient({ levelData, levels }: { levelData: LevelDat
               <div className="pointer-events-none absolute inset-x-5 top-0 h-24 rounded-b-[28px] bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_70%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
               <Link
-                href={`/books/${levelData.id}/${book.slug}/${book.firstChapterNumber ?? 1}`}
+                href={getBookChapterReaderUrl(levelData.id, book.slug, book.firstChapterNumber ?? 1)}
                 className="block flex-1"
               >
                 <div className="relative aspect-[3/4] overflow-hidden rounded-[26px] bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 shadow-[0_18px_50px_-30px_rgba(15,23,42,0.45)] ring-1 ring-slate-200/70">

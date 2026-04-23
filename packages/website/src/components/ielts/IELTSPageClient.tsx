@@ -7,7 +7,6 @@ import { formatMessage } from '@/lib/i18n';
 import type { IELTSArticleListItem } from '@/lib/ielts-types';
 import {
   getIELTSPassageReaderUrl,
-  ieltsMonthLabels,
   ieltsMonthOrder,
   type IELTSMonthKey,
 } from '@/lib/ielts-paths';
@@ -26,6 +25,7 @@ const testsFromArticles = (articles: IELTSArticleListItem[]) =>
 
 export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
   const { t } = useLocaleContext();
+  const getMonthLabel = (month: string) => t(`website.ieltsPage.months.${month}`) || month;
   const ieltsText = (key: string) => t(`website.ieltsPage.${key}`);
   const years = useMemo(() => yearsFromArticles(articles), [articles]);
   const totalTests = useMemo(() => testsFromArticles(articles).length, [articles]);
@@ -142,7 +142,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
 
   const selectedTestLabel =
     selectedYear && selectedMonth && selectedTest
-      ? `${selectedYear} ${ieltsMonthLabels[selectedMonth] || selectedMonth} · Test ${selectedTest}`
+      ? `${selectedYear} ${getMonthLabel(selectedMonth)} · Test ${selectedTest}`
       : null;
 
   const handleYearChange = (year: string) => {
@@ -283,7 +283,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
                           : 'bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700'
                     }`}
                   >
-                    {ieltsMonthLabels[month] || month}
+                    {getMonthLabel(month)}
                   </button>
                 );
               })}

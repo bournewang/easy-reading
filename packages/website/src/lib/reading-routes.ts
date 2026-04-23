@@ -1,5 +1,5 @@
 export function getBookChapterReaderUrl(level: string, slug: string, chapterNumber: number | string) {
-  return `/books/${encodeURIComponent(level)}/${encodeURIComponent(slug)}/${encodeURIComponent(String(chapterNumber))}`;
+  return `/books-reader/${encodeURIComponent(level)}/${encodeURIComponent(slug)}/${encodeURIComponent(String(chapterNumber))}`;
 }
 
 export function getIELTSPassageReaderUrl(

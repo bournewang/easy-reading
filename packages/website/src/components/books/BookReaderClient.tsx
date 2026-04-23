@@ -39,6 +39,7 @@ export default function BookReaderClient({
 }: BookReaderClientProps) {
   const router = useRouter();
   const { t } = useLocaleContext();
+  const booksNavigationLabel = t('website.navigation.books');
   const readerIndexText = (key: string) => t(`website.readerIndex.${key}`);
   const articleScrollRef = useRef<HTMLDivElement>(null);
   const initialChapterIndex = Math.max(
@@ -136,7 +137,7 @@ export default function BookReaderClient({
       <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-[calc(88px+0.5rem)] sm:py-4 sm:pb-[calc(88px+0.5rem)] xl:pb-4">
         <nav className="mb-3 shrink-0 text-sm text-gray-500">
           <Link href="/books" className="hover:text-blue-600">
-            Books
+            {booksNavigationLabel}
           </Link>
           <span className="mx-2">/</span>
           <span className="inline-flex flex-wrap items-center gap-1.5">

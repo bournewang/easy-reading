@@ -1,16 +1,16 @@
 'use client';
 
-import React, { Suspense, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
 import { BackIcon, CheckIcon } from '@easy-reading/shared';
-import type { Article, Paragraph } from '@easy-reading/shared';
-import { useArticleExtractor } from '@/hooks/useArticleExtractor';
+import type { Article, ReaderProps } from '@easy-reading/shared';
 import { useRouter, useParams } from 'next/navigation';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import ReaderShell from '@/components/ReaderShell';
-import NewsReader from '@/components/reader/NewsReader';
+import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
+import ReaderWorkspace from '@/components/reader/ReaderWorkspace';
 import { api } from '@/utils/api';
 import {
-  createIELTSHistoryItem,
   createNewsHistoryItem,
   isRouteRead,
   saveReadingHistoryItemAsync,
@@ -19,20 +19,11 @@ import { useVocabularyBooks } from '@/hooks/useVocabularyBooks';
 import { useArticles } from '@/hooks/useArticles';
 import { useNewsCategories } from '@/hooks/useNewsCategories';
 
-type ReaderPageClientProps = {
+type NewsReaderClientProps = {
   initialArticle?: Article | null;
   initialBackPath?: string;
-  localArticleMode?: boolean;
   initialNewsSlug?: string | null;
   initialCategory?: string | null;
-};
-
-type IELTSArticleResource = {
-  title: string;
-  content: string;
-  source?: string;
-  wordCount?: number;
-  readingTime?: number;
 };
 
 type NewsArticleResource = {
@@ -41,74 +32,79 @@ type NewsArticleResource = {
   syncedAt?: string | null;
 };
 
+type NewsReaderWorkspaceProps = {
+  article: Article;
+  activeNewsId?: string | null;
+  activeArticleUrl?: string | null;
+  activeCategory?: string | null;
+  contentScrollRef?: RefObject<HTMLDivElement>;
+  floatingAction?: ReactNode;
+} & Pick<
+  ReaderProps,
+  'vocabularyHighlightColorByWord' | 'vocabularyBookIdsByWord' | 'vocabularyWordDetailsByWord'
+>;
+
 const newsArticleCache = new Map<string, Article | null>();
 const newsArticleInFlightRequests = new Map<string, Promise<Article | null>>();
 
-const DEFAULT_IELTS_ARTICLE_BASE_URL = '/ielts-articles';
+function NewsReaderWorkspace({
+  article,
+  activeNewsId,
+  activeArticleUrl,
+  activeCategory,
+  contentScrollRef,
+  floatingAction,
+  vocabularyHighlightColorByWord,
+  vocabularyBookIdsByWord,
+  vocabularyWordDetailsByWord,
+}: NewsReaderWorkspaceProps) {
+  const router = useRouter();
+  const { t } = useLocaleContext();
+  const readerIndexText = (key: string) => t(`website.readerIndex.${key}`);
+  const { articles } = useArticles({ page: 1, pageSize: 18, category: activeCategory || undefined });
+  const items = useMemo(
+    () =>
+      articles.map((item) => ({
+        id: item.id,
+        overline: item.source,
+        title: item.title,
+        meta: `${item.readingTime} ${readerIndexText('minute')}`,
+        active:
+          (activeNewsId && item.id === activeNewsId) ||
+          (!activeNewsId && activeArticleUrl && item.url === activeArticleUrl),
+        onSelect: () => {
+          router.push(`/news-reader/${encodeURIComponent(activeCategory || item.category)}/${encodeURIComponent(item.id)}`);
+        },
+      })),
+    [activeArticleUrl, activeCategory, activeNewsId, articles, router, readerIndexText],
+  );
 
-function getIELTSArticleBaseUrl() {
-  return process.env.NEXT_PUBLIC_IELTS_ARTICLE_BASE_URL || DEFAULT_IELTS_ARTICLE_BASE_URL;
-}
-
-function buildParagraphsFromContent(content: string): Record<number, Paragraph> {
-  const paragraphs: Record<number, Paragraph> = {};
-
-  content
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .forEach((paragraph, index) => {
-      paragraphs[index] = {
-        type: 'text',
-        content: paragraph,
-      };
-    });
-
-  if (Object.keys(paragraphs).length === 0) {
-    paragraphs[0] = {
-      type: 'text',
-      content: '',
-    };
-  }
-
-  return paragraphs;
-}
-
-function countWords(text: string) {
-  return text
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean).length;
-}
-
-async function fetchIELTSArticle(articleId: string): Promise<Article | null> {
-  const baseUrl = getIELTSArticleBaseUrl().replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/articles/${encodeURIComponent(articleId)}.json`, {
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const rawArticle = (await response.json()) as IELTSArticleResource;
-  const paragraphs = buildParagraphsFromContent(rawArticle.content || '');
-  const textContent = Object.values(paragraphs)
-    .filter((paragraph) => paragraph.type === 'text')
-    .map((paragraph) => paragraph.content)
-    .join(' ');
-  const wordCount = rawArticle.wordCount || countWords(textContent);
-
-  return {
-    title: rawArticle.title,
-    site_name: rawArticle.source || 'IELTS Reading',
-    url: `ielts://${articleId}`,
-    word_count: wordCount,
-    paragraphs,
-    unfamiliar_words: [],
-    reading_time: rawArticle.readingTime || Math.max(1, Math.ceil(wordCount / 150)),
-    created_at: new Date().toISOString(),
-  };
+  return (
+    <ReaderWorkspace
+      article={article}
+      containedScroll
+      contentScrollRef={contentScrollRef}
+      outerClassName="min-h-0 flex-1 overflow-hidden xl:grid xl:grid-cols-[280px_minmax(0,1fr)] xl:items-start xl:gap-5"
+      navigation={
+        activeNewsId || activeArticleUrl
+          ? {
+              title: readerIndexText('newsTitle'),
+              description: readerIndexText('newsDescription'),
+              items,
+              desktopClassName: 'hidden h-full min-h-0 xl:block',
+              mobileClassName: 'fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden',
+            }
+          : undefined
+      }
+      warning={<AnonymousReaderWarning />}
+      floatingAction={floatingAction}
+      panelClassName="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
+      readerContainerClassName="min-h-0 flex-1 overflow-hidden"
+      vocabularyHighlightColorByWord={vocabularyHighlightColorByWord}
+      vocabularyBookIdsByWord={vocabularyBookIdsByWord}
+      vocabularyWordDetailsByWord={vocabularyWordDetailsByWord}
+    />
+  );
 }
 
 async function fetchNewsArticle(newsId: string): Promise<Article | null> {
@@ -146,21 +142,19 @@ async function fetchNewsArticle(newsId: string): Promise<Article | null> {
   newsArticleInFlightRequests.set(newsId, request);
 
   return request;
-
 }
 
-function ReaderContent({
+function NewsReaderContent({
   initialArticle = null,
   initialBackPath = '/news',
-  localArticleMode = false,
   initialNewsSlug = null,
   initialCategory = null,
-}: ReaderPageClientProps) {
+}: NewsReaderClientProps) {
+  const { t } = useLocaleContext();
   const baseButtonClass =
     'inline-flex items-center gap-2 rounded-full px-4 py-2 text-[14px] font-medium tracking-[-0.22px] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0071e3] focus:ring-offset-2';
   const primaryButtonClass = `${baseButtonClass} bg-[#0071e3] text-white hover:bg-[#0077ed]`;
   const darkButtonClass = `${baseButtonClass} bg-[#1d1d1f] text-white hover:bg-black`;
-  const outlineButtonClass = `${baseButtonClass} border border-[#0066cc] bg-white/90 text-[#0066cc] hover:bg-[#0071e3]/[0.06]`;
   const [article, setArticle] = useState<Article | null>(initialArticle);
   const [showMarkAsRead, setShowMarkAsRead] = useState(false);
   const [isRead, setIsRead] = useState(false);
@@ -168,20 +162,20 @@ function ReaderContent({
   const [queryLoading, setQueryLoading] = useState(false);
   const articleScrollRef = useRef<HTMLDivElement>(null);
   const { readerVocabularyData } = useVocabularyBooks({ loadWordDetails: true });
-  const { extractArticle, loading, error } = useArticleExtractor();
   const params = useParams();
   const router = useRouter();
-  const articleId = null; // Only for IELTS, not used here
   const newsSlug = params?.slug ? String(params.slug) : (initialNewsSlug || null);
-  const urlParam = null; // Not used in new route
   const backPath = initialBackPath;
-  const isNewsReader = !!newsSlug;
   const categoryParam = params?.category ? String(params.category) : (initialCategory || null);
 
-  // Use cached categories
   const { categories: cachedCategories, firstArticleByCategory } = useNewsCategories();
   const newsCategories = cachedCategories;
   const activeCategory = categoryParam;
+  const getCategoryLabel = (category: string) => {
+    const normalized = category.charAt(0).toUpperCase() + category.slice(1);
+    const key = `website.newsPage.categories${normalized}`;
+    return t(key, normalized);
+  };
   const currentNewsRoute = newsSlug && activeCategory
     ? `/news-reader/${encodeURIComponent(activeCategory)}/${encodeURIComponent(newsSlug)}`
     : (newsSlug ? `/news-reader/${encodeURIComponent(newsSlug)}` : null);
@@ -191,27 +185,28 @@ function ReaderContent({
       return;
     }
 
-    if (newsSlug) {
-      setQueryLoading(true);
-      setQueryError(null);
-
-      fetchNewsArticle(newsSlug)
-        .then((data) => {
-          if (!data) {
-            setQueryError('This news article could not be found.');
-            return;
-          }
-          setArticle(data);
-        })
-        .catch(() => {
-          setQueryError('Unable to load news article.');
-        })
-        .finally(() => {
-          setQueryLoading(false);
-        });
+    if (!newsSlug) {
       return;
     }
-  }, [extractArticle, initialArticle, localArticleMode, newsSlug]);
+
+    setQueryLoading(true);
+    setQueryError(null);
+
+    fetchNewsArticle(newsSlug)
+      .then((data) => {
+        if (!data) {
+          setQueryError('This news article could not be found.');
+          return;
+        }
+        setArticle(data);
+      })
+      .catch(() => {
+        setQueryError('Unable to load news article.');
+      })
+      .finally(() => {
+        setQueryLoading(false);
+      });
+  }, [initialArticle, newsSlug]);
 
   useEffect(() => {
     if (!article) {
@@ -241,26 +236,16 @@ function ReaderContent({
   }, [article]);
 
   useEffect(() => {
-    if (!article) {
+    if (!article || !currentNewsRoute) {
       return;
     }
 
     let cancelled = false;
 
     const loadReadState = async () => {
-      if (articleId) {
-        const nextIsRead = await isRouteRead(`/reader?articleId=${encodeURIComponent(articleId)}`);
-        if (!cancelled) {
-          setIsRead(nextIsRead);
-        }
-        return;
-      }
-
-      if (currentNewsRoute) {
-        const nextIsRead = await isRouteRead(currentNewsRoute);
-        if (!cancelled) {
-          setIsRead(nextIsRead);
-        }
+      const nextIsRead = await isRouteRead(currentNewsRoute);
+      if (!cancelled) {
+        setIsRead(nextIsRead);
       }
     };
 
@@ -269,28 +254,10 @@ function ReaderContent({
     return () => {
       cancelled = true;
     };
-  }, [article, articleId, currentNewsRoute]);
+  }, [article, currentNewsRoute]);
 
   const handleMarkAsRead = async () => {
-    if (!article) {
-      return;
-    }
-
-    if (articleId) {
-      await saveReadingHistoryItemAsync(
-        createIELTSHistoryItem({
-          routeUrl: `/reader?articleId=${encodeURIComponent(articleId)}`,
-          title: article.title,
-          subtitle: article.site_name,
-          wordCount: article.word_count,
-          readingTime: article.reading_time,
-        }),
-      );
-      setIsRead(true);
-      return;
-    }
-
-    if (!newsSlug) {
+    if (!article || !newsSlug) {
       return;
     }
 
@@ -303,7 +270,7 @@ function ReaderContent({
     setIsRead(true);
   };
 
-  if ((loading || queryLoading) && !article) {
+  if (queryLoading && !article) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7]">
         <div className="rounded-[28px] bg-white px-8 py-7 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
@@ -314,13 +281,13 @@ function ReaderContent({
     );
   }
 
-  if ((error || queryError) && !article) {
+  if (queryError && !article) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7] px-4">
         <div className="max-w-xl rounded-[32px] bg-white p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
           <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Reader</p>
           <h1 className="mb-3 text-[40px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">Unable to load article</h1>
-          <p className="mb-5 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/64">{queryError || error}</p>
+          <p className="mb-5 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/64">{queryError}</p>
           <button
             onClick={() => router.push(backPath)}
             className={darkButtonClass}
@@ -334,16 +301,12 @@ function ReaderContent({
   }
 
   if (!article) {
-    const emptyStateText = articleId || localArticleMode
-      ? 'Open an IELTS reading article to start reading.'
-      : 'Open an article from the news list to start reading.';
-
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f5f5f7] px-4">
         <div className="max-w-xl rounded-[32px] bg-white p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
           <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-[#0071e3]">Reader</p>
           <h1 className="mb-3 text-[40px] font-semibold leading-[1.1] tracking-[-0.04em] text-[#1d1d1f]">No article selected</h1>
-          <p className="mb-5 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/64">{emptyStateText}</p>
+          <p className="mb-5 text-[17px] leading-[1.47] tracking-[-0.37px] text-black/64">Open an article from the news list to start reading.</p>
           <button
             onClick={() => router.push(backPath)}
             className={darkButtonClass}
@@ -359,89 +322,59 @@ function ReaderContent({
   return (
     <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] overflow-hidden bg-[#f5f5f7]">
       <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-6 sm:py-4 xl:pb-4">
-        {isNewsReader ? (
-          <div className="mb-3 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-4 shadow-sm sm:p-5">
-            <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
-              <Link href={backPath} className="hover:text-sky-700">
-                News
-              </Link>
-              {(newsCategories.length > 0 || activeCategory) ? (
-                <>
-                  <span className="mx-1 text-slate-300">/</span>
-                  <div className="flex flex-wrap items-center gap-1">
-                    {(newsCategories.length > 0 ? newsCategories : [activeCategory]).filter(Boolean).map((cat) => {
-                      const isActive = cat === activeCategory;
-                      const firstArticleId = cat ? firstArticleByCategory[cat] : '';
-                      const catHref = cat && firstArticleId
-                        ? `/news-reader/${encodeURIComponent(cat)}/${encodeURIComponent(firstArticleId)}`
-                        : backPath;
-                      return (
-                        <Link
-                          key={cat}
-                          href={catHref}
-                          aria-current={isActive ? 'page' : undefined}
-                          className={`rounded-full px-2 py-1 text-xs font-medium transition-colors ${
-                            isActive
-                              ? 'bg-sky-600 text-white'
-                              : 'bg-white text-slate-600 hover:bg-sky-50 hover:text-sky-700'
-                          }`}
-                        >
-                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : null}
-              {article.title ? (
-                <>
-                  <span className="mx-1 text-slate-300">/</span>
-                  <span
-                    aria-current="page"
-                    className="max-w-full truncate rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700"
-                    title={article.title}
-                  >
-                    {article.title}
-                  </span>
-                </>
-              ) : null}
-            </nav>
-
-            {/* <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-              <span className="rounded-full border border-sky-100 bg-sky-50 px-3 py-1 font-medium text-sky-700">
-                {article.site_name || 'News'}
-              </span>
-              {article.reading_time ? (
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
-                  {article.reading_time} min read
-                </span>
-              ) : null}
-            </div> */}
-          </div>
-        ) : null}
-
-        {/* <div className="flex items-center justify-between gap-3 pb-2 pt-5 md:pt-6">
-          <button onClick={() => router.push(backPath)} className={outlineButtonClass}>
-            <BackIcon className="h-4 w-4" />
-            Back
-          </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.12em] text-black/56">
-              {article.site_name || (newsSlug ? 'News' : 'Reader')}
-            </span>
-            {article.reading_time ? (
-              <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[12px] tracking-[-0.12px] text-black/56">
-                {article.reading_time} min read
-              </span>
+        <div className="mb-3 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-4 shadow-sm sm:p-5">
+          <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
+            <Link href={backPath} className="hover:text-sky-700">
+              {t('website.navigation.news')}
+            </Link>
+            {(newsCategories.length > 0 || activeCategory) ? (
+              <>
+                <span className="mx-1 text-slate-300">/</span>
+                <div className="flex flex-wrap items-center gap-1">
+                  {(newsCategories.length > 0 ? newsCategories : [activeCategory]).filter(Boolean).map((cat) => {
+                    const isActive = cat === activeCategory;
+                    const firstArticleId = cat ? firstArticleByCategory[cat] : '';
+                    const catHref = cat && firstArticleId
+                      ? `/news-reader/${encodeURIComponent(cat)}/${encodeURIComponent(firstArticleId)}`
+                      : backPath;
+                    return (
+                      <Link
+                        key={cat}
+                        href={catHref}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`rounded-full px-2 py-1 text-xs font-medium transition-colors ${
+                          isActive
+                            ? 'bg-sky-600 text-white'
+                            : 'bg-white text-slate-600 hover:bg-sky-50 hover:text-sky-700'
+                        }`}
+                      >
+                        {getCategoryLabel(cat)}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </>
             ) : null}
-          </div>
-        </div> */}
+            {article.title ? (
+              <>
+                <span className="mx-1 text-slate-300">/</span>
+                <span
+                  aria-current="page"
+                  className="max-w-full truncate rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700"
+                  title={article.title}
+                >
+                  {article.title}
+                </span>
+              </>
+            ) : null}
+          </nav>
+        </div>
 
         <div className="min-h-0 flex-1 overflow-hidden pt-3 md:pt-4">
-          <NewsReader
+          <NewsReaderWorkspace
             article={article}
             activeNewsId={newsSlug}
-            activeArticleUrl={article.url || urlParam}
+            activeArticleUrl={article.url}
             activeCategory={activeCategory}
             contentScrollRef={articleScrollRef}
             vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
@@ -480,10 +413,10 @@ function LoadingFallback() {
   );
 }
 
-export default function ReaderPageClient(props: ReaderPageClientProps) {
+export default function NewsReaderClient(props: NewsReaderClientProps) {
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <ReaderContent {...props} />
+      <NewsReaderContent {...props} />
     </Suspense>
   );
 }

@@ -64,7 +64,7 @@ export default function Navigation() {
           <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <NavigationItem href="/" label={nav('home')} />
             <NavigationItem href="/news" label={nav('news')} />
-            <NavigationItem href="/ielts" label="IELTS" />
+            <NavigationItem href="/ielts" label={nav('ielts')} />
             <NavigationItem href="/books/b11" label={nav('books')} />
             <NavigationItem href="/wordlist" label={nav('wordBook')} />
              

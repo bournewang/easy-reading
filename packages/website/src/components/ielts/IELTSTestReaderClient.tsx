@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { type Article } from '@easy-reading/shared';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
+import { formatMessage } from '@/lib/i18n';
 import ReaderShell from '@/components/ReaderShell';
 import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
 import ReaderWorkspace from '@/components/reader/ReaderWorkspace';
 import type { IELTSArticleListItem, IELTSReaderTestSummary } from '@/lib/ielts-types';
-import { getIELTSPassageReaderUrl, ieltsMonthLabels, ieltsMonthOrder } from '@/lib/ielts-paths';
+import { getIELTSPassageReaderUrl, ieltsMonthOrder } from '@/lib/ielts-paths';
 import { saveLastIELTSTestRoute } from '@/lib/ielts-storage';
 import {
   createIELTSHistoryItem,
@@ -41,6 +42,9 @@ export default function IELTSTestReaderClient({
   const router = useRouter();
   const { t } = useLocaleContext();
   const readerIndexText = (key: string) => t(`website.readerIndex.${key}`);
+  const ieltsText = (key: string) => t(`website.ieltsPage.${key}`);
+  const getMonthLabel = (month: string) => t(`website.ieltsPage.months.${month}`) || month;
+  const getTestLabel = (test: string) => formatMessage(ieltsText('testLabel'), { test });
   const pathname = usePathname();
   const articleScrollRef = useRef<HTMLDivElement>(null);
   const [showMarkAsRead, setShowMarkAsRead] = useState(false);
@@ -205,7 +209,7 @@ export default function IELTSTestReaderClient({
       createIELTSHistoryItem({
         routeUrl: activeRouteUrl,
         title: activeArticle.title,
-        subtitle: `${summary.year} ${ieltsMonthLabels[summary.month] || summary.month} Test ${summary.test} · Passage ${activePassage.passage}`,
+        subtitle: `${summary.year} ${getMonthLabel(summary.month)} Test ${summary.test} · Passage ${activePassage.passage}`,
         wordCount: activeArticle.word_count,
         readingTime: activeArticle.reading_time,
       }),
@@ -234,7 +238,7 @@ export default function IELTSTestReaderClient({
         <div className="mb-3 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-4 shadow-sm sm:p-5">
           <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
             <Link href="/ielts" className="hover:text-sky-700">
-              IELTS
+              {t('website.navigation.ielts')}
             </Link>
             <span className="mx-1 text-slate-300">/</span>
             <div className="flex flex-wrap items-center gap-1">
@@ -273,7 +277,7 @@ export default function IELTSTestReaderClient({
                         : 'bg-white text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'
                     }`}
                   >
-                    {ieltsMonthLabels[month] || month}
+                      {getMonthLabel(month)}
                   </button>
                 );
               })}
@@ -294,7 +298,7 @@ export default function IELTSTestReaderClient({
                         : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
                     }`}
                   >
-                    Test {test}
+                      {getTestLabel(test)}
                   </button>
                 );
               })}
