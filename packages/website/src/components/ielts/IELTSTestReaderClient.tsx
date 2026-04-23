@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { type Article } from '@easy-reading/shared';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import ReaderShell from '@/components/ReaderShell';
 import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
 import ReaderWorkspace from '@/components/reader/ReaderWorkspace';
@@ -38,6 +39,8 @@ export default function IELTSTestReaderClient({
   initialPassage,
 }: IELTSTestReaderClientProps) {
   const router = useRouter();
+  const { t } = useLocaleContext();
+  const readerIndexText = (key: string) => t(`website.readerIndex.${key}`);
   const pathname = usePathname();
   const articleScrollRef = useRef<HTMLDivElement>(null);
   const [showMarkAsRead, setShowMarkAsRead] = useState(false);
@@ -229,7 +232,7 @@ export default function IELTSTestReaderClient({
     <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] overflow-hidden bg-gradient-to-br from-sky-50 via-white to-indigo-50">
       <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-[calc(88px+0.5rem)] sm:py-4 sm:pb-[calc(88px+0.5rem)] xl:pb-4">
         <div className="mb-3 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-4 shadow-sm sm:p-5">
-          <nav className="mb-3 flex flex-wrap items-center gap-1 text-sm text-slate-500">
+          <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
             <Link href="/ielts" className="hover:text-sky-700">
               IELTS
             </Link>
@@ -299,12 +302,12 @@ export default function IELTSTestReaderClient({
           </nav>
 
           {/* <p className="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-sky-600">IELTS Reader</p> */}
-          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+          {/* <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
             {summary.year} {ieltsMonthLabels[summary.month] || summary.month} Test {summary.test}
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             {summary.source} · {summary.articleCount} passage{summary.articleCount === 1 ? '' : 's'}
-          </p>
+          </p> */}
         </div>
 
         <ReaderWorkspace
@@ -313,13 +316,13 @@ export default function IELTSTestReaderClient({
           contentScrollRef={articleScrollRef}
           outerClassName="grid min-h-0 flex-1 gap-3 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)]"
           navigation={{
-            title: 'Passages',
-            description: 'All reading passages',
+            title: readerIndexText('passagesTitle'),
+            description: readerIndexText('passagesDescription'),
             items: passages.map((passage) => ({
               id: passage.id,
-              overline: `Passage ${passage.passage}`,
+              overline: `${readerIndexText('passage')} ${passage.passage}`,
               title: passage.title,
-              meta: `${passage.readingTime} min`,
+              meta: `${passage.readingTime} ${readerIndexText('minute')}`,
               active: passage.id === activePassage?.id,
               onSelect: () => handlePassageChange(passage),
             })),
@@ -333,7 +336,7 @@ export default function IELTSTestReaderClient({
               onSelect: () => nextPassage && handlePassageChange(nextPassage),
               disabled: !nextPassage,
             },
-            currentLabel: activePassage ? `Passage ${activePassage.passage} / ${passages.length}` : '',
+            currentLabel: activePassage ? `${readerIndexText('passage')} ${activePassage.passage} / ${passages.length}` : '',
           }}
           warning={<AnonymousReaderWarning />}
           floatingAction={showMarkAsRead && activeArticle ? (

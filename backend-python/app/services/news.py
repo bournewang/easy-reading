@@ -378,6 +378,49 @@ class NewsService:
             "lastSyncedAt": last_synced_at,
         }
 
+    def list_news_categories(self) -> dict[str, Any]:
+        last_synced_at = self.get_last_synced_at()
+
+        with db_cursor() as cursor:
+            cursor.execute(
+                "SELECT DISTINCT category FROM news WHERE category IS NOT NULL AND category != '' ORDER BY category ASC"
+            )
+            category_rows = cursor.fetchall()
+
+            cursor.execute(
+                """
+                SELECT n.category, COALESCE(n.slug, n.article_id) AS article_id
+                FROM news n
+                WHERE n.category IS NOT NULL
+                  AND n.category != ''
+                  AND n.synced_at = (
+                    SELECT MAX(n2.synced_at)
+                    FROM news n2
+                    WHERE n2.category = n.category
+                      AND n2.category IS NOT NULL
+                      AND n2.category != ''
+                  )
+                ORDER BY n.category ASC, COALESCE(n.slug, n.article_id) ASC
+                """
+            )
+            first_article_rows = cursor.fetchall()
+
+        categories = [row_to_dict(row)["category"] for row in category_rows if row_to_dict(row)]
+
+        first_article_by_category: dict[str, str] = {}
+        for raw_row in first_article_rows:
+            row = row_to_dict(raw_row) or {}
+            category = row.get("category")
+            article_id = row.get("article_id")
+            if category and article_id and category not in first_article_by_category:
+                first_article_by_category[category] = article_id
+
+        return {
+            "categories": categories,
+            "firstArticleByCategory": first_article_by_category,
+            "lastSyncedAt": last_synced_at,
+        }
+
     def get_news_article(self, article_id: str) -> dict[str, Any] | None:
         with db_cursor() as cursor:
             cursor.execute(

@@ -10,6 +10,7 @@ import { BOOK_LEVELS } from '@/lib/book-levels';
 import type { BookChapterManifestItem, BookRecord } from '@/lib/books';
 import { getBookChapterReaderUrl } from '@/lib/reading-routes';
 import { type Article } from '@easy-reading/shared';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import {
   createBookHistoryItem,
   isRouteRead,
@@ -37,6 +38,8 @@ export default function BookReaderClient({
   initialChapterNumber,
 }: BookReaderClientProps) {
   const router = useRouter();
+  const { t } = useLocaleContext();
+  const readerIndexText = (key: string) => t(`website.readerIndex.${key}`);
   const articleScrollRef = useRef<HTMLDivElement>(null);
   const initialChapterIndex = Math.max(
     0,
@@ -164,13 +167,13 @@ export default function BookReaderClient({
           contentScrollRef={articleScrollRef}
           outerClassName="min-h-0 flex-1 overflow-hidden xl:grid xl:grid-cols-[260px_minmax(0,1fr)] xl:items-start xl:gap-3"
           navigation={{
-            title: levelLabel,
-            description: book.title,
+            title: readerIndexText('catalogTitle'),
+            description: readerIndexText('catalogDescription'),
             items: chapters.map((chapter, index) => ({
               id: chapter.id,
-              overline: `Chapter ${chapter.chapterNumber}`,
-              title: chapter.chapterTitle || `Chapter ${chapter.chapterNumber}`,
-              meta: `${chapter.readingTime} min`,
+              overline: `${readerIndexText('chapter')} ${chapter.chapterNumber}`,
+              title: chapter.chapterTitle || `${readerIndexText('chapter')} ${chapter.chapterNumber}`,
+              meta: `${chapter.readingTime} ${readerIndexText('minute')}`,
               active: index === currentChapter,
               onSelect: () => void changeChapter(index),
             })),
@@ -184,7 +187,7 @@ export default function BookReaderClient({
               onSelect: () => nextChapterIndex !== null && void changeChapter(nextChapterIndex),
               disabled: loading || nextChapterIndex === null,
             },
-            currentLabel: `Chapter ${currentChapter + 1} / ${chapters.length}`,
+            currentLabel: `${readerIndexText('chapter')} ${currentChapter + 1} / ${chapters.length}`,
             desktopClassName: 'hidden h-full min-h-0 xl:block',
             mobileClassName: 'fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden',
           }}

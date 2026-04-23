@@ -148,7 +148,7 @@ const Reader: React.FC<ReaderProps> = ({
                     </div>
                   </div>
                 </div>
-                <div className="mx-auto max-w-[980px] space-y-6 px-5 py-8 md:px-8 md:py-10">
+                <div className="mx-auto max-w-[980px] space-y-6 px-2 py-8 md:py-10">
                   {Object.entries(article.paragraphs || {}).map(([id, paragraph]) => (
                     <div
                       key={id}

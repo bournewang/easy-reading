@@ -210,6 +210,8 @@ export const zh = {
       categoriesArts: "艺术",
       categoriesBusiness: "商业",
       categoriesEarth: "地球",
+      categoriesInovation: "创新",
+      categoriesInnovation: "创新",
     },
     pricingPage: {
       title: "选择你的计划",
@@ -452,6 +454,26 @@ export const zh = {
       register: "立即注册",
       login: "登录",
       upgrade: "升级到 Pro",
+    },
+    dictionaryTips: {
+      eyebrow: "词典提示",
+      title: "选择单词开始",
+      tip1: "点击文章中的任意单词可查看释义、发音和例句。",
+      tip2: "想直接查词时可使用上方搜索框。",
+      tip3: "点击过的单词会自动加入生词本，方便后续复习。",
+      tip4: "点击喇叭按钮可收听发音与例句朗读。",
+      tip5: "阅读中遇到难句时可使用段落翻译辅助理解。",
+    },
+    readerIndex: {
+      newsTitle: "新闻",
+      newsDescription: "BBC 新闻",
+      catalogTitle: "目录",
+      catalogDescription: "选择章节",
+      passagesTitle: "篇章",
+      passagesDescription: "全部阅读篇章",
+      chapter: "第",
+      passage: "第",
+      minute: "分钟",
     },
   }
 };

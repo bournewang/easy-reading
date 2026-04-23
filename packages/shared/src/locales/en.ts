@@ -210,6 +210,8 @@ export const en = {
       categoriesArts: "Arts",
       categoriesBusiness: "Business",
       categoriesEarth: "Earth",
+      categoriesInovation: "Innovation",
+      categoriesInnovation: "Innovation",
     },
     pricingPage: {
       title: "Choose Your Plan",
@@ -452,6 +454,26 @@ export const en = {
       register: "Register Now",
       login: "Log In",
       upgrade: "Upgrade to Pro",
+    },
+    dictionaryTips: {
+      eyebrow: "Dictionary Tips",
+      title: "Select a word to get started",
+      tip1: "Click any word in the article to open its meaning, pronunciation, and examples.",
+      tip2: "Use the search box above when you want to look up a word directly.",
+      tip3: "Words you click are automatically added to your word list for later review.",
+      tip4: "Use the speaker icon to hear pronunciation and example sentences.",
+      tip5: "Translate paragraphs as you read when you need extra support with comprehension.",
+    },
+    readerIndex: {
+      newsTitle: "News",
+      newsDescription: "BBC news",
+      catalogTitle: "Catalog",
+      catalogDescription: "Select a chapter",
+      passagesTitle: "Passages",
+      passagesDescription: "All reading passages",
+      chapter: "Chapter",
+      passage: "Passage",
+      minute: "min",
     },
   }
 };

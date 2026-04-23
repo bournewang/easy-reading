@@ -24,6 +24,7 @@ from .models import (
     DictionaryEntryModel,
     LoginRequest,
     NewsArticleContentResponse,
+    NewsCategoriesResponse,
     NewsListResponse,
     PaymentCreateRequest,
     PaymentNotifyRequest,
@@ -294,6 +295,19 @@ def list_news(
         response_payload = dict(payload)
         response_payload["lastSyncedAt"] = parse_dt(payload.get("lastSyncedAt"))
         return NewsListResponse(**response_payload)
+    except NewsSyncError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@app.get("/api/news-categories", response_model=NewsCategoriesResponse)
+def list_news_categories() -> NewsCategoriesResponse:
+    try:
+        payload = news_service.list_news_categories()
+        return NewsCategoriesResponse(
+            categories=list(payload.get("categories") or []),
+            firstArticleByCategory=dict(payload.get("firstArticleByCategory") or {}),
+            lastSyncedAt=parse_dt(payload.get("lastSyncedAt")),
+        )
     except NewsSyncError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 

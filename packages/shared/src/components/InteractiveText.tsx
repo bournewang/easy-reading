@@ -183,37 +183,41 @@ export function InteractiveText({
         const state = sentenceStates[index] || { translation: '', speaking: false, translating: false };
         
         return (
-            <div key={index} className="group relative mb-4 last:mb-0">
-                <div className="text-slate-800 leading-relaxed prose prose-sm max-w-none pr-20">
-                    {splitTextIntoWords(sentence)}
+            <div key={index} className="group mb-4 flex items-start gap-3 last:mb-0">
+                <div className="min-w-0 flex-1">
+                    <div className="prose prose-sm max-w-none leading-relaxed text-slate-800">
+                        {splitTextIntoWords(sentence)}
+                    </div>
+
+                    {state.translation && (
+                        <div className="prose prose-sm mt-2 max-w-none rounded bg-slate-50 p-2 text-slate-600">
+                            {state.translation}
+                        </div>
+                    )}
                 </div>
 
-                {state.translation && (
-                    <div className="mt-2 text-slate-600 bg-slate-50 p-2 rounded prose prose-sm max-w-none">
-                        {state.translation}
+                <div className="flex w-[68px] shrink-0 justify-end">
+                    <div className="flex flex-row gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                            onClick={() => handleSpeak(index, sentence)}
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:text-gray-800"
+                            title="Text to Speech"
+                        >
+                            <span className={state.speaking ? 'inline-block animate-spin-slow' : ''}>
+                                {state.speaking ? '⏳' : '🔊'}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => handleTranslate(index, sentence)}
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:text-gray-800"
+                            title="Translate"
+                            disabled={state.translating}
+                        >
+                            <span className={state.translating ? 'inline-block animate-spin-slow' : ''}>
+                                {state.translating ? '⏳' : '🌐'}
+                            </span>
+                        </button>
                     </div>
-                )}
-
-                <div className="absolute right-0 top-0 flex flex-row gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                        onClick={() => handleSpeak(index, sentence)}
-                        className="w-7 h-7 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
-                        title="Text to Speech"
-                    >
-                        <span className={state.speaking ? 'inline-block animate-spin-slow' : ''}>
-                            {state.speaking ? '⏳' : '🔊'}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => handleTranslate(index, sentence)}
-                        className="w-7 h-7 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 rounded-full shadow-sm transition-all duration-200"
-                        title="Translate"
-                        disabled={state.translating}
-                    >
-                        <span className={state.translating ? 'inline-block animate-spin-slow' : ''}>
-                            {state.translating ? '⏳' : '🌐'}
-                        </span>
-                    </button>
                 </div>
             </div>
         );

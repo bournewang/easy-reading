@@ -4,6 +4,7 @@ import { useMemo, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { type ReactNode } from 'react';
 import { type Article, type ReaderProps } from '@easy-reading/shared';
+import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import AnonymousReaderWarning from '@/components/reader/AnonymousReaderWarning';
 import ReaderWorkspace from '@/components/reader/ReaderWorkspace';
 import { useArticles } from '@/hooks/useArticles';
@@ -12,6 +13,7 @@ type NewsReaderProps = {
   article: Article;
   activeNewsId?: string | null;
   activeArticleUrl?: string | null;
+  activeCategory?: string | null;
   contentScrollRef?: RefObject<HTMLDivElement>;
   floatingAction?: ReactNode;
 } & Pick<
@@ -23,6 +25,7 @@ export default function NewsReader({
   article,
   activeNewsId,
   activeArticleUrl,
+  activeCategory,
   contentScrollRef,
   floatingAction,
   vocabularyHighlightColorByWord,
@@ -30,20 +33,25 @@ export default function NewsReader({
   vocabularyWordDetailsByWord,
 }: NewsReaderProps) {
   const router = useRouter();
-  const { articles, loading, error } = useArticles({ page: 1, pageSize: 18 });
+  const { t } = useLocaleContext();
+  const readerIndexText = (key: string) => t(`website.readerIndex.${key}`);
+  const { articles, loading, error } = useArticles({ page: 1, pageSize: 18, category: activeCategory || undefined });
   const items = useMemo(
     () =>
       articles.map((item) => ({
         id: item.id,
         overline: item.source,
         title: item.title,
-        meta: `${item.readingTime} min`,
+        meta: `${item.readingTime} ${readerIndexText('minute')}`,
         active:
           (activeNewsId && item.id === activeNewsId) ||
           (!activeNewsId && activeArticleUrl && item.url === activeArticleUrl),
-        onSelect: () => router.push(`/news-reader/${encodeURIComponent(item.id)}`),
+        onSelect: () => {
+          // Always use /news-reader/:category/:slug
+          router.push(`/news-reader/${encodeURIComponent(activeCategory || item.category)}/${encodeURIComponent(item.id)}`);
+        },
       })),
-    [activeArticleUrl, activeNewsId, articles, router],
+    [activeArticleUrl, activeCategory, activeNewsId, articles, router, readerIndexText],
   );
 
   return (
@@ -55,8 +63,8 @@ export default function NewsReader({
       navigation={
         activeNewsId || activeArticleUrl
           ? {
-              title: 'News',
-              description: loading ? 'Loading articles...' : error ? 'Unable to load news list.' : 'Latest articles',
+              title: readerIndexText('newsTitle'),
+              description: readerIndexText('newsDescription'),
               items,
               desktopClassName: 'hidden h-full min-h-0 xl:block',
               mobileClassName: 'fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden',

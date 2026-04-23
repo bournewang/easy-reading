@@ -1,5 +1,5 @@
-import ReaderPageClient from '@/components/reader/ReaderPageClient';
+import { redirect } from 'next/navigation';
 
 export default function NewsReaderPage() {
-  return <ReaderPageClient initialBackPath="/news" />;
+	redirect('/news');
 }

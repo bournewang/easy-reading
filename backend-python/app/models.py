@@ -255,6 +255,12 @@ class NewsListResponse(BaseModel):
     lastSyncedAt: datetime | None = None
 
 
+class NewsCategoriesResponse(BaseModel):
+    categories: list[str] = Field(default_factory=list)
+    firstArticleByCategory: dict[str, str] = Field(default_factory=dict)
+    lastSyncedAt: datetime | None = None
+
+
 class NewsArticleContentResponse(BaseModel):
     id: str
     article: dict[str, Any]

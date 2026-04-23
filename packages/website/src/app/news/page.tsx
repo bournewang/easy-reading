@@ -4,6 +4,7 @@ import React, { useEffect, Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import PageShell from '@/components/PageShell';
 import { useArticles } from '@/hooks/useArticles';
+import { useNewsCategories } from '@/hooks/useNewsCategories';
 import type { NewsArticle } from '@/types/news';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { isSourceRead } from '@/utils/reading-history';
@@ -118,12 +119,15 @@ function UrlReaderContent() {
     pageSize: 18,
   });
 
+
   const getCategoryLabel = (category: string) => {
     const normalized = category.charAt(0).toUpperCase() + category.slice(1);
     return news(`categories${normalized}`);
   };
 
-  const categories = ['all', ...metadata.categories];
+  // Use cached categories for pills
+  const { categories: cachedCategories } = useNewsCategories();
+  const categories = ['all', ...(cachedCategories.length > 0 ? cachedCategories : metadata.categories)];
 
   const updateSearchParams = (updates: Record<string, string | null>) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -143,10 +147,13 @@ function UrlReaderContent() {
   const handleArticleClick = async (articleUrl: string) => {
     const selectedArticle = featuredArticles.find((article) => article.url === articleUrl);
     if (selectedArticle?.id) {
-      router.push(`/news-reader/${encodeURIComponent(selectedArticle.id)}`);
+      // Always use /news-reader/:category/:slug
+      const cat = selectedCategory && selectedCategory !== 'all' ? selectedCategory : selectedArticle.category;
+      router.push(`/news-reader/${encodeURIComponent(cat)}/${encodeURIComponent(selectedArticle.id)}`);
       return;
     }
-    router.push(`/news-reader?url=${encodeURIComponent(articleUrl)}`);
+    // fallback (should not happen)
+    router.push(`/news-reader`);
   };
 
   useEffect(() => {
