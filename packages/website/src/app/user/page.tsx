@@ -27,58 +27,6 @@ type ReadingCounts = {
   ielts: number;
 };
 
-type VocabularyGroupKey =
-  | 'primary-school'
-  | 'middle-school'
-  | 'high-school'
-  | 'cet4'
-  | 'cet6'
-  | 'ielts'
-  | 'toefl'
-  | 'gre'
-  | 'sat'
-  | 'gmat'
-  | 'postgraduate'
-  | 'tem4'
-  | 'tem8'
-  | 'bec'
-  | 'other';
-
-const VOCABULARY_GROUP_ORDER: VocabularyGroupKey[] = [
-  'primary-school',
-  'middle-school',
-  'high-school',
-  'cet4',
-  'cet6',
-  'ielts',
-  'toefl',
-  'gre',
-  'sat',
-  'gmat',
-  'postgraduate',
-  'tem4',
-  'tem8',
-  'bec',
-  'other',
-];
-
-const VOCABULARY_GROUP_LABEL_KEYS: Record<VocabularyGroupKey, string> = {
-  'primary-school': 'vocabularyGroupPrimarySchool',
-  'middle-school': 'vocabularyGroupMiddleSchool',
-  'high-school': 'vocabularyGroupHighSchool',
-  cet4: 'vocabularyGroupCET4',
-  cet6: 'vocabularyGroupCET6',
-  ielts: 'vocabularyGroupIELTS',
-  toefl: 'vocabularyGroupTOEFL',
-  gre: 'vocabularyGroupGRE',
-  sat: 'vocabularyGroupSAT',
-  gmat: 'vocabularyGroupGMAT',
-  postgraduate: 'vocabularyGroupPostgraduate',
-  tem4: 'vocabularyGroupTEM4',
-  tem8: 'vocabularyGroupTEM8',
-  bec: 'vocabularyGroupBEC',
-  other: 'vocabularyGroupOther',
-};
 
 const getPlanStyles = (plan: string) => {
   if (plan === 'pro') {
@@ -133,14 +81,7 @@ export default function UserCenterPage() {
   const [wordbookCount, setWordbookCount] = useState(0);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
-  const [activeVocabularyGroup, setActiveVocabularyGroup] = useState<VocabularyGroupKey | null>(null);
-  const {
-    catalog: vocabularyBookCatalog,
-    selectedBookIds,
-    loadingCatalog: loadingVocabularyBookCatalog,
-    savingSelection: savingVocabularyBookSelection,
-    toggleBookSelection,
-  } = useVocabularyBooks();
+  const { catalog: vocabularyBookCatalog, selectedBookIds } = useVocabularyBooks();
 
   const userText = (key: string) => t(`website.userPage.${key}`);
   const common = (key: string) => t(`website.common.${key}`);
@@ -232,6 +173,12 @@ export default function UserCenterPage() {
       ? common('starterAccess')
       : common('active');
 
+  const selectedVocabularyBooks = useMemo(() => {
+    return selectedBookIds
+      .map((id) => vocabularyBookCatalog.find((book) => book.id === id))
+      .filter((book): book is NonNullable<typeof book> => Boolean(book));
+  }, [selectedBookIds, vocabularyBookCatalog]);
+
   const readingCounts = useMemo<ReadingCounts>(() => {
     return articles.reduce<ReadingCounts>(
       (counts, article) => {
@@ -241,54 +188,6 @@ export default function UserCenterPage() {
       { news: 0, book: 0, ielts: 0 },
     );
   }, [articles]);
-
-  const selectedVocabularyCount = selectedBookIds.length;
-  const selectedVocabularyBooks = useMemo(() => {
-    return selectedBookIds
-      .map((selectedId) => vocabularyBookCatalog.find((book) => book.id === selectedId))
-      .filter((book): book is NonNullable<typeof book> => Boolean(book));
-  }, [selectedBookIds, vocabularyBookCatalog]);
-
-  const availableVocabularyGroups = useMemo(() => {
-    const groups = new Set<VocabularyGroupKey>();
-
-    vocabularyBookCatalog.forEach((book) => {
-      const primaryGroup = (book.tags[0] as VocabularyGroupKey | undefined) || 'other';
-      groups.add(primaryGroup);
-    });
-
-    return VOCABULARY_GROUP_ORDER.filter((group) => groups.has(group));
-  }, [vocabularyBookCatalog]);
-
-  useEffect(() => {
-    if (availableVocabularyGroups.length === 0) {
-      if (activeVocabularyGroup !== null) {
-        setActiveVocabularyGroup(null);
-      }
-      return;
-    }
-
-    const selectedBookGroup = selectedBookIds
-      .map((selectedId) => vocabularyBookCatalog.find((book) => book.id === selectedId)?.tags[0] as VocabularyGroupKey | undefined)
-      .find((group): group is VocabularyGroupKey => Boolean(group && availableVocabularyGroups.includes(group)));
-
-    const nextGroup =
-      (activeVocabularyGroup && availableVocabularyGroups.includes(activeVocabularyGroup) ? activeVocabularyGroup : null) ||
-      selectedBookGroup ||
-      availableVocabularyGroups[0];
-
-    if (nextGroup !== activeVocabularyGroup) {
-      setActiveVocabularyGroup(nextGroup);
-    }
-  }, [activeVocabularyGroup, availableVocabularyGroups, selectedBookIds, vocabularyBookCatalog]);
-
-  const filteredVocabularyBooks = useMemo(() => {
-    if (!activeVocabularyGroup) {
-      return vocabularyBookCatalog;
-    }
-
-    return vocabularyBookCatalog.filter((book) => ((book.tags[0] as VocabularyGroupKey | undefined) || 'other') === activeVocabularyGroup);
-  }, [activeVocabularyGroup, vocabularyBookCatalog]);
 
   const stats = [
     { label: userText('statNewsReadCount'), value: readingCounts.news.toString() },
@@ -385,132 +284,36 @@ export default function UserCenterPage() {
           </div>
         </section>
 
-        <SectionCard
-          eyebrow={userText('vocabularyEyebrow')}
-          title={userText('vocabularyTitle')}
-          description={userText('vocabularyDescription')}
-          className="bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(240,249,255,0.92)_100%)]"
+        <Link
+          href="/user/vocabulary-books"
+          className="group flex items-center justify-between rounded-[30px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(240,249,255,0.92)_100%)] p-6 shadow-[0_26px_70px_-42px_rgba(15,23,42,0.28)] backdrop-blur transition-shadow hover:shadow-[0_26px_80px_-38px_rgba(15,23,42,0.34)] xl:p-7"
         >
           <div>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  {userText('vocabularySelectedBooksLabel')}
-                </p>
-                {selectedVocabularyBooks.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {selectedVocabularyBooks.map((book) => (
-                      <span
-                        key={book.id}
-                        className="inline-flex max-w-full items-center rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-800"
-                      >
-                        <span className="truncate">{book.title}</span>
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-sm text-slate-500">{userText('vocabularyNoSelection')}</p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                {savingVocabularyBookSelection ? <p className="text-sm text-sky-600">{userText('vocabularySaving')}</p> : null}
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  {formatMessage(userText('vocabularySelectedCount'), { count: selectedVocabularyCount })}
-                </p>
-              </div>
-            </div>
-
-            {availableVocabularyGroups.length > 0 ? (
-              <div className="mb-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  {userText('vocabularyCategoryLabel')}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {availableVocabularyGroups.map((group) => {
-                    const isActive = group === activeVocabularyGroup;
-
-                    return (
-                      <button
-                        key={group}
-                        type="button"
-                        onClick={() => setActiveVocabularyGroup(group)}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                          isActive
-                            ? 'bg-slate-950 text-white'
-                            : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        {userText(VOCABULARY_GROUP_LABEL_KEYS[group])}
-                      </button>
-                    );
-                  })}
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">{userText('vocabularyEyebrow')}</p>
+            <div className="mt-2 flex flex-wrap items-baseline gap-3">
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{userText('vocabularySetup')}</h2>
+              {selectedVocabularyBooks.length > 0 ? (
+                <div className="flex flex-end flex-wrap gap-2">
+                  {selectedVocabularyBooks.map((book) => (
+                    <span
+                      key={book.id}
+                      className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-800"
+                    >
+                      {book.title}
+                    </span>
+                  ))}
                 </div>
-              </div>
-            ) : null}
-
-            <div className="max-h-[620px] overflow-y-auto pr-1">
-              {loadingVocabularyBookCatalog ? (
-                <p className="text-sm text-slate-500">{userText('vocabularyLoading')}</p>
-              ) : vocabularyBookCatalog.length === 0 ? (
-                <p className="text-sm text-slate-500">{userText('vocabularyEmpty')}</p>
               ) : (
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {filteredVocabularyBooks.map((book) => {
-                    const checked = selectedBookIds.includes(book.id);
-                    const isAtLimit = selectedBookIds.length >= 3 && !checked;
-
-                    return (
-                      <button
-                        key={book.id}
-                        type="button"
-                        disabled={savingVocabularyBookSelection || isAtLimit}
-                        onClick={() => {
-                          void toggleBookSelection(book.id);
-                        }}
-                        className={`flex min-h-[92px] w-full items-center gap-3 rounded-[22px] border px-3 py-3 text-left transition-colors ${
-                          checked
-                            ? 'border-sky-300 bg-sky-50'
-                            : isAtLimit
-                              ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-50'
-                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                        } ${savingVocabularyBookSelection ? 'opacity-60' : ''}`}
-                      >
-                        <div
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                            checked ? 'border-sky-600 bg-sky-600 text-white' : 'border-slate-300 bg-white text-transparent'
-                          }`}
-                        >
-                          <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 6.5 5 9l4.5-5" />
-                          </svg>
-                        </div>
-
-                        {book.image ? (
-                          <img src={book.image} alt={book.title} className="h-12 w-12 shrink-0 rounded-xl object-cover" loading="lazy" />
-                        ) : (
-                          <div className="h-12 w-12 shrink-0 rounded-xl bg-slate-200" />
-                        )}
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="line-clamp-2 text-sm font-semibold text-slate-900">{book.title}</p>
-                            {checked ? (
-                              <span className="shrink-0 rounded-full bg-sky-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">
-                                {userText('vocabularyActive')}
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-2 text-xs text-slate-500">{book.wordCount.toLocaleString()} words</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <p className="text-sm leading-6 text-slate-600">{userText('vocabularySetupDescription')}</p>
               )}
             </div>
           </div>
-        </SectionCard>
+          <div className="ml-6 flex shrink-0 items-center gap-3">
+            <svg className="h-5 w-5 text-slate-400 transition-transform group-hover:translate-x-0.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 5l5 5-5 5" />
+            </svg>
+          </div>
+        </Link>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <SectionCard

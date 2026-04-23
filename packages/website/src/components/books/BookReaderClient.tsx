@@ -39,7 +39,6 @@ export default function BookReaderClient({
 }: BookReaderClientProps) {
   const router = useRouter();
   const { t } = useLocaleContext();
-  const booksNavigationLabel = t('website.navigation.books');
   const readerIndexText = (key: string) => t(`website.readerIndex.${key}`);
   const articleScrollRef = useRef<HTMLDivElement>(null);
   const initialChapterIndex = Math.max(
@@ -137,7 +136,7 @@ export default function BookReaderClient({
       <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-[calc(88px+0.5rem)] sm:py-4 sm:pb-[calc(88px+0.5rem)] xl:pb-4">
         <nav className="mb-3 shrink-0 text-sm text-gray-500">
           <Link href="/books" className="hover:text-blue-600">
-            {booksNavigationLabel}
+            {t('website.navigation.books')}
           </Link>
           <span className="mx-2">/</span>
           <span className="inline-flex flex-wrap items-center gap-1.5">
@@ -146,7 +145,7 @@ export default function BookReaderClient({
 
               return (
                 <span key={level.id} className="inline-flex items-center gap-1.5">
-                  {index > 0 ? <span className="text-gray-300">/</span> : null}
+                  {index > 0 ? <span className="text-gray-300">&nbsp;</span> : null}
                   <Link
                     href={`/books/${level.id}`}
                     aria-current={isCurrentLevel ? 'page' : undefined}
@@ -213,7 +212,7 @@ export default function BookReaderClient({
                 isRead ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-sky-600 hover:bg-sky-700'
               }`}
             >
-              {isRead ? 'Read' : 'Mark as read'}
+              {isRead ? t('website.common.completed') : t('website.common.markAsRead')}
             </button>
           ) : null}
           panelClassName="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm"

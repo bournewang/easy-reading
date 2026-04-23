@@ -388,10 +388,10 @@ function NewsReaderContent({
                 {isRead ? (
                   <>
                     <CheckIcon className="w-4 h-4 stroke-white" />
-                    Article Read
+                    {t('website.common.completed')}
                   </>
                 ) : (
-                  'Mark as Read'
+                  t('website.common.markAsRead')
                 )}
               </button>
             ) : null}

@@ -351,7 +351,7 @@ export default function IELTSTestReaderClient({
                 isRead ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-sky-600 hover:bg-sky-700'
               }`}
             >
-              {isRead ? 'Read' : 'Mark as read'}
+              {isRead ? t('website.common.completed') : t('website.common.markAsRead')}
             </button>
           ) : null}
           emptyState={(
