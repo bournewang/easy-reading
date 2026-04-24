@@ -32,15 +32,23 @@ const getPlanStyles = (plan: string) => {
   if (plan === 'pro') {
     return {
       pill: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200',
-      accent: 'from-emerald-400 via-teal-400 to-cyan-500',
+      accent: 'border border-emerald-200/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.98)_0%,rgba(209,250,229,0.92)_52%,rgba(236,254,255,0.96)_100%)]',
       card: 'border-emerald-200/70 bg-[linear-gradient(180deg,rgba(236,253,245,0.96)_0%,rgba(240,253,250,0.94)_100%)]',
+      mutedText: 'text-emerald-900/70',
+      strongText: 'text-emerald-950',
+      secondarySurface: 'border-emerald-200/80 bg-white/72',
+      secondaryLabel: 'text-emerald-900/60',
     };
   }
 
   return {
     pill: 'bg-slate-200 text-slate-800 ring-1 ring-slate-300',
-    accent: 'from-slate-700 via-slate-800 to-slate-900',
+    accent: 'border border-slate-200/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.95)_56%,rgba(241,245,249,0.98)_100%)]',
     card: 'border-slate-200/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(248,250,252,0.96)_100%)]',
+    mutedText: 'text-slate-600',
+    strongText: 'text-slate-950',
+    secondarySurface: 'border border-slate-200/80 bg-white/80',
+    secondaryLabel: 'text-slate-500',
   };
 };
 
@@ -72,7 +80,7 @@ function SectionCard({
 }
 
 export default function UserCenterPage() {
-  const { user, loading, logout } = useAuth();
+  const { user, entitlements, loading, logout } = useAuth();
   const router = useRouter();
   const { t } = useLocaleContext();
   const [articles, setArticles] = useState<ReadingHistoryItem[]>([]);
@@ -185,23 +193,29 @@ export default function UserCenterPage() {
     };
   }, [referralCopyState]);
 
-  const subscriptionStatus = subscriptionInfo?.tier || user?.subscriptionTier || 'free';
   const subscriptionExpires = subscriptionInfo?.expiresAt
     ? new Date(subscriptionInfo.expiresAt)
     : user?.subscriptionExpires
       ? new Date(user.subscriptionExpires)
       : null;
   const isExpired = subscriptionExpires ? subscriptionExpires < new Date() : false;
-  const planStyles = getPlanStyles(subscriptionStatus);
-  const billingModeLabel =
-    subscriptionInfo?.billingMode === 'recurring' ? userText('billingRecurring') : userText('billingPrepaid');
+  const currentPlanTier = user?.subscriptionTier?.toLowerCase() || 'free';
+  const planStyles = getPlanStyles(currentPlanTier);
+  const billingModeLabel = currentPlanTier === 'free'
+    ? common('freePlan')
+    : subscriptionInfo?.billingMode === 'recurring'
+      ? userText('billingRecurring')
+      : userText('billingPrepaid');
   const canManageRecurring = subscriptionInfo?.active && subscriptionInfo.billingMode === 'recurring';
-  const planLabel = common(subscriptionStatus === 'pro' ? 'proPlan' : 'freePlan');
+  const planLabel = common(currentPlanTier === 'pro' ? 'proPlan' : 'freePlan');
   const membershipStateLabel = isExpired
     ? common('expired')
-    : subscriptionStatus === 'free'
+    : currentPlanTier === 'free'
       ? common('starterAccess')
       : common('active');
+  const renewalDateLabel = subscriptionInfo?.active && !isExpired && subscriptionExpires
+    ? subscriptionExpires.toLocaleDateString()
+    : common('noRenewalScheduled');
 
   const selectedVocabularyBooks = useMemo(() => {
     return selectedBookIds
@@ -275,19 +289,19 @@ export default function UserCenterPage() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.16),_transparent_28%),radial-gradient(circle_at_88%_14%,_rgba(251,146,60,0.18),_transparent_22%),linear-gradient(180deg,_#fffdf8_0%,_#f8fafc_42%,_#eef2f7_100%)] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <section className="relative overflow-hidden rounded-[38px] bg-[#101828] text-white shadow-[0_32px_110px_-40px_rgba(15,23,42,0.72)]">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.25),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(251,146,60,0.22),_transparent_28%)]" />
+        <section className="relative overflow-hidden rounded-[38px] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98)_0%,rgba(240,249,255,0.95)_50%,rgba(255,247,237,0.96)_100%)] shadow-[0_32px_110px_-56px_rgba(15,23,42,0.28)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.16),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(251,146,60,0.14),_transparent_28%)]" />
           <div className="relative px-6 py-7 sm:px-8 lg:px-10 lg:py-10">
             <div className="flex flex-col gap-8">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="max-w-3xl">
-                  <div className="inline-flex items-center rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
+                  <div className="inline-flex items-center rounded-full border border-sky-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
                     {userText('badge')}
                   </div>
-                  <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-[3rem] lg:leading-[1.02]">
+                  <h1 className="mt-5 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl lg:text-[3rem] lg:leading-[1.02]">
                     {formatMessage(userText('welcome'), { name: user.fullName || user.username })}
                   </h1>
-                  <p className="mt-4 max-w-2xl text-sm leading-7 text-white/72 sm:text-base">{userText('subtitle')}</p>
+                  <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">{userText('subtitle')}</p>
                 </div>
 
                 <button
@@ -302,11 +316,10 @@ export default function UserCenterPage() {
                 {stats.map((stat, index) => (
                   <div
                     key={stat.label}
-                    className="rounded-[28px] border border-white/12 bg-white/8 px-5 py-5 backdrop-blur-sm"
+                    className="rounded-[28px] border border-slate-200/80 bg-white/78 px-5 py-5 backdrop-blur-sm shadow-[0_14px_36px_-28px_rgba(15,23,42,0.22)]"
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/58">{stat.label}</p>
-                    <p className="mt-4 text-4xl font-semibold tracking-tight text-white">{stat.value}</p>
-                    {/* <p className="mt-2 text-sm font-medium text-white/76">{stat.label}</p> */}
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{stat.label}</p>
+                    <p className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">{stat.value}</p>
                   </div>
                 ))}
               </div>
@@ -354,17 +367,15 @@ export default function UserCenterPage() {
           >
             <div className="space-y-4">
               <div className="rounded-[24px] border border-orange-100 bg-white px-4 py-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('referralLink')}</p>
-                    <p className="mt-2 break-all text-sm leading-6 text-slate-700">{referralInfo?.referralLink || '-'}</p>
-                  </div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('referralLink')}</p>
+                <div className="mt-2 flex items-start gap-3">
+                  <p className="min-w-0 break-all text-sm leading-6 text-slate-700">{referralInfo?.referralLink || '-'}</p>
                   <button
                     type="button"
                     onClick={handleCopyReferralLink}
                     disabled={!referralInfo?.referralLink}
                     aria-label={userText('copyReferralLink')}
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-orange-200 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-300"
+                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-orange-200 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-300"
                   >
                     <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
                       <rect x="7" y="3" width="10" height="12" rx="2" />
@@ -415,13 +426,13 @@ export default function UserCenterPage() {
                     <div className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${planStyles.pill}`}>
                       {planLabel}
                     </div>
-                    <p className="mt-4 text-sm text-white/72">{userText('membershipStatus')}</p>
-                    <p className="mt-1 text-2xl font-semibold tracking-tight text-white">{membershipStateLabel}</p>
+                    <p className={`mt-4 text-sm ${planStyles.mutedText}`}>{userText('membershipStatus')}</p>
+                    <p className={`mt-1 text-2xl font-semibold tracking-tight ${planStyles.strongText}`}>{membershipStateLabel}</p>
                   </div>
-                  <div className="rounded-[20px] border border-white/12 bg-white/10 px-4 py-3 text-right">
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/58">{userText('billing')}</p>
-                    <p className="mt-2 text-sm font-semibold text-white">
-                      {subscriptionInfo?.billingMode ? billingModeLabel : common('freePlan')}
+                  <div className={`rounded-[20px] px-4 py-3 text-right ${planStyles.secondarySurface}`}>
+                    <p className={`text-xs uppercase tracking-[0.18em] ${planStyles.secondaryLabel}`}>{userText('billing')}</p>
+                    <p className={`mt-2 text-sm font-semibold ${planStyles.strongText}`}>
+                      {billingModeLabel}
                     </p>
                   </div>
                 </div>
@@ -431,19 +442,19 @@ export default function UserCenterPage() {
                 <div className="rounded-[24px] bg-white px-4 py-4 ring-1 ring-slate-200/70">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('renewalDate')}</p>
                   <p className="mt-3 text-base font-semibold text-slate-950">
-                    {subscriptionExpires ? subscriptionExpires.toLocaleDateString() : common('noRenewalScheduled')}
+                    {renewalDateLabel}
                   </p>
                 </div>
                 <div className="rounded-[24px] bg-white px-4 py-4 ring-1 ring-slate-200/70">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('billing')}</p>
                   <p className="mt-3 text-base font-semibold text-slate-950">
-                    {subscriptionInfo?.billingMode ? billingModeLabel : common('freePlan')}
+                    {billingModeLabel}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-3">
-                {subscriptionStatus === 'free' ? (
+                {currentPlanTier === 'free' ? (
                   <Link
                     href="/pricing"
                     className="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
