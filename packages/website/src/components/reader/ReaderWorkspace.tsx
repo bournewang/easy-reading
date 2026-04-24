@@ -17,6 +17,7 @@ type ReaderNavigationConfig = {
   previous?: ReaderIndexAction;
   next?: ReaderIndexAction;
   currentLabel?: string;
+  persistScrollKey?: string;
   desktopClassName?: string;
   mobileClassName?: string;
 };
@@ -99,6 +100,7 @@ export default function ReaderWorkspace({
           previous={navigation.previous}
           next={navigation.next}
           currentLabel={navigation.currentLabel}
+          persistScrollKey={navigation.persistScrollKey}
           desktopClassName={navigation.desktopClassName}
           mobileClassName={navigation.mobileClassName}
         />

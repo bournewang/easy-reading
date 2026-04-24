@@ -8,3 +8,6 @@ tsconfig.tsbuildinfo
 vocabulary-books
 public/vocabulary-books
 tsconfig.tsbuildinfo
+books
+chapters
+playwright-report

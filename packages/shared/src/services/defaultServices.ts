@@ -1,5 +1,4 @@
 import axios from 'axios';
-import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 import type { ApiResponse, DictResponse } from '../types';
 import type {
   ChatService,
@@ -564,8 +563,22 @@ const browserSpeechFallback = (text: string) =>
     window.speechSynthesis.speak(utterance);
   });
 
+const playRemoteAudio = async (audioUrl: string) => {
+  if (!hasWindow) {
+    return;
+  }
+
+  const audio = new Audio(audioUrl);
+  await audio.play();
+};
+
 const tts: TTSService = {
   async speak(text: string): Promise<void> {
+    const normalizedText = text.trim();
+    if (!normalizedText) {
+      return;
+    }
+
     const entitlements = getStoredEntitlements();
     if (entitlements && entitlements.canUseTextToSpeech === false) {
       throw new Error('Text to speech is available on paid plans.');
@@ -592,30 +605,30 @@ const tts: TTSService = {
       }
     }
 
-    const region = process.env.NEXT_PUBLIC_TTS_LOCATION || '';
-    const key = process.env.NEXT_PUBLIC_TTS_API_KEY || '';
-
-    if (!key || !region) {
-      await browserSpeechFallback(text);
-      return;
-    }
-
-    const speechConfig = sdk.SpeechConfig.fromSubscription(key, region);
-    const synthesizer = new sdk.SpeechSynthesizer(speechConfig);
-
-    await new Promise<void>((resolve, reject) => {
-      synthesizer.speakTextAsync(
-        text,
-        () => {
-          synthesizer.close();
-          resolve();
-        },
-        error => {
-          synthesizer.close();
-          reject(error);
+    try {
+      const response = await axios.post<{ audioUrl: string }>(
+        `${getApiBaseUrl()}/tts/synthesize`,
+        { text: normalizedText },
+        {
+          headers: token
+            ? { Authorization: `Bearer ${token}` }
+            : undefined,
         },
       );
-    });
+
+      const audioUrl = response.data.audioUrl;
+      if (!audioUrl) {
+        throw new Error('Text to speech response did not include audio.');
+      }
+
+      await playRemoteAudio(audioUrl);
+    } catch (error) {
+      if (!hasWindow || !('speechSynthesis' in window)) {
+        throw new Error(extractApiErrorMessage(error, 'Text to speech failed.'));
+      }
+
+      await browserSpeechFallback(normalizedText);
+    }
   },
 };
 

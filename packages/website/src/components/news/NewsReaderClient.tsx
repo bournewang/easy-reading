@@ -90,6 +90,7 @@ function NewsReaderWorkspace({
           ? {
               title: readerIndexText('newsTitle'),
               description: readerIndexText('newsDescription'),
+              persistScrollKey: `news:${activeCategory || 'all'}`,
               items,
               desktopClassName: 'hidden h-full min-h-0 xl:block',
               mobileClassName: 'fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden',

@@ -322,6 +322,7 @@ export default function IELTSTestReaderClient({
           navigation={{
             title: readerIndexText('passagesTitle'),
             description: readerIndexText('passagesDescription'),
+            persistScrollKey: `ielts:${summary.year}:${summary.month}:${summary.test}`,
             items: passages.map((passage) => ({
               id: passage.id,
               overline: `${readerIndexText('passage')} ${passage.passage}`,

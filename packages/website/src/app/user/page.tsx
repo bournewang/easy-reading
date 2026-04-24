@@ -78,6 +78,7 @@ export default function UserCenterPage() {
   const [articles, setArticles] = useState<ReadingHistoryItem[]>([]);
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionSummary | null>(null);
   const [referralInfo, setReferralInfo] = useState<ReferralSummary | null>(null);
+  const [referralCopyState, setReferralCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [wordbookCount, setWordbookCount] = useState(0);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
@@ -154,6 +155,35 @@ export default function UserCenterPage() {
     await logout();
     router.push('/');
   };
+
+  const handleCopyReferralLink = async () => {
+    if (!referralInfo?.referralLink || !navigator.clipboard) {
+      setReferralCopyState('failed');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(referralInfo.referralLink);
+      setReferralCopyState('copied');
+    } catch (error) {
+      console.error('Failed to copy referral link:', error);
+      setReferralCopyState('failed');
+    }
+  };
+
+  useEffect(() => {
+    if (referralCopyState === 'idle') {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setReferralCopyState('idle');
+    }, 2000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [referralCopyState]);
 
   const subscriptionStatus = subscriptionInfo?.tier || user?.subscriptionTier || 'free';
   const subscriptionExpires = subscriptionInfo?.expiresAt
@@ -324,8 +354,31 @@ export default function UserCenterPage() {
           >
             <div className="space-y-4">
               <div className="rounded-[24px] border border-orange-100 bg-white px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('referralLink')}</p>
-                <p className="mt-2 break-all text-sm leading-6 text-slate-700">{referralInfo?.referralLink || '-'}</p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('referralLink')}</p>
+                    <p className="mt-2 break-all text-sm leading-6 text-slate-700">{referralInfo?.referralLink || '-'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyReferralLink}
+                    disabled={!referralInfo?.referralLink}
+                    aria-label={userText('copyReferralLink')}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-orange-200 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-300"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                      <rect x="7" y="3" width="10" height="12" rx="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 7H4a2 2 0 00-2 2v7a2 2 0 002 2h8a2 2 0 002-2v-1" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="mt-2 text-xs font-medium text-slate-500" role="status" aria-live="polite">
+                  {referralCopyState === 'copied'
+                    ? userText('referralLinkCopied')
+                    : referralCopyState === 'failed'
+                      ? userText('referralLinkCopyFailed')
+                      : ''}
+                </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">

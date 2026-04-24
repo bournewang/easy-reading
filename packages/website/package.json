@@ -10,13 +10,18 @@
     "static": "next build",
     "fetch-articles": "cross-env NODE_OPTIONS='--loader ts-node/esm' ts-node --project scripts/tsconfig.json scripts/fetch-articles.ts",
     "export-book-resources": "node ./scripts/export-book-resources.mjs",
+    "parse-book-text": "node ./scripts/parse-book-text-by-chapter.mjs",
     "prune-book-chapters": "node ./scripts/prune-book-chapters.mjs",
     "sync-book-covers": "node ./scripts/sync-book-cover-images.mjs",
     "compress-book-covers": "node ./scripts/compress-book-covers.mjs",
     "rename-book-covers": "node ./scripts/rename-book-covers-to-slug.mjs",
+    "download-gutenberg-books": "node ./scripts/download-gutenberg-books.mjs",
     "deploy:preview": "./scripts/deploy.sh preview",
     "deploy:prod": "./scripts/deploy.sh prod",
-    "deploy": "./scripts/deploy.sh prod"    
+    "deploy": "./scripts/deploy.sh prod",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@easy-reading/shared": "workspace:*",
@@ -27,6 +32,7 @@
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^20.17.24",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",

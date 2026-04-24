@@ -1,5 +1,7 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+
 type ReaderIndexAction = {
   label: string;
   onSelect: () => void;
@@ -22,6 +24,7 @@ type ReaderIndexNavigationProps = {
   previous?: ReaderIndexAction;
   next?: ReaderIndexAction;
   currentLabel?: string;
+  persistScrollKey?: string;
   desktopClassName?: string;
   mobileClassName?: string;
 };
@@ -41,6 +44,7 @@ function renderNavigationButton(
   action: ReaderIndexAction | undefined,
   direction: NavigationDirection,
   className: string,
+  onBeforeSelect?: () => void,
 ) {
   const symbol = direction === 'previous' ? '⬅️' : '➡️';
   const fallbackLabel = direction === 'previous' ? 'Previous' : 'Next';
@@ -48,7 +52,10 @@ function renderNavigationButton(
   return (
     <button
       type="button"
-      onClick={() => action?.onSelect()}
+      onClick={() => {
+        onBeforeSelect?.();
+        action?.onSelect();
+      }}
       disabled={!action || action.disabled}
       aria-label={action?.label || fallbackLabel}
       className={`${navigationButtonBaseClassName} ${className}`}
@@ -65,10 +72,73 @@ export default function ReaderIndexNavigation({
   previous,
   next,
   currentLabel,
+  persistScrollKey,
   desktopClassName,
   mobileClassName,
 }: ReaderIndexNavigationProps) {
   const activeItemIndex = items.findIndex((item) => item.active);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const storageKey = useMemo(
+    () => (persistScrollKey ? `reader-index-scroll:${persistScrollKey}` : null),
+    [persistScrollKey],
+  );
+
+  const persistScrollPosition = useCallback(() => {
+    if (!storageKey || !listContainerRef.current) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(storageKey, String(listContainerRef.current.scrollTop));
+    } catch {
+      // Ignore storage failures (e.g. privacy mode).
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!storageKey || !listContainerRef.current) {
+      return;
+    }
+
+    try {
+      const savedScrollTop = window.sessionStorage.getItem(storageKey);
+      if (savedScrollTop === null) {
+        return;
+      }
+
+      const nextScrollTop = Number(savedScrollTop);
+      if (Number.isFinite(nextScrollTop)) {
+        listContainerRef.current.scrollTop = Math.max(0, nextScrollTop);
+      }
+    } catch {
+      // Ignore storage failures (e.g. privacy mode).
+    }
+  }, [storageKey, items.length]);
+
+  useEffect(() => {
+    const container = listContainerRef.current;
+    if (!container || activeItemIndex < 0) {
+      return;
+    }
+
+    const activeElement = container.querySelector<HTMLButtonElement>(
+      `[data-reader-index-item-index="${activeItemIndex}"]`,
+    );
+    if (!activeElement) {
+      return;
+    }
+
+    const containerTop = container.scrollTop;
+    const containerBottom = containerTop + container.clientHeight;
+    const itemTop = activeElement.offsetTop;
+    const itemBottom = itemTop + activeElement.offsetHeight;
+    const isOutOfView = itemTop < containerTop || itemBottom > containerBottom;
+
+    if (isOutOfView) {
+      activeElement.scrollIntoView({ block: 'nearest' });
+      persistScrollPosition();
+    }
+  }, [activeItemIndex, items.length, persistScrollPosition]);
   const fallbackPrevious =
     activeItemIndex > 0
       ? {
@@ -102,21 +172,29 @@ export default function ReaderIndexNavigation({
           {(effectivePrevious || effectiveNext || effectiveCurrentLabel) ? (
             <div className="mb-3 shrink-0 rounded-2xl border border-slate-200 bg-slate-50 p-2">
               <div className="flex items-center gap-2">
-                {renderNavigationButton(effectivePrevious, 'previous', 'h-10 min-w-[64px] px-3 text-xl')}
+                {renderNavigationButton(effectivePrevious, 'previous', 'h-10 min-w-[64px] px-3 text-xl', persistScrollPosition)}
                 <div className="min-w-0 flex-1 truncate text-center text-xs text-slate-600" title={effectiveCurrentLabel}>
                   <span className="font-medium text-slate-900">{effectiveCurrentLabel}</span>
                 </div>
-                {renderNavigationButton(effectiveNext, 'next', 'h-10 min-w-[64px] px-3 text-xl')}
+                {renderNavigationButton(effectiveNext, 'next', 'h-10 min-w-[64px] px-3 text-xl', persistScrollPosition)}
               </div>
             </div>
           ) : null}
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-            {items.map((item) => (
+          <div
+            ref={listContainerRef}
+            onScroll={persistScrollPosition}
+            className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1"
+          >
+            {items.map((item, index) => (
               <button
                 key={item.id}
                 type="button"
-                onClick={item.onSelect}
+                data-reader-index-item-index={index}
+                onClick={() => {
+                  persistScrollPosition();
+                  item.onSelect();
+                }}
                 className={`w-full rounded-2xl border p-3 text-left transition-all ${
                   item.active
                     ? 'border-sky-200 bg-sky-50 shadow-sm'
@@ -143,11 +221,11 @@ export default function ReaderIndexNavigation({
       {(effectivePrevious || effectiveNext || effectiveCurrentLabel) && (
         <div className={mobileClassName || mobileClassNames}>
           <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-5">
-            {renderNavigationButton(effectivePrevious, 'previous', 'h-11 min-w-[96px] px-4 text-2xl')}
+            {renderNavigationButton(effectivePrevious, 'previous', 'h-11 min-w-[96px] px-4 text-2xl', persistScrollPosition)}
             <div className="min-w-0 text-center text-sm text-slate-600">
               <span className="font-medium text-slate-900">{effectiveCurrentLabel}</span>
             </div>
-            {renderNavigationButton(effectiveNext, 'next', 'h-11 min-w-[96px] px-4 text-2xl')}
+            {renderNavigationButton(effectiveNext, 'next', 'h-11 min-w-[96px] px-4 text-2xl', persistScrollPosition)}
           </div>
         </div>
       )}

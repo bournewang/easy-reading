@@ -15,9 +15,11 @@ export type BookManifestItem = {
   title: string;
   author: string;
   coverImg: string | null;
-  original: string;
-  bookDir: string;
+  original?: string;
+  bookDir?: string;
+  sourceFile?: string;
   chapterCount: number;
+  generatedAt?: string;
 };
 
 export type BookChapterManifestItem = {
@@ -31,10 +33,39 @@ export type BookChapterManifestItem = {
   chapterFile: string;
   chapterIndex: number;
   chapterNumber: number;
+  sourceChapterMarker?: string;
+  sourceChapterTitle?: string;
   bookDir: string;
   coverImg: string | null;
   wordCount: number;
   readingTime: number;
+};
+
+type BookChapterManifestResourceItem = {
+  id: string;
+  bookId: string;
+  chapterTitle: string;
+  chapterFile: string;
+  chapterIndex: number;
+  chapterNumber: number;
+  sourceChapterMarker?: string;
+  sourceChapterTitle?: string;
+  wordCount?: number;
+  readingTime?: number;
+};
+
+type BookChaptersManifestResource = {
+  id: string;
+  level: string;
+  slug: string;
+  title: string;
+  author: string;
+  coverImg: string | null;
+  bookDir?: string;
+  sourceFile?: string;
+  chapterCount: number;
+  generatedAt?: string;
+  chapters: BookChapterManifestResourceItem[];
 };
 
 export type BookChapterResource = BookChapterManifestItem & {
@@ -52,6 +83,12 @@ type BookChapterContent = {
   plainText: string;
   chapterTitle: string;
 };
+
+const booksManifestCache = {
+  value: null as Promise<BookManifestItem[]> | null,
+};
+
+const chaptersManifestCache = new Map<string, Promise<BookChaptersManifestResource | null>>();
 
 const DEFAULT_BOOKS_BASE_URL = 'http://localhost:3000/books';
 
@@ -208,28 +245,74 @@ async function readBooksJson<T>(relativePath: string): Promise<T> {
 }
 
 async function getBooksManifest(): Promise<BookManifestItem[]> {
-  try {
-    return await readBooksJson<BookManifestItem[]>('books.json');
-  } catch (error) {
-    console.error('Failed to load books manifest:', error);
-    return [];
+  if (!booksManifestCache.value) {
+    booksManifestCache.value = (async () => {
+      try {
+        return await readBooksJson<BookManifestItem[]>('books.json');
+      } catch (error) {
+        console.error('Failed to load books manifest:', error);
+        return [];
+      }
+    })();
   }
+
+  return booksManifestCache.value;
 }
 
-async function getChaptersManifest(): Promise<BookChapterManifestItem[]> {
-  try {
-    return await readBooksJson<BookChapterManifestItem[]>('chapters.json');
-  } catch (error) {
-    console.error('Failed to load chapters manifest:', error);
-    return [];
+async function getBookChaptersManifest(slug: string): Promise<BookChaptersManifestResource | null> {
+  if (chaptersManifestCache.has(slug)) {
+    return chaptersManifestCache.get(slug) ?? null;
   }
+
+  const loader = (async () => {
+    try {
+      return await readBooksJson<BookChaptersManifestResource>(`chapters/${slug}/manifest.json`);
+    } catch {
+      return null;
+    }
+  })();
+
+  chaptersManifestCache.set(slug, loader);
+  return loader;
 }
 
-async function getChapterResource(chapterId: string): Promise<BookChapterResource | null> {
+function normalizeBookChapterManifestItem(
+  book: BookManifestItem,
+  chapter: BookChapterManifestResourceItem,
+): BookChapterManifestItem {
+  return {
+    id: chapter.id,
+    bookId: chapter.bookId,
+    level: book.level,
+    slug: book.slug,
+    title: book.title,
+    author: book.author,
+    chapterTitle: chapter.chapterTitle,
+    chapterFile: chapter.chapterFile,
+    chapterIndex: chapter.chapterIndex,
+    chapterNumber: chapter.chapterNumber,
+    sourceChapterMarker: chapter.sourceChapterMarker,
+    sourceChapterTitle: chapter.sourceChapterTitle,
+    bookDir: book.bookDir ?? `/${book.slug}`,
+    coverImg: book.coverImg,
+    wordCount: chapter.wordCount ?? 0,
+    readingTime: chapter.readingTime ?? 0,
+  };
+}
+
+async function getChapterResource(chapterMeta: Pick<BookChapterManifestItem, 'id' | 'chapterFile'>): Promise<BookChapterResource | null> {
   try {
-    return await readBooksJson<BookChapterResource>(`chapters/${chapterId}.json`);
+    if (chapterMeta.chapterFile) {
+      return await readBooksJson<BookChapterResource>(chapterMeta.chapterFile);
+    }
+
+    return await readBooksJson<BookChapterResource>(`chapters/${chapterMeta.id}.json`);
   } catch {
-    return null;
+    try {
+      return await readBooksJson<BookChapterResource>(`chapters/${chapterMeta.id}.json`);
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -237,9 +320,11 @@ function toBookRecord(
   book: BookManifestItem,
   levelLabel: string,
   firstChapterNumber: number | null,
+  chapterCountOverride?: number,
 ): BookRecord {
   return {
     ...book,
+    chapterCount: chapterCountOverride ?? book.chapterCount,
     levelLabel,
     assetCoverImg: toBookAssetUrl(book.coverImg),
     firstChapterNumber,
@@ -258,24 +343,36 @@ export async function getBooksForLevel(levelId: string) {
   }
 
   const books = await getBooksManifest();
-  const chapters = await getChaptersManifest();
   const levelBooks = books.filter((book) => book.level === level.id);
-  const firstChapterNumbers = new Map<string, number>();
+  const firstChapterNumbers = new Map<string, number | null>();
+  const chapterCounts = new Map<string, number>();
 
-  chapters
-    .filter((chapter) => chapter.level === level.id)
-    .sort((a, b) => a.chapterIndex - b.chapterIndex)
-    .forEach((chapter) => {
-      if (!firstChapterNumbers.has(chapter.slug)) {
-        firstChapterNumbers.set(chapter.slug, chapter.chapterNumber);
-      }
-    });
+  await Promise.all(
+    levelBooks.map(async (book) => {
+      const manifest = await getBookChaptersManifest(book.slug);
+      const manifestChapterCount = Array.isArray(manifest?.chapters)
+        ? manifest.chapters.length
+        : manifest?.chapterCount;
+      const firstChapterNumber = manifest?.chapters
+        ?.slice()
+        .sort((a, b) => a.chapterIndex - b.chapterIndex)
+        ?.at(0)?.chapterNumber;
+
+      chapterCounts.set(book.slug, manifestChapterCount ?? book.chapterCount);
+      firstChapterNumbers.set(book.slug, firstChapterNumber ?? ((manifestChapterCount ?? book.chapterCount) > 0 ? 1 : null));
+    }),
+  );
 
   return {
     ...level,
     total: levelBooks.length,
     books: levelBooks.map((book) =>
-      toBookRecord(book, level.shortLabel, firstChapterNumbers.get(book.slug) ?? null),
+      toBookRecord(
+        book,
+        level.shortLabel,
+        firstChapterNumbers.get(book.slug) ?? null,
+        chapterCounts.get(book.slug),
+      ),
     ),
   };
 }
@@ -310,9 +407,19 @@ export async function getBook(levelId: string, slug: string) {
 }
 
 export async function getBookChapters(levelId: string, slug: string): Promise<BookChapterManifestItem[]> {
-  const chapters = await getChaptersManifest();
-  return chapters
-    .filter((chapter) => chapter.level === levelId && chapter.slug === slug)
+  const books = await getBooksManifest();
+  const book = books.find((item) => item.level === levelId && item.slug === slug);
+  if (!book) {
+    return [];
+  }
+
+  const manifest = await getBookChaptersManifest(slug);
+  if (!manifest || !Array.isArray(manifest.chapters)) {
+    return [];
+  }
+
+  return manifest.chapters
+    .map((chapter) => normalizeBookChapterManifestItem(book, chapter))
     .sort((a, b) => a.chapterIndex - b.chapterIndex);
 }
 
@@ -327,7 +434,7 @@ export async function getChapterContent(
     return null;
   }
 
-  const chapter = await getChapterResource(chapterMeta.id);
+  const chapter = await getChapterResource(chapterMeta);
   if (!chapter) {
     return null;
   }
@@ -347,11 +454,17 @@ export async function getBookPageData(levelId: string, slug: string) {
   }
 
   const chapters = await getBookChapters(levelId, slug);
+  const resolvedChapterCount = chapters.length || result.book.chapterCount;
   const firstChapter = await getChapterContent(result.book, 0);
-  const description = getBookDescription(result.book, firstChapter?.plainText);
+  const book = {
+    ...result.book,
+    chapterCount: resolvedChapterCount,
+  };
+  const description = getBookDescription(book, firstChapter?.plainText);
 
   return {
     ...result,
+    book,
     chapters,
     firstChapter,
     description,
@@ -365,22 +478,28 @@ export async function getBookChapterPageData(levelId: string, slug: string, chap
   }
 
   const chapters = await getBookChapters(levelId, slug);
+  const resolvedChapterCount = chapters.length || result.book.chapterCount;
+  const book = {
+    ...result.book,
+    chapterCount: resolvedChapterCount,
+  };
   const chapterMeta = chapters.find((chapter) => chapter.chapterNumber === chapterNumber);
   if (!chapterMeta) {
     return null;
   }
 
-  const chapter = await getChapterResource(chapterMeta.id);
+  const chapter = await getChapterResource(chapterMeta);
   if (!chapter) {
     return null;
   }
 
   return {
     ...result,
+    book,
     chapters,
     chapterMeta,
     chapter,
-    description: getBookDescription(result.book, chapter.content),
+    description: getBookDescription(book, chapter.content),
   };
 }
 

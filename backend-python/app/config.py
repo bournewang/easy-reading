@@ -79,6 +79,9 @@ class Settings:
     dashscope_base_url: str = os.getenv(
         "DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
     )
+    tts_model: str = os.getenv("TTS_MODEL", "qwen3-tts-flash")
+    tts_voice: str = os.getenv("TTS_VOICE", "Cherry")
+    tts_language_type: str = os.getenv("TTS_LANGUAGE_TYPE", "auto")
     dictionary_api_base_url: str = os.getenv(
         "DICTIONARY_API_BASE_URL", "https://api.dictionaryapi.dev/api/v2/entries/en"
     )

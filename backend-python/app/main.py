@@ -38,6 +38,8 @@ from .models import (
     ReferralSummaryResponse,
     SubscriptionResponse,
     SubscriptionEntitlementsResponse,
+    TtsSynthesizeRequest,
+    TtsSynthesizeResponse,
     TranslateRequest,
     TranslateResponse,
     UserPayload,
@@ -56,6 +58,7 @@ from .services.dictionary import dictionary_service
 from .services.dictionary import DictionaryFetchError
 from .services.news import NewsSyncError, news_service
 from .services.payment import payment_service
+from .services.tts import TTSError, tts_service
 from .services.translation import TranslationError, translation_service
 from .services.user_data import user_data_service
 from .services.user_usage import (
@@ -264,6 +267,15 @@ def consume_tts_usage(request: Request, amount: int = Query(default=1, ge=1, le=
         return AnonymousUsageResponse(**usage)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
+
+
+@app.post("/api/tts/synthesize", response_model=TtsSynthesizeResponse)
+def synthesize_tts(payload: TtsSynthesizeRequest) -> TtsSynthesizeResponse:
+    try:
+        result = tts_service.synthesize(payload.text)
+        return TtsSynthesizeResponse(**result)
+    except TTSError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 
 @app.post("/api/anonymous-usage/tts", response_model=AnonymousUsageResponse)

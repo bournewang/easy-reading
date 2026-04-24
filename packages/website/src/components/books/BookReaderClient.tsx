@@ -169,6 +169,7 @@ export default function BookReaderClient({
           navigation={{
             title: readerIndexText('catalogTitle'),
             description: readerIndexText('catalogDescription'),
+            persistScrollKey: `book:${book.level}:${book.slug}`,
             items: chapters.map((chapter, index) => ({
               id: chapter.id,
               overline: `${readerIndexText('chapter')} ${chapter.chapterNumber}`,

@@ -17,20 +17,24 @@ export default function LandingPageClient() {
 
   const features = [
     {
-      title: landing('featureTranslationTitle'),
-      body: landing('featureTranslationBody'),
+      title: landing('featureDictionaryTitle'),
+      body: landing('featureDictionaryBody'),
     },
     {
       title: landing('featureSpeechTitle'),
       body: landing('featureSpeechBody'),
     },
     {
-      title: landing('featureWordBookTitle'),
-      body: landing('featureWordBookBody'),
+      title: landing('featureTranslationTitle'),
+      body: landing('featureTranslationBody'),
     },
     {
-      title: landing('featureLayoutTitle'),
-      body: landing('featureLayoutBody'),
+      title: landing('featureHistoryTitle'),
+      body: landing('featureHistoryBody'),
+    },
+    {
+      title: landing('featureWordBookTitle'),
+      body: landing('featureWordBookBody'),
     },
   ];
 
@@ -233,7 +237,7 @@ export default function LandingPageClient() {
             </p>
           </div>
 
-          <div className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-5">
             {features.map((feature) => (
               <div key={feature.title} className="er-card min-h-[240px]">
                 <div className="mb-8 h-1.5 w-14 rounded-full bg-[#0071e3]" />
