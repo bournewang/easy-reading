@@ -256,6 +256,8 @@ export const en = {
     auth: {
       loginTitle: "Sign in to your account",
       registerTitle: "Create your account",
+      loginDescription: "Welcome back. Continue your English reading journey in seconds.",
+      registerDescription: "Create an account to save progress and build your daily reading habit.",
       username: "Username",
       usernameOrEmail: "Username or email",
       email: "Email address",

@@ -256,6 +256,8 @@ export const zh = {
     auth: {
       loginTitle: "登录你的账户",
       registerTitle: "创建你的账户",
+      loginDescription: "欢迎回来，几秒钟内继续你的英语阅读之旅。",
+      registerDescription: "创建账户以保存进度，并建立你的每日阅读习惯。",
       username: "用户名",
       usernameOrEmail: "用户名或邮箱",
       email: "邮箱地址",
