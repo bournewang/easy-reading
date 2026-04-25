@@ -4,3 +4,4 @@ pydantic==2.11.3
 PyMySQL==1.1.1
 python-multipart==0.0.20
 alipay-sdk-python==3.7.1098
+dashscope==1.25.17
