@@ -23,29 +23,6 @@ from ..config import settings
 from ..db import db_cursor, dumps_json, parse_dt, row_to_dict, utcnow_iso
 
 
-PRICING_TIERS = {
-    "free": {
-        "isPopular": False,
-        "originalPricePerMonth": 0.0,
-        "durationOptions": [],
-    },
-    "pro": {
-        "isPopular": True,
-        "originalPricePerMonth": 59.0,
-        "durationOptions": [
-            {"months": 1, "salePricePerMonth": 39.0},
-            {"months": 3, "salePricePerMonth": 33.0, "default": True},
-            {"months": 6, "salePricePerMonth": 28.0},
-            {"months": 12, "salePricePerMonth": 24.0},
-        ],
-    },
-}
-
-DEFAULT_REFERRAL_DISCOUNT_RATE = 0.10
-DEFAULT_REFERRAL_DISCOUNT_CAP = 50.0
-DEFAULT_COMMISSION_RATE = 0.15
-
-
 class PaymentService:
     SAMPLE_COUPONS = (
         {
@@ -198,7 +175,7 @@ class PaymentService:
 
     def get_duration_option(self, tier: str, duration: int) -> dict[str, Any]:
         try:
-            tier_config = PRICING_TIERS[tier]
+            tier_config = settings.pricing_tiers[tier]
         except KeyError as exc:
             raise ValueError(f"Invalid tier/duration combination: {tier}/{duration}") from exc
         duration_options = tier_config["durationOptions"]
@@ -355,13 +332,13 @@ class PaymentService:
                 raise ValueError("You cannot use your own promo code.")
             if self.has_successful_order(user_id):
                 raise ValueError("Referral promo codes are only available for a first purchase.")
-            referral_discount_amount = round(sale_amount * DEFAULT_REFERRAL_DISCOUNT_RATE, 2)
+            referral_discount_amount = round(sale_amount * settings.referral_discount_rate, 2)
             return {
                 "promoCode": normalized,
                 "coupon": None,
                 "couponDiscountAmount": 0.0,
                 "referrer": referrer,
-                "referralDiscountAmount": min(referral_discount_amount, DEFAULT_REFERRAL_DISCOUNT_CAP),
+                "referralDiscountAmount": min(referral_discount_amount, settings.referral_discount_cap),
             }
 
         raise ValueError("This promo code is invalid.")
@@ -385,7 +362,12 @@ class PaymentService:
         coupon = resolved_promo["coupon"]
         coupon_discount_amount = float(resolved_promo["couponDiscountAmount"])
         final_amount = round(max(sale_amount - referral_discount_amount - coupon_discount_amount, 0.0), 2)
-        commission_amount = round(final_amount * DEFAULT_COMMISSION_RATE, 2) if referrer else 0.0
+        effective_commission_rate = (
+            float(referrer["commission_rate"])
+            if referrer and referrer.get("commission_rate") is not None
+            else settings.commission_rate
+        )
+        commission_amount = round(final_amount * effective_commission_rate, 2) if referrer else 0.0
 
         return {
             "tier": tier,
@@ -402,13 +384,13 @@ class PaymentService:
             "referrerUserId": referrer["id"] if referrer else None,
             "referralDiscountAmount": referral_discount_amount,
             "commissionAmount": commission_amount,
-            "commissionRate": DEFAULT_COMMISSION_RATE if referrer else 0.0,
+            "commissionRate": effective_commission_rate if referrer else 0.0,
             "paymentMode": "prepaid",
         }
 
     def get_pricing_catalog(self) -> list[dict[str, Any]]:
         tiers: list[dict[str, Any]] = []
-        for tier_id, config in PRICING_TIERS.items():
+        for tier_id, config in settings.pricing_tiers.items():
             duration_options = [
                 self.expand_duration_option(config, option)
                 for option in config["durationOptions"]
@@ -604,8 +586,12 @@ class PaymentService:
             if registered_referrer:
                 referrer_user_id = registered_referrer["id"]
                 referral_code = registered_referrer.get("referral_code")
-                commission_rate = DEFAULT_COMMISSION_RATE
-                commission_amount = round(float(order["amount"] or 0) * DEFAULT_COMMISSION_RATE, 2)
+                commission_rate = (
+                    float(registered_referrer["commission_rate"])
+                    if registered_referrer.get("commission_rate") is not None
+                    else settings.commission_rate
+                )
+                commission_amount = round(float(order["amount"] or 0) * commission_rate, 2)
 
         if not referrer_user_id or not referral_code or commission_amount <= 0:
             return
@@ -1013,6 +999,68 @@ class PaymentService:
             "pendingCommission": float(totals.get("pending_commission") or 0),
             "paidCommission": float(totals.get("paid_commission") or 0),
             "totalCommission": float(totals.get("total_commission") or 0),
+        }
+
+    def get_referral_commissions(self, user_id: int, page: int = 1, page_size: int = 20) -> dict[str, Any]:
+        offset = (page - 1) * page_size
+        with db_cursor() as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) AS count FROM referral_commissions WHERE referrer_user_id = ?",
+                (user_id,),
+            )
+            total = int((row_to_dict(cursor.fetchone()) or {}).get("count", 0))
+
+            cursor.execute(
+                """
+                SELECT
+                    rc.id,
+                    rc.order_id,
+                    rc.referred_user_id,
+                    rc.referral_code,
+                    rc.commission_rate,
+                    rc.commission_amount,
+                    rc.status,
+                    rc.created_at,
+                    u.username AS referred_username,
+                    o.tier AS order_tier,
+                    o.duration AS order_duration,
+                    o.amount AS order_amount
+                FROM referral_commissions rc
+                JOIN users u ON u.id = rc.referred_user_id
+                JOIN orders o ON o.id = rc.order_id
+                WHERE rc.referrer_user_id = ?
+                ORDER BY rc.created_at DESC
+                LIMIT ? OFFSET ?
+                """,
+                (user_id, page_size, offset),
+            )
+            rows = [row_to_dict(r) for r in cursor.fetchall()]
+
+        items = [
+            {
+                "id": r["id"],
+                "orderId": r["order_id"],
+                "referredUserId": r["referred_user_id"],
+                "referredUsername": r["referred_username"],
+                "referralCode": r["referral_code"],
+                "commissionRate": float(r["commission_rate"] or 0),
+                "commissionAmount": float(r["commission_amount"] or 0),
+                "status": r["status"],
+                "orderTier": r["order_tier"],
+                "orderDuration": r["order_duration"],
+                "orderAmount": float(r["order_amount"] or 0),
+                "createdAt": r["created_at"],
+            }
+            for r in rows
+        ]
+
+        total_pages = max(1, (total + page_size - 1) // page_size)
+        return {
+            "items": items,
+            "page": page,
+            "pageSize": page_size,
+            "total": total,
+            "totalPages": total_pages,
         }
 
 

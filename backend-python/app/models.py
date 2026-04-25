@@ -30,12 +30,22 @@ class TtsSynthesizeResponse(BaseModel):
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=6, max_length=256)
+    email: str | None = Field(default=None, max_length=191)
     fullName: str | None = Field(default=None, max_length=128)
     referralCode: str | None = Field(default=None, max_length=64)
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=64)
+    username: str = Field(min_length=1, max_length=191)  # accepts email too
+    password: str = Field(min_length=6, max_length=256)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=191)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
     password: str = Field(min_length=6, max_length=256)
 
 
@@ -44,6 +54,7 @@ class UserPayload(BaseModel):
     username: str
     fullName: str | None = None
     referralCode: str | None = None
+    isAdmin: bool = False
     subscriptionTier: str = "free"
     subscriptionExpires: datetime | None = None
 
@@ -244,6 +255,29 @@ class ReferralSummaryResponse(BaseModel):
     totalCommission: float = 0
 
 
+class ReferralCommissionItem(BaseModel):
+    id: int
+    orderId: int
+    referredUserId: int
+    referredUsername: str
+    referralCode: str
+    commissionRate: float
+    commissionAmount: float
+    status: str
+    orderTier: str | None = None
+    orderDuration: int | None = None
+    orderAmount: float = 0
+    createdAt: str | None = None
+
+
+class ReferralCommissionsResponse(BaseModel):
+    items: list[ReferralCommissionItem] = Field(default_factory=list)
+    page: int = 1
+    pageSize: int = 20
+    total: int = 0
+    totalPages: int = 1
+
+
 class NewsItemModel(BaseModel):
     id: str
     title: str
@@ -253,6 +287,81 @@ class NewsItemModel(BaseModel):
     imageUrl: str | None = None
     source: str
     readingTime: int = 0
+
+
+# ── Admin models ─────────────────────────────────────────────────────────────
+
+class AdminUserItem(BaseModel):
+    id: int
+    username: str
+    fullName: str | None = None
+    subscriptionTier: str
+    subscriptionExpires: str | None = None
+    isAdmin: bool = False
+    commissionRate: float | None = None
+    referralCode: str | None = None
+    createdAt: str | None = None
+
+
+class AdminUsersResponse(BaseModel):
+    items: list[AdminUserItem] = Field(default_factory=list)
+    page: int = 1
+    pageSize: int = 20
+    total: int = 0
+    totalPages: int = 1
+
+
+class AdminUpdateUserRequest(BaseModel):
+    subscriptionTier: str | None = None
+    subscriptionExpires: str | None = None
+    isAdmin: bool | None = None
+    commissionRate: float | None = None
+
+
+class AdminOrderItem(BaseModel):
+    id: int
+    orderNo: str
+    userId: int
+    username: str
+    amount: float
+    originalAmount: float
+    status: str
+    tier: str
+    duration: int
+    paymentMethod: str
+    promoCode: str | None = None
+    createdAt: str | None = None
+
+
+class AdminOrdersResponse(BaseModel):
+    items: list[AdminOrderItem] = Field(default_factory=list)
+    page: int = 1
+    pageSize: int = 20
+    total: int = 0
+    totalPages: int = 1
+
+
+class AdminCommissionItem(BaseModel):
+    id: int
+    referrerUsername: str
+    referredUsername: str
+    commissionAmount: float
+    commissionRate: float
+    status: str
+    orderAmount: float
+    createdAt: str | None = None
+
+
+class AdminCommissionsResponse(BaseModel):
+    items: list[AdminCommissionItem] = Field(default_factory=list)
+    page: int = 1
+    pageSize: int = 20
+    total: int = 0
+    totalPages: int = 1
+
+
+class AdminUpdateCommissionRequest(BaseModel):
+    status: str
 
 
 class NewsListResponse(BaseModel):

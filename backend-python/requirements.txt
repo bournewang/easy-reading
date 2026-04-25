@@ -5,3 +5,4 @@ PyMySQL==1.1.1
 python-multipart==0.0.20
 alipay-sdk-python==3.7.1098
 dashscope==1.25.17
+resend==2.29.0

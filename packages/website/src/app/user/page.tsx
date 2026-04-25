@@ -304,12 +304,22 @@ export default function UserCenterPage() {
                   <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">{userText('subtitle')}</p>
                 </div>
 
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center justify-center self-start rounded-full bg-[#f97316] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
-                >
-                  {userText('logout')}
-                </button>
+                <div className="flex flex-wrap items-center gap-3 self-start">
+                  {user.isAdmin === true ? (
+                    <Link
+                      href="/admin"
+                      className="inline-flex items-center justify-center rounded-full bg-slate-800 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
+                    >
+                      {userText('adminPanel')}
+                    </Link>
+                  ) : null}
+                  <button
+                    onClick={handleLogout}
+                    className="inline-flex items-center justify-center self-start rounded-full bg-[#f97316] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
+                  >
+                    {userText('logout')}
+                  </button>
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -409,6 +419,18 @@ export default function UserCenterPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('paidCommission')}</p>
                   <p className="mt-3 text-lg font-semibold text-slate-950">¥{(referralInfo?.paidCommission ?? 0).toFixed(2)}</p>
                 </div>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <Link
+                  href="/user/referrals"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-orange-600 ring-1 ring-orange-200 transition-colors hover:bg-orange-50"
+                >
+                  {userText('viewReferralDetails')}
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 4l4 4-4 4" />
+                  </svg>
+                </Link>
               </div>
             </div>
           </SectionCard>

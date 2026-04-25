@@ -141,6 +141,23 @@ def init_db() -> None:
         )
         ensure_column(cursor, "users", "referral_code", "ALTER TABLE users ADD COLUMN referral_code VARCHAR(64) NULL UNIQUE")
         ensure_column(cursor, "users", "referred_by_user_id", "ALTER TABLE users ADD COLUMN referred_by_user_id BIGINT NULL")
+        ensure_column(cursor, "users", "commission_rate", "ALTER TABLE users ADD COLUMN commission_rate DOUBLE NULL COMMENT 'Custom commission rate override. NULL means use system default.'")
+        ensure_column(cursor, "users", "is_admin", "ALTER TABLE users ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0")
+        ensure_column(cursor, "users", "email", "ALTER TABLE users ADD COLUMN email VARCHAR(191) NULL UNIQUE")
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                token VARCHAR(191) NOT NULL UNIQUE,
+                expires_at VARCHAR(64) NOT NULL,
+                used TINYINT(1) NOT NULL DEFAULT 0,
+                created_at VARCHAR(64) NOT NULL,
+                INDEX idx_prt_user_id (user_id),
+                INDEX idx_prt_token (token)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            """
+        )
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS orders (

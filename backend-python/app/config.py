@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -10,6 +12,34 @@ DEFAULT_DICT_CACHE_DIR = ROOT_DIR / "data" / "dictionary"
 DEFAULT_LEGACY_DICT_DIR = ROOT_DIR.parent / "worker" / "dict" / "data" / "entries"
 DEFAULT_LEMMATIZATION_PATH = ROOT_DIR / "lemmatization-en.txt"
 DEFAULT_ENV_PATH = ROOT_DIR / ".env"
+DEFAULT_PRICING_TIERS = {
+    "free": {
+        "isPopular": False,
+        "originalPricePerMonth": 0.0,
+        "durationOptions": [],
+    },
+    "pro": {
+        "isPopular": True,
+        "originalPricePerMonth": 59.0,
+        "durationOptions": [
+            {"months": 1, "salePricePerMonth": 39.0},
+            {"months": 3, "salePricePerMonth": 33.0, "default": True},
+            {"months": 6, "salePricePerMonth": 28.0},
+            {"months": 12, "salePricePerMonth": 24.0},
+        ],
+    },
+}
+
+
+def load_pricing_tiers() -> dict[str, Any]:
+    raw_value = os.getenv("PRICING_TIERS_JSON", "")
+    if not raw_value:
+        return json.loads(json.dumps(DEFAULT_PRICING_TIERS))
+
+    parsed = json.loads(raw_value)
+    if not isinstance(parsed, dict):
+        raise ValueError("PRICING_TIERS_JSON must decode to an object")
+    return parsed
 
 
 def load_dotenv_file(env_path: Path, *, override: bool = True) -> None:
@@ -70,6 +100,19 @@ class Settings:
     anonymous_history_limit: int = int(os.getenv("ANONYMOUS_HISTORY_LIMIT", "10"))
     free_translation_daily_limit: int = int(os.getenv("FREE_TRANSLATION_DAILY_LIMIT", "20"))
     free_tts_daily_limit: int = int(os.getenv("FREE_TTS_DAILY_LIMIT", "10"))
+    pricing_tiers: dict[str, Any] = field(default_factory=load_pricing_tiers)
+    referral_discount_rate: float = float(os.getenv("REFERRAL_DISCOUNT_RATE", "0.10"))
+    referral_discount_cap: float = float(os.getenv("REFERRAL_DISCOUNT_CAP", "50.0"))
+    commission_rate: float = float(os.getenv("COMMISSION_RATE", "0.15"))
+
+    smtp_host: str = os.getenv("SMTP_HOST", "")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user: str = os.getenv("SMTP_USER", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    smtp_from: str = os.getenv("SMTP_FROM", "")
+    resend_api_key: str = os.getenv("RESEND_API_KEY", "")
+    resend_from_email: str = os.getenv("RESEND_FROM_EMAIL", "noreply@easy-reading.app")
+    password_reset_ttl_minutes: int = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
 
     translation_provider: str = os.getenv("TRANSLATION_PROVIDER", "mock")
     translation_api_base_url: str = os.getenv("TRANSLATION_API_BASE_URL", "")

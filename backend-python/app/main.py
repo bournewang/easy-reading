@@ -12,11 +12,16 @@ from .auth import (
     delete_session,
     extract_bearer_token,
     get_current_user,
+    get_user_by_email,
     get_user_by_referral_code,
     get_user_by_username,
+    create_password_reset_token,
+    consume_password_reset_token,
+    send_password_reset_email,
+    hash_password,
 )
 from .config import settings
-from .db import init_db, parse_dt
+from .db import init_db, parse_dt, db_cursor, row_to_dict, utcnow_iso
 from .models import (
     AnonymousLimitsResponse,
     AnonymousUsageResponse,
@@ -35,7 +40,18 @@ from .models import (
     ReadingHistoryItemModel,
     ReadingHistorySyncRequest,
     RegisterRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
     ReferralSummaryResponse,
+    ReferralCommissionsResponse,
+    AdminUserItem,
+    AdminUsersResponse,
+    AdminUpdateUserRequest,
+    AdminOrderItem,
+    AdminOrdersResponse,
+    AdminCommissionItem,
+    AdminCommissionsResponse,
+    AdminUpdateCommissionRequest,
     SubscriptionResponse,
     SubscriptionEntitlementsResponse,
     TtsSynthesizeRequest,
@@ -131,6 +147,7 @@ def serialize_user(user: dict) -> UserPayload:
         username=user["username"],
         fullName=user.get("full_name"),
         referralCode=user.get("referral_code"),
+        isAdmin=bool(user.get("is_admin")),
         subscriptionTier=effective_tier,
         subscriptionExpires=subscription_expires,
     )
@@ -384,12 +401,19 @@ def register(payload: RegisterRequest, request: Request, response: Response) -> 
     if get_user_by_username(payload.username):
         raise HTTPException(status_code=400, detail="Username already taken")
 
+    if payload.email:
+        normalized_email = payload.email.strip().lower()
+        if get_user_by_email(normalized_email):
+            raise HTTPException(status_code=400, detail="Email already registered")
+    else:
+        normalized_email = None
+
     normalized_referral_code = payload.referralCode.strip().upper() if payload.referralCode else None
     if normalized_referral_code and not get_user_by_referral_code(normalized_referral_code):
         raise HTTPException(status_code=400, detail="Referral code is invalid")
 
     try:
-        user = create_user(payload.username, payload.password, payload.fullName, normalized_referral_code)
+        user = create_user(payload.username, payload.password, payload.fullName, normalized_referral_code, normalized_email)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     token = create_session(user["id"])
@@ -415,6 +439,38 @@ def logout(request: Request, response: Response) -> dict:
         delete_session(session_token)
     response.delete_cookie(settings.session_cookie_name, path="/")
     return {"message": "Logged out successfully"}
+
+
+@app.post("/api/auth/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest) -> dict:
+    """Always returns 200 to avoid leaking whether an email is registered."""
+    email = payload.email.strip().lower()
+    user = get_user_by_email(email)
+    if user:
+        token = create_password_reset_token(user["id"])
+        reset_url = (
+            f"{settings.website_base_url.rstrip('/')}/reset-password?token={token}"
+        )
+        try:
+            send_password_reset_email(email, reset_url)
+        except Exception as exc:
+            # Log but don't expose the error
+            print(f"[WARN] Failed to send password reset email to {email}: {exc}")
+    return {"message": "If that email is registered, a reset link has been sent."}
+
+
+@app.post("/api/auth/reset-password")
+def reset_password(payload: ResetPasswordRequest) -> dict:
+    user = consume_password_reset_token(payload.token)
+    if not user:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired.")
+    now = utcnow_iso()
+    with db_cursor() as cursor:
+        cursor.execute(
+            "UPDATE users SET password_hash=?, updated_at=? WHERE id=?",
+            (hash_password(payload.password), now, user["id"]),
+        )
+    return {"message": "Password updated successfully."}
 
 
 @app.get("/api/auth/me")
@@ -521,6 +577,16 @@ def subscription_entitlements(user: dict = Depends(require_user)) -> Subscriptio
 @app.get("/api/referral/summary", response_model=ReferralSummaryResponse)
 def referral_summary(user: dict = Depends(require_user)) -> ReferralSummaryResponse:
     return ReferralSummaryResponse(**payment_service.get_referral_summary(user["id"]))
+
+
+@app.get("/api/referral/commissions", response_model=ReferralCommissionsResponse)
+def referral_commissions(
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    user: dict = Depends(require_user),
+) -> ReferralCommissionsResponse:
+    result = payment_service.get_referral_commissions(user["id"], page=page, page_size=pageSize)
+    return ReferralCommissionsResponse(**result)
 
 
 @app.post("/api/subscription/cancel", response_model=SubscriptionResponse)
@@ -763,3 +829,238 @@ def mock_alipay_cancel(order_no: str, token: str = Form(default="")) -> Redirect
         },
     ) or f"{settings.app_base_url.rstrip('/')}/mock-pay/alipay/{order['order_no']}?token={token}"
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ── Admin routes ──────────────────────────────────────────────────────────────
+
+def require_admin(user: dict = Depends(require_user)) -> dict:
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user
+
+
+@app.get("/api/admin/users", response_model=AdminUsersResponse)
+def admin_list_users(
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    search: str | None = Query(default=None),
+    _admin: dict = Depends(require_admin),
+) -> AdminUsersResponse:
+    offset = (page - 1) * pageSize
+    with db_cursor() as cursor:
+        if search:
+            like = f"%{search}%"
+            cursor.execute(
+                "SELECT COUNT(*) AS count FROM users WHERE username LIKE ? OR full_name LIKE ?",
+                (like, like),
+            )
+        else:
+            cursor.execute("SELECT COUNT(*) AS count FROM users")
+        total = int((row_to_dict(cursor.fetchone()) or {}).get("count", 0))
+
+        if search:
+            like = f"%{search}%"
+            cursor.execute(
+                "SELECT * FROM users WHERE username LIKE ? OR full_name LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?",
+                (like, like, pageSize, offset),
+            )
+        else:
+            cursor.execute("SELECT * FROM users ORDER BY id DESC LIMIT ? OFFSET ?", (pageSize, offset))
+        rows = [row_to_dict(r) for r in cursor.fetchall()]
+
+    items = [
+        AdminUserItem(
+            id=r["id"],
+            username=r["username"],
+            fullName=r.get("full_name"),
+            subscriptionTier=r.get("subscription_tier") or "free",
+            subscriptionExpires=r.get("subscription_expires"),
+            isAdmin=bool(r.get("is_admin")),
+            commissionRate=float(r["commission_rate"]) if r.get("commission_rate") is not None else None,
+            referralCode=r.get("referral_code"),
+            createdAt=r.get("created_at"),
+        )
+        for r in rows
+    ]
+    total_pages = max(1, (total + pageSize - 1) // pageSize)
+    return AdminUsersResponse(items=items, page=page, pageSize=pageSize, total=total, totalPages=total_pages)
+
+
+@app.patch("/api/admin/users/{user_id}", response_model=AdminUserItem)
+def admin_update_user(
+    user_id: int,
+    payload: AdminUpdateUserRequest,
+    _admin: dict = Depends(require_admin),
+) -> AdminUserItem:
+    now = utcnow_iso()
+    updates: list[str] = []
+    values: list = []
+
+    if payload.subscriptionTier is not None:
+        updates.append("subscription_tier = ?")
+        values.append(payload.subscriptionTier)
+    if payload.subscriptionExpires is not None:
+        updates.append("subscription_expires = ?")
+        values.append(payload.subscriptionExpires or None)
+    if payload.isAdmin is not None:
+        updates.append("is_admin = ?")
+        values.append(1 if payload.isAdmin else 0)
+    if payload.commissionRate is not None:
+        updates.append("commission_rate = ?")
+        values.append(payload.commissionRate)
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    updates.append("updated_at = ?")
+    values.append(now)
+    values.append(user_id)
+
+    with db_cursor() as cursor:
+        cursor.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", values)
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        row = row_to_dict(cursor.fetchone())
+
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return AdminUserItem(
+        id=row["id"],
+        username=row["username"],
+        fullName=row.get("full_name"),
+        subscriptionTier=row.get("subscription_tier") or "free",
+        subscriptionExpires=row.get("subscription_expires"),
+        isAdmin=bool(row.get("is_admin")),
+        commissionRate=float(row["commission_rate"]) if row.get("commission_rate") is not None else None,
+        referralCode=row.get("referral_code"),
+        createdAt=row.get("created_at"),
+    )
+
+
+@app.get("/api/admin/orders", response_model=AdminOrdersResponse)
+def admin_list_orders(
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    status_filter: str | None = Query(default=None, alias="status"),
+    _admin: dict = Depends(require_admin),
+) -> AdminOrdersResponse:
+    offset = (page - 1) * pageSize
+    with db_cursor() as cursor:
+        if status_filter:
+            cursor.execute(
+                "SELECT COUNT(*) AS count FROM orders WHERE status = ?", (status_filter,)
+            )
+        else:
+            cursor.execute("SELECT COUNT(*) AS count FROM orders")
+        total = int((row_to_dict(cursor.fetchone()) or {}).get("count", 0))
+
+        if status_filter:
+            cursor.execute(
+                """
+                SELECT o.*, u.username FROM orders o
+                JOIN users u ON u.id = o.user_id
+                WHERE o.status = ? ORDER BY o.id DESC LIMIT ? OFFSET ?
+                """,
+                (status_filter, pageSize, offset),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT o.*, u.username FROM orders o
+                JOIN users u ON u.id = o.user_id
+                ORDER BY o.id DESC LIMIT ? OFFSET ?
+                """,
+                (pageSize, offset),
+            )
+        rows = [row_to_dict(r) for r in cursor.fetchall()]
+
+    items = [
+        AdminOrderItem(
+            id=r["id"],
+            orderNo=r["order_no"],
+            userId=r["user_id"],
+            username=r["username"],
+            amount=float(r["amount"]),
+            originalAmount=float(r.get("original_amount") or r["amount"]),
+            status=r["status"],
+            tier=r["tier"],
+            duration=r["duration"],
+            paymentMethod=r["payment_method"],
+            promoCode=r.get("coupon_code") or r.get("referral_code"),
+            createdAt=r.get("created_at"),
+        )
+        for r in rows
+    ]
+    total_pages = max(1, (total + pageSize - 1) // pageSize)
+    return AdminOrdersResponse(items=items, page=page, pageSize=pageSize, total=total, totalPages=total_pages)
+
+
+@app.get("/api/admin/commissions", response_model=AdminCommissionsResponse)
+def admin_list_commissions(
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    status_filter: str | None = Query(default=None, alias="status"),
+    _admin: dict = Depends(require_admin),
+) -> AdminCommissionsResponse:
+    offset = (page - 1) * pageSize
+    with db_cursor() as cursor:
+        if status_filter:
+            cursor.execute(
+                "SELECT COUNT(*) AS count FROM referral_commissions WHERE status = ?", (status_filter,)
+            )
+        else:
+            cursor.execute("SELECT COUNT(*) AS count FROM referral_commissions")
+        total = int((row_to_dict(cursor.fetchone()) or {}).get("count", 0))
+
+        base_query = """
+            SELECT rc.*, referrer.username AS referrer_username, referred.username AS referred_username,
+                   o.amount AS order_amount
+            FROM referral_commissions rc
+            JOIN users referrer ON referrer.id = rc.referrer_user_id
+            JOIN users referred ON referred.id = rc.referred_user_id
+            JOIN orders o ON o.id = rc.order_id
+        """
+        if status_filter:
+            cursor.execute(
+                base_query + " WHERE rc.status = ? ORDER BY rc.id DESC LIMIT ? OFFSET ?",
+                (status_filter, pageSize, offset),
+            )
+        else:
+            cursor.execute(base_query + " ORDER BY rc.id DESC LIMIT ? OFFSET ?", (pageSize, offset))
+        rows = [row_to_dict(r) for r in cursor.fetchall()]
+
+    items = [
+        AdminCommissionItem(
+            id=r["id"],
+            referrerUsername=r["referrer_username"],
+            referredUsername=r["referred_username"],
+            commissionAmount=float(r["commission_amount"]),
+            commissionRate=float(r["commission_rate"]),
+            status=r["status"],
+            orderAmount=float(r["order_amount"]),
+            createdAt=r.get("created_at"),
+        )
+        for r in rows
+    ]
+    total_pages = max(1, (total + pageSize - 1) // pageSize)
+    return AdminCommissionsResponse(items=items, page=page, pageSize=pageSize, total=total, totalPages=total_pages)
+
+
+@app.patch("/api/admin/commissions/{commission_id}")
+def admin_update_commission(
+    commission_id: int,
+    payload: AdminUpdateCommissionRequest,
+    _admin: dict = Depends(require_admin),
+) -> dict:
+    allowed = {"pending", "paid"}
+    if payload.status not in allowed:
+        raise HTTPException(status_code=400, detail=f"status must be one of {allowed}")
+    now = utcnow_iso()
+    with db_cursor() as cursor:
+        cursor.execute(
+            "UPDATE referral_commissions SET status = ?, updated_at = ? WHERE id = ?",
+            (payload.status, now, commission_id),
+        )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Commission not found")
+    return {"success": True}

@@ -18,6 +18,7 @@ interface User {
   username: string;
   fullName?: string;
   referralCode?: string;
+  isAdmin?: boolean;
   subscriptionTier?: string;
   subscriptionExpires?: string;
 }
