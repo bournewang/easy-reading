@@ -49,9 +49,14 @@ class ResetPasswordRequest(BaseModel):
     password: str = Field(min_length=6, max_length=256)
 
 
+class UpdateProfileRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=191)
+
+
 class UserPayload(BaseModel):
     id: int
     username: str
+    email: str | None = None
     fullName: str | None = None
     referralCode: str | None = None
     isAdmin: bool = False

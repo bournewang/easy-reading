@@ -145,6 +145,7 @@ def get_current_user(request: Request) -> dict | None:
         cursor.execute(
             """
             SELECT sessions.*, users.id AS uid, users.username, users.full_name, users.subscription_tier, users.subscription_expires
+                , users.email
                 , users.referral_code
                 , COALESCE(users.is_admin, 0) AS is_admin
             FROM sessions
@@ -180,6 +181,7 @@ def get_current_user(request: Request) -> dict | None:
     return {
         "id": row["uid"],
         "username": row["username"],
+        "email": row.get("email"),
         "full_name": row["full_name"],
         "referral_code": row["referral_code"],
         "is_admin": bool(row.get("is_admin")),

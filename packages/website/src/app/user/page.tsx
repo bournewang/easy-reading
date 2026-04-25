@@ -305,6 +305,12 @@ export default function UserCenterPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 self-start">
+                  <Link
+                    href="/user/profile"
+                    className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-800 ring-1 ring-slate-200 transition-colors hover:bg-slate-50"
+                  >
+                    {userText('profileSettings')}
+                  </Link>
                   {user.isAdmin === true ? (
                     <Link
                       href="/admin"

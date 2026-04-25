@@ -16,6 +16,7 @@ const AUTH_CHANGED_EVENT = 'easy-reading-auth-changed';
 interface User {
   id: number;
   username: string;
+  email?: string | null;
   fullName?: string;
   referralCode?: string;
   isAdmin?: boolean;

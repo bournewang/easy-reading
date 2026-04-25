@@ -12,6 +12,7 @@ from .auth import (
     delete_session,
     extract_bearer_token,
     get_current_user,
+    get_user_by_id,
     get_user_by_email,
     get_user_by_referral_code,
     get_user_by_username,
@@ -58,6 +59,7 @@ from .models import (
     TtsSynthesizeResponse,
     TranslateRequest,
     TranslateResponse,
+    UpdateProfileRequest,
     UserPayload,
     VocabBookSettingsRequest,
     VocabBookSettingsResponse,
@@ -145,6 +147,7 @@ def serialize_user(user: dict) -> UserPayload:
     return UserPayload(
         id=user["id"],
         username=user["username"],
+        email=user.get("email"),
         fullName=user.get("full_name"),
         referralCode=user.get("referral_code"),
         isAdmin=bool(user.get("is_admin")),
@@ -478,6 +481,32 @@ def me(user: dict | None = Depends(get_current_user)) -> dict:
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return {"user": serialize_user(user).model_dump()}
+
+
+@app.put("/api/auth/profile")
+def update_profile(
+    payload: UpdateProfileRequest,
+    user: dict = Depends(require_user),
+) -> dict:
+    normalized_email = payload.email.strip().lower()
+    if not normalized_email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    existing_email_user = get_user_by_email(normalized_email)
+    if existing_email_user and int(existing_email_user["id"]) != int(user["id"]):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    now = utcnow_iso()
+    with db_cursor() as cursor:
+        cursor.execute(
+            "UPDATE users SET email = ?, updated_at = ? WHERE id = ?",
+            (normalized_email, now, user["id"]),
+        )
+
+    updated_user = get_user_by_id(user["id"])
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user": serialize_user(updated_user).model_dump()}
 
 
 @app.get("/api/history", response_model=list[ReadingHistoryItemModel])
