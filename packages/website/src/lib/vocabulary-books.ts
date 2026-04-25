@@ -1,16 +1,41 @@
 import type { ReaderVocabularyData, ReaderVocabularyWordDetails, VocabularyBookCatalogItem } from '@/types/vocabulary-books';
 import vocabularyBooksIndex from '../../vocabulary-books/index.json';
 
-const BOOK_HIGHLIGHT_COLORS = [
-  'rgba(255, 232, 171, 0.75)',
-  'rgba(198, 238, 255, 0.75)',
-  'rgba(213, 247, 203, 0.75)',
-  'rgba(247, 214, 253, 0.75)',
-  'rgba(255, 213, 213, 0.75)',
-  'rgba(220, 226, 255, 0.75)',
-  'rgba(255, 232, 196, 0.75)',
-  'rgba(208, 244, 243, 0.75)',
-];
+const CATEGORY_HIGHLIGHT_PRIORITY: Record<string, number> = {
+  'primary-school': 1,
+  'middle-school': 2,
+  'high-school': 3,
+  cet4: 4,
+  cet6: 5,
+  tem4: 6,
+  ielts: 7,
+  postgraduate: 8,
+  bec: 9,
+  toefl: 10,
+  sat: 11,
+  gmat: 12,
+  gre: 13,
+  tem8: 14,
+  other: 15,
+};
+
+const CATEGORY_HIGHLIGHT_COLORS: Record<string, string> = {
+  'primary-school': 'rgba(205, 244, 222, 0.9)',
+  'middle-school': 'rgba(227, 244, 186, 0.9)',
+  'high-school': 'rgba(255, 234, 179, 0.9)',
+  cet4: 'rgba(255, 213, 153, 0.9)',
+  cet6: 'rgba(255, 193, 153, 0.9)',
+  tem4: 'rgba(255, 177, 177, 0.9)',
+  ielts: 'rgba(255, 179, 209, 0.9)',
+  postgraduate: 'rgba(244, 188, 255, 0.9)',
+  bec: 'rgba(226, 192, 255, 0.9)',
+  toefl: 'rgba(206, 198, 255, 0.9)',
+  sat: 'rgba(185, 206, 255, 0.9)',
+  gmat: 'rgba(170, 221, 255, 0.9)',
+  gre: 'rgba(162, 231, 240, 0.9)',
+  tem8: 'rgba(186, 220, 225, 0.9)',
+  other: 'rgba(224, 228, 235, 0.9)',
+};
 
 type RawBookLine = {
   headWord?: string;
@@ -38,6 +63,21 @@ type RawBookLine = {
 
 function uniqStrings(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function getPrimaryVocabularyCategory(tags: string[]) {
+  return tags
+    .filter(Boolean)
+    .sort((left, right) => (CATEGORY_HIGHLIGHT_PRIORITY[left] ?? Number.MAX_SAFE_INTEGER) - (CATEGORY_HIGHLIGHT_PRIORITY[right] ?? Number.MAX_SAFE_INTEGER))[0] || 'other';
+}
+
+function getVocabularyHighlightColor(tags: string[]) {
+  const category = getPrimaryVocabularyCategory(tags);
+  return {
+    category,
+    color: CATEGORY_HIGHLIGHT_COLORS[category] || CATEGORY_HIGHLIGHT_COLORS.other,
+    priority: CATEGORY_HIGHLIGHT_PRIORITY[category] ?? CATEGORY_HIGHLIGHT_PRIORITY.other,
+  };
 }
 
 function inferVocabularyBookTags(title: string, file: string) {
@@ -219,10 +259,12 @@ export function buildReaderVocabularyData(
   const vocabularyHighlightColorByWord: Record<string, string> = {};
   const vocabularyBookIdsByWord: Record<string, string[]> = {};
   const vocabularyWordDetailsByWord: Record<string, ReaderVocabularyWordDetails[]> = {};
+  const vocabularyHighlightPriorityByWord: Record<string, number> = {};
 
-  selectedBookIds.forEach((bookId, index) => {
-    const color = BOOK_HIGHLIGHT_COLORS[index % BOOK_HIGHLIGHT_COLORS.length];
-    const title = catalogById[bookId]?.title || bookId;
+  selectedBookIds.forEach((bookId) => {
+    const catalogItem = catalogById[bookId];
+    const title = catalogItem?.title || bookId;
+    const { color, priority } = getVocabularyHighlightColor(catalogItem?.tags || []);
     const details = detailsByBookId[bookId] || [];
 
     details.forEach((item) => {
@@ -249,9 +291,12 @@ export function buildReaderVocabularyData(
         vocabularyBookIdsByWord[key].push(bookId);
       }
 
-      // First selected vocabulary book wins for highlight color when overlap happens.
-      if (!vocabularyHighlightColorByWord[key]) {
+      if (
+        !vocabularyHighlightColorByWord[key] ||
+        priority < (vocabularyHighlightPriorityByWord[key] ?? Number.MAX_SAFE_INTEGER)
+      ) {
         vocabularyHighlightColorByWord[key] = color;
+        vocabularyHighlightPriorityByWord[key] = priority;
       }
     });
   });

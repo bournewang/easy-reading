@@ -20,6 +20,7 @@ export interface ReaderProps {
   contentScrollRef?: React.RefObject<HTMLDivElement>;
   vocabularyHighlightColorByWord?: Record<string, string>;
   vocabularyBookIdsByWord?: Record<string, string[]>;
+  vocabularyBookDisplayTagById?: Record<string, string>;
   vocabularyWordDetailsByWord?: Record<string, VocabularyBookWordDetails[]>;
 }
 const spinAnimation = `
@@ -32,6 +33,7 @@ const Reader: React.FC<ReaderProps> = ({
   contentScrollRef,
   vocabularyHighlightColorByWord = {},
   vocabularyBookIdsByWord = {},
+  vocabularyBookDisplayTagById = {},
   vocabularyWordDetailsByWord = {},
 }) => {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -166,6 +168,7 @@ const Reader: React.FC<ReaderProps> = ({
                             isVisible={containedScroll ? visibleParagraphs[id] ?? true : visibleParagraphs[id]}
                             vocabularyHighlightColorByWord={vocabularyHighlightColorByWord}
                             vocabularyBookIdsByWord={vocabularyBookIdsByWord}
+                            vocabularyBookDisplayTagById={vocabularyBookDisplayTagById}
                           />
                         </div>
                       ) : paragraph.type === 'image' ? (
