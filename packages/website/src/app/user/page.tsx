@@ -374,7 +374,7 @@ export default function UserCenterPage() {
           </div>
         </Link>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <SectionCard
             eyebrow={userText('referralTitle')}
             title={userText('referralTitle')}
