@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
 import { storeReferralCode } from '@/utils/referral';
 
@@ -12,16 +11,18 @@ export default function LandingPageClient() {
   const common = (key: string) => t(`website.common.${key}`);
   const nav = (key: string) => t(`website.navigation.${key}`);
 
-  const searchParams = useSearchParams();
-
   useEffect(() => {
-    const referralCode = searchParams.get('ref');
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const referralCode = new URLSearchParams(window.location.search).get('ref');
     if (!referralCode) {
       return;
     }
 
     storeReferralCode(referralCode);
-  }, [searchParams]);
+  }, []);  
 
   const readingModes = [
     { href: '/news', eyebrow: nav('news'), title: landing('modeNewsTitle'), body: landing('modeNewsBody') },

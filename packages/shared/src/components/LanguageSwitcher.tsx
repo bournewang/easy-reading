@@ -11,11 +11,11 @@ const LOCALE_FLAGS: Record<LocaleKey, string> = {
 export const LanguageSwitcher: React.FC = () => {
   // const { locale, changeLocale } = useLocale(); // OLD
   const { locale, changeLocale } = useLocaleContext(); // NEW
-  console.log(`[LanguageSwitcher] Rendering. Locale from context: ${locale}`);
+  //console.log(`[LanguageSwitcher] Rendering. Locale from context: ${locale}`);
 
   const toggleLocale = () => {
     const nextLocale: LocaleKey = locale === 'en' ? 'zh' : 'en';
-    console.log(`[LanguageSwitcher] Toggling locale. Current: ${locale}, Next: ${nextLocale}`);
+    //console.log(`[LanguageSwitcher] Toggling locale. Current: ${locale}, Next: ${nextLocale}`);
     changeLocale(nextLocale); // This will call the changeLocale from LocaleProvider
   };
 

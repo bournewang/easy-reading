@@ -30,16 +30,16 @@ const getNestedValue = (obj: any, path: string): string => {
   
 export const LocaleProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentLocale, setCurrentLocale] = useState<LocaleKey>(defaultLocale);
-  console.log(`[LocaleProvider] Instance created/rendered. Initializing state with defaultLocale: ${defaultLocale}. Current state for currentLocale: ${currentLocale}`);
+  //console.log(`[LocaleProvider] Instance created/rendered. Initializing state with defaultLocale: ${defaultLocale}. Current state for currentLocale: ${currentLocale}`);
 
   // Load from storage
   useEffect(() => {
-    console.log(`[LocaleProvider] MOUNT/INIT EFFECT: Starts. Current state before load: ${currentLocale}`);
+    //console.log(`[LocaleProvider] MOUNT/INIT EFFECT: Starts. Current state before load: ${currentLocale}`);
     const storedLocale = storage.get('locale', defaultLocale) as LocaleKey;
-    console.log(`[LocaleProvider] MOUNT/INIT EFFECT: storage.get found: ${storedLocale}`);
+    //console.log(`[LocaleProvider] MOUNT/INIT EFFECT: storage.get found: ${storedLocale}`);
     if (Object.keys(locales).includes(storedLocale)) {
       if (currentLocale !== storedLocale) {
-        console.log(`[LocaleProvider] MOUNT/INIT EFFECT: Stored locale (${storedLocale}) is different. Setting state.`);
+        //console.log(`[LocaleProvider] MOUNT/INIT EFFECT: Stored locale (${storedLocale}) is different. Setting state.`);
         setCurrentLocale(storedLocale);
       }
     }
@@ -47,45 +47,45 @@ export const LocaleProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Save to storage
   useEffect(() => {
-    console.log(`[LocaleProvider] SAVE EFFECT: currentLocale is now ${currentLocale}. Saving to storage.`);
+    //console.log(`[LocaleProvider] SAVE EFFECT: currentLocale is now ${currentLocale}. Saving to storage.`);
     storage.set('locale', currentLocale);
   }, [currentLocale]);
 
   const changeLocale = useCallback((locale: LocaleKey) => {
-    console.log(`[LocaleProvider] changeLocale called with: ${locale}. Current internal state is: ${currentLocale}`);
+    //console.log(`[LocaleProvider] changeLocale called with: ${locale}. Current internal state is: ${currentLocale}`);
     if (Object.keys(locales).includes(locale)) {
       if (locale !== currentLocale) {
-        console.log(`[LocaleProvider] changeLocale: Setting internal currentLocale state to: ${locale}`);
+        //console.log(`[LocaleProvider] changeLocale: Setting internal currentLocale state to: ${locale}`);
         setCurrentLocale(locale);
       } else {
-        console.log(`[LocaleProvider] changeLocale: New locale is same as current. No change.`);
+        //console.log(`[LocaleProvider] changeLocale: New locale is same as current. No change.`);
       }
     }
   }, [currentLocale]);
 
   const t = useCallback((key: string, fallback?: string): string => {
-    console.log(`[useLocale] t: Translating key '${key}' for locale '${currentLocale}'.`);
+    //console.log(`[useLocale] t: Translating key '${key}' for locale '${currentLocale}'.`);
     // Log the specific translation object being used
-    console.log("locales[defaultLocale]: ", locales[defaultLocale])
+    //console.log("locales[defaultLocale]: ", locales[defaultLocale])
     if (!locales[currentLocale]) {
       console.error(`[useLocale] t: No translations found for locale '${currentLocale}'! Falling back to defaultLocale structure if available for path.`);
       // Attempt to use defaultLocale structure for getNestedValue path, but this is a problem indicator
       const translationFromDefaultStructure = getNestedValue(locales[defaultLocale], key);
-      console.log("translationFromDefaultStructure: ", translationFromDefaultStructure)
+      //console.log("translationFromDefaultStructure: ", translationFromDefaultStructure)
       if (translationFromDefaultStructure !== key) {
         console.warn(`[useLocale] t: Key '${key}' found in defaultLocale structure, but currentLocale '${currentLocale}' is missing.`);
         // Decide if you want to return this or the key/fallback
       }
     } else {
-      // console.log(`[useLocale] t: Using translation object for '${currentLocale}':`, locales[currentLocale]);
+      // //console.log(`[useLocale] t: Using translation object for '${currentLocale}':`, locales[currentLocale]);
     }
     const translation = getNestedValue(locales[currentLocale] || locales[defaultLocale], key); // Fallback to defaultLocale object if current is missing
     
     if (translation === key && fallback) {
-      // console.log(`[useLocale] t: Key '${key}' not found in '${currentLocale}' or default, using fallback: '${fallback}'`);
+      // //console.log(`[useLocale] t: Key '${key}' not found in '${currentLocale}' or default, using fallback: '${fallback}'`);
       return fallback;
     }
-    // console.log(`[useLocale] t: Key '${key}' translated to '${translation}' for locale '${currentLocale}'`);
+    // //console.log(`[useLocale] t: Key '${key}' translated to '${translation}' for locale '${currentLocale}'`);
     return translation;
   }, [currentLocale]);
   
@@ -99,7 +99,7 @@ export const LocaleProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Memoize the context value
   const value = useMemo(() => {
-    console.log(`[LocaleProvider] Memoizing context value. currentLocale is: ${currentLocale}`);
+    //console.log(`[LocaleProvider] Memoizing context value. currentLocale is: ${currentLocale}`);
     return {
       locale: currentLocale,
       changeLocale,
@@ -115,7 +115,7 @@ export const LocaleProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [currentLocale, changeLocale, t, wordList, proficiency, websiteNavigation, websiteHomePage, websiteNewsPage, websitePricingPage]);
 
-  console.log(`[LocaleProvider] Rendering Provider component. Passing value with locale: ${value.locale}`);
+  //console.log(`[LocaleProvider] Rendering Provider component. Passing value with locale: ${value.locale}`);
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 };
 
