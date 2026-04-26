@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-
+from urllib.parse import urlparse
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
@@ -99,6 +99,28 @@ def get_anonymous_id(request: Request) -> str | None:
     fallback = forwarded_for or client_host
     return fallback[:191] if fallback else None
 
+def get_registration_domain(request: Request) -> str | None:
+    origin = request.headers.get("origin", "").strip()
+    if origin:
+        parsed_origin = urlparse(origin)
+        if parsed_origin.hostname:
+            return parsed_origin.hostname[:255]
+
+    referer = request.headers.get("referer", "").strip()
+    if referer:
+        parsed_referer = urlparse(referer)
+        if parsed_referer.hostname:
+            return parsed_referer.hostname[:255]
+
+    forwarded_host = request.headers.get("x-forwarded-host", "").strip()
+    if forwarded_host:
+        return forwarded_host.split(",")[0].strip()[:255]
+
+    host = request.headers.get("host", "").strip()
+    if host:
+        return host.split(":")[0][:255]
+
+    return None
 
 def apply_cors_headers(request: Request, response: Response) -> None:
     origin = request.headers.get("origin")
@@ -416,7 +438,14 @@ def register(payload: RegisterRequest, request: Request, response: Response) -> 
         raise HTTPException(status_code=400, detail="Referral code is invalid")
 
     try:
-        user = create_user(payload.username, payload.password, payload.fullName, normalized_referral_code, normalized_email)
+        user = create_user(
+            payload.username, 
+            payload.password, 
+            payload.fullName, 
+            normalized_referral_code, 
+            normalized_email, 
+            get_registration_domain(request)
+            )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     token = create_session(user["id"])

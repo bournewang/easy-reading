@@ -86,7 +86,7 @@ def generate_referral_code(username: str) -> str:
     return f"{base}{suffix}"
 
 
-def create_user(username: str, password: str, full_name: str | None, referral_code: str | None = None, email: str | None = None) -> dict:
+def create_user(username: str, password: str, full_name: str | None, referral_code: str | None = None, email: str | None = None, registration_domain: str | None = None) -> dict:
     now = utcnow_iso()
     user_referral_code = generate_referral_code(username)
     referrer = get_user_by_referral_code(referral_code)
@@ -101,11 +101,11 @@ def create_user(username: str, password: str, full_name: str | None, referral_co
             cursor.execute(
                 """
                 INSERT INTO users (
-                    username, password_hash, full_name, email, referral_code, referred_by_user_id,
+                    username, password_hash, full_name, email, referral_code, referred_by_user_id,registration_domain,
                     subscription_tier, subscription_expires, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'free', NULL, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'free', NULL, ?, ?)
                 """,
-                (username, hash_password(password), full_name, normalized_email, user_referral_code, referred_by_user_id, now, now),
+                (username, hash_password(password), full_name, normalized_email, user_referral_code, referred_by_user_id, registration_domain, now, now),
             )
             user_id = int(cursor.lastrowid)
     except DBIntegrityError as exc:

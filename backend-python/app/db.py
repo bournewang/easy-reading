@@ -120,6 +120,7 @@ def init_db() -> None:
                 full_name VARCHAR(255) NULL,
                 referral_code VARCHAR(64) NULL UNIQUE,
                 referred_by_user_id BIGINT NULL,
+                registration_domain VARCHAR(128) NULL,
                 subscription_tier VARCHAR(64) DEFAULT 'free',
                 subscription_expires VARCHAR(64) NULL,
                 created_at VARCHAR(64) NOT NULL,
@@ -144,6 +145,7 @@ def init_db() -> None:
         ensure_column(cursor, "users", "commission_rate", "ALTER TABLE users ADD COLUMN commission_rate DOUBLE NULL COMMENT 'Custom commission rate override. NULL means use system default.'")
         ensure_column(cursor, "users", "is_admin", "ALTER TABLE users ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0")
         ensure_column(cursor, "users", "email", "ALTER TABLE users ADD COLUMN email VARCHAR(191) NULL UNIQUE")
+        ensure_column(cursor, "users", "registration_domain", "ALTER TABLE users ADD COLUMN registration_domain VARCHAR(255) NULL")
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS password_reset_tokens (
