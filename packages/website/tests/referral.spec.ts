@@ -226,7 +226,7 @@ test('user page renders referral link and reward totals', async ({ page }) => {
       contentType: 'application/json',
       body: JSON.stringify({
         referralCode: 'ALICE88',
-        referralLink: 'https://easyreading.com/register?ref=ALICE88',
+        referralLink: 'https://easyreading.com/?ref=ALICE88',
         totalReferrals: 12,
         successfulReferrals: 9,
         pendingCommission: 18.5,
@@ -255,7 +255,7 @@ test('user page renders referral link and reward totals', async ({ page }) => {
   await page.goto('/user', { waitUntil: 'domcontentloaded' });
 
   await expect(page.getByRole('heading', { name: /Referral rewards|推广奖励/ })).toBeVisible();
-  await expect(page.getByText('https://easyreading.com/register?ref=ALICE88')).toBeVisible();
+  await expect(page.getByText('https://easyreading.com/?ref=ALICE88')).toBeVisible();
   await page.getByRole('button', { name: /Copy referral link|复制推广链接/ }).click();
   await expect(page.getByText(/Referral link copied\.|推广链接已复制。/)).toBeVisible();
   await expect(page.getByText(/^12$/)).toBeVisible();
@@ -327,7 +327,7 @@ test('user page uses the same current plan tier as navigation when paid subscrip
       contentType: 'application/json',
       body: JSON.stringify({
         referralCode: 'ALICE88',
-        referralLink: 'https://easyreading.com/register?ref=ALICE88',
+        referralLink: 'https://easyreading.com/?ref=ALICE88',
         totalReferrals: 12,
         successfulReferrals: 9,
         pendingCommission: 18.5,
