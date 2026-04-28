@@ -528,6 +528,18 @@ export default function UserCenterPage() {
               ) : null}
 
               {subscriptionError ? <p className="text-sm text-rose-600">{subscriptionError}</p> : null}
+
+              <div className="mt-4 flex justify-end">
+                <Link
+                  href="/user/orders"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition-colors hover:bg-slate-50"
+                >
+                  View order history
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 4l4 4-4 4" />
+                  </svg>
+                </Link>
+              </div>
             </div>
           </SectionCard>
         </section>

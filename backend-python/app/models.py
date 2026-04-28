@@ -59,6 +59,7 @@ class UserPayload(BaseModel):
     email: str | None = None
     fullName: str | None = None
     referralCode: str | None = None
+    hasReferrer: bool = False
     isAdmin: bool = False
     subscriptionTier: str = "free"
     subscriptionExpires: datetime | None = None
@@ -256,6 +257,7 @@ class ReferralSummaryResponse(BaseModel):
     totalReferrals: int = 0
     successfulReferrals: int = 0
     pendingCommission: float = 0
+    availableCommission: float = 0
     paidCommission: float = 0
     totalCommission: float = 0
 
@@ -269,6 +271,7 @@ class ReferralCommissionItem(BaseModel):
     commissionRate: float
     commissionAmount: float
     status: str
+    unlocksAt: str | None = None
     orderTier: str | None = None
     orderDuration: int | None = None
     orderAmount: float = 0
@@ -335,6 +338,7 @@ class AdminOrderItem(BaseModel):
     duration: int
     paymentMethod: str
     promoCode: str | None = None
+    refundedAt: str | None = None
     createdAt: str | None = None
 
 
@@ -353,6 +357,7 @@ class AdminCommissionItem(BaseModel):
     commissionAmount: float
     commissionRate: float
     status: str
+    unlocksAt: str | None = None
     orderAmount: float
     createdAt: str | None = None
 
@@ -367,6 +372,32 @@ class AdminCommissionsResponse(BaseModel):
 
 class AdminUpdateCommissionRequest(BaseModel):
     status: str
+
+
+class UserOrderItem(BaseModel):
+    id: int
+    orderNo: str
+    tier: str
+    duration: int
+    amount: float
+    originalAmount: float
+    status: str
+    paymentMethod: str
+    promoCode: str | None = None
+    refundedAt: str | None = None
+    createdAt: str | None = None
+
+
+class UserOrdersResponse(BaseModel):
+    items: list[UserOrderItem] = Field(default_factory=list)
+    page: int = 1
+    pageSize: int = 20
+    total: int = 0
+    totalPages: int = 1
+
+
+class RefundRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
 
 
 class NewsListResponse(BaseModel):

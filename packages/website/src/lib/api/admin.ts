@@ -32,6 +32,7 @@ export interface AdminOrder {
   duration: number;
   paymentMethod: string;
   promoCode: string | null;
+  refundedAt: string | null;
   createdAt: string | null;
 }
 
@@ -50,6 +51,7 @@ export interface AdminCommission {
   commissionAmount: number;
   commissionRate: number;
   status: string;
+  unlocksAt: string | null;
   orderAmount: number;
   createdAt: string | null;
 }
@@ -95,4 +97,8 @@ export async function adminListCommissions(page = 1, pageSize = 20, status?: str
 
 export async function adminUpdateCommission(id: number, status: string): Promise<void> {
   await api.patch(`/admin/commissions/${id}`, { status });
+}
+
+export async function adminRefundOrder(orderNo: string): Promise<void> {
+  await api.post(`/admin/orders/${orderNo}/refund`, {});
 }

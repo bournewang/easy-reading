@@ -205,6 +205,7 @@ def init_db() -> None:
         )
         ensure_column(cursor, "orders", "coupon_code", "ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(64) NULL")
         ensure_column(cursor, "orders", "referral_code", "ALTER TABLE orders ADD COLUMN referral_code VARCHAR(64) NULL")
+        ensure_column(cursor, "orders", "refunded_at", "ALTER TABLE orders ADD COLUMN refunded_at VARCHAR(64) NULL")
         cursor.execute(
             """
             UPDATE orders
@@ -299,6 +300,12 @@ def init_db() -> None:
                 INDEX idx_referral_commissions_referred (referred_user_id)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
             """
+        )
+        ensure_column(
+            cursor,
+            "referral_commissions",
+            "unlocks_at",
+            "ALTER TABLE referral_commissions ADD COLUMN unlocks_at VARCHAR(64) NULL COMMENT '7-day lock expires at this time; NULL for legacy rows'",
         )
         cursor.execute(
             """

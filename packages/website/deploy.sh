@@ -42,3 +42,4 @@ else
 fi
 
 echo "Done"
+say "deploy complete"

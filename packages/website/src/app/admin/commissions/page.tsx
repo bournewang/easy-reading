@@ -50,7 +50,9 @@ export default function AdminCommissionsPage() {
         >
           <option value="">All</option>
           <option value="pending">Pending</option>
+          <option value="available">Available</option>
           <option value="paid">Paid</option>
+          <option value="cancelled">Cancelled</option>
         </select>
       </div>
 
@@ -58,16 +60,16 @@ export default function AdminCommissionsPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-slate-100">
             <tr>
-              {['Referrer', 'Referred user', 'Order amount', 'Commission', 'Rate', 'Status', 'Date', ''].map((h) => (
+              {['Referrer', 'Referred user', 'Order amount', 'Commission', 'Rate', 'Status', 'Unlocks at', 'Date', ''].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-400">Loading…</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-400">Loading…</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-400">No commissions found</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-400">No commissions found</td></tr>
             ) : items.map((c) => (
               <tr key={c.id} className="hover:bg-slate-50/60">
                 <td className="px-4 py-3 font-medium text-slate-900">{c.referrerUsername}</td>
@@ -76,13 +78,19 @@ export default function AdminCommissionsPage() {
                 <td className="px-4 py-3 font-semibold text-slate-900">¥{c.commissionAmount.toFixed(2)}</td>
                 <td className="px-4 py-3 text-slate-500">{Math.round(c.commissionRate * 100)}%</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${c.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    c.status === 'paid'      ? 'bg-emerald-100 text-emerald-800' :
+                    c.status === 'available' ? 'bg-blue-100 text-blue-800' :
+                    c.status === 'pending'   ? 'bg-amber-100 text-amber-800' :
+                    'bg-slate-100 text-slate-500'
+                  }`}>
                     {c.status}
                   </span>
                 </td>
+                <td className="px-4 py-3 text-slate-400 text-xs">{c.status === 'pending' && c.unlocksAt ? formatDate(c.unlocksAt) : '—'}</td>
                 <td className="px-4 py-3 text-slate-400">{formatDate(c.createdAt)}</td>
                 <td className="px-4 py-3">
-                  {c.status === 'pending' && (
+                  {(c.status === 'pending' || c.status === 'available') && (
                     <button
                       onClick={() => markPaid(c.id)}
                       disabled={updating === c.id}

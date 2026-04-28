@@ -29,6 +29,7 @@ function CheckoutContent() {
   const [promoCode, setPromoCode] = useState(initialPromoCode);
   const [quote, setQuote] = useState<PricingQuote | null>(null);
   const selectedTierName = selectedTier?.id === 'pro' ? pricing('proName') : pricing('freeName');
+  const hasReferral = Boolean(user?.hasReferrer) || Boolean(promoCode) || Boolean(quote?.referralDiscountAmount);
 
   useEffect(() => {
     let mounted = true;
@@ -165,22 +166,32 @@ function CheckoutContent() {
               <span className="text-gray-600">{pricing('durationLabel')}</span>
               <span className="font-medium">{selectedDuration.months} {pricing('months')}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">{pricing('total')}</span>
-              <span className="text-xl font-bold text-blue-600">
-                {formatPrice(quote?.finalAmount ?? selectedDuration.salePrice)}
-              </span>
-            </div>
+            {!hasReferral && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{pricing('total')}</span>
+                <span className="text-xl font-bold text-blue-600">
+                  {formatPrice(quote?.finalAmount ?? selectedDuration.salePrice)}
+                </span>
+              </div>
+            )}
             {quote && quote.originalAmount > quote.finalAmount && (
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">{pricing('originalPriceLabel')}</span>
-                <span className="font-medium text-gray-400 line-through">{formatPrice(quote.originalAmount)}</span>
+                <span className="font-medium text-gray-400">{formatPrice(quote.originalAmount)}</span>
               </div>
             )}
             {quote && quote.discountAmount > 0 && (
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">{pricing('discountLabel')}</span>
                 <span className="font-medium text-green-600">-{formatPrice(quote.discountAmount)}</span>
+              </div>
+            )}
+            {hasReferral && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{pricing('referralPriceLabel')}</span>
+                <span className="text-xl font-bold text-blue-600">
+                  {formatPrice(quote?.finalAmount ?? selectedDuration.referralPrice ?? selectedDuration.salePrice)}
+                </span>
               </div>
             )}
             <div className="flex justify-between items-center">

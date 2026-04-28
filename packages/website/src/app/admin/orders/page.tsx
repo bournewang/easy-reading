@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { adminListOrders, type AdminOrder } from '@/lib/api/admin';
+import { adminListOrders, adminRefundOrder, type AdminOrder } from '@/lib/api/admin';
 
 const PAGE_SIZE = 20;
-const STATUS_OPTIONS = ['', 'success', 'pending', 'failed', 'expired'];
+const STATUS_OPTIONS = ['', 'success', 'pending', 'failed', 'expired', 'refunded'];
+const REFUND_WINDOW_DAYS = 7;
 
 function formatDate(s: string | null) {
   if (!s) return '-';
@@ -12,10 +13,15 @@ function formatDate(s: string | null) {
   return isNaN(d.getTime()) ? s : d.toLocaleDateString();
 }
 
+function isRefundEligible(order: AdminOrder): boolean {
+  return order.status === 'success' && !order.refundedAt;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const cls =
-    status === 'success' ? 'bg-emerald-100 text-emerald-800' :
-    status === 'pending' ? 'bg-amber-100 text-amber-800' :
+    status === 'success'  ? 'bg-emerald-100 text-emerald-800' :
+    status === 'refunded' ? 'bg-purple-100 text-purple-800' :
+    status === 'pending'  ? 'bg-amber-100 text-amber-800' :
     'bg-rose-100 text-rose-700';
   return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>{status}</span>;
 }
@@ -27,6 +33,7 @@ export default function AdminOrdersPage() {
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refunding, setRefunding] = useState<string | null>(null);
 
   const load = (p: number, s: string) => {
     setLoading(true);
@@ -36,6 +43,19 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => { load(page, statusFilter); }, [page, statusFilter]);
+
+  const handleRefund = async (orderNo: string) => {
+    if (!confirm(`Refund order ${orderNo}? This will cancel the subscription and any pending commission.`)) return;
+    setRefunding(orderNo);
+    try {
+      await adminRefundOrder(orderNo);
+      setItems((prev) => prev.map((o) => o.orderNo === orderNo ? { ...o, status: 'refunded', refundedAt: new Date().toISOString() } : o));
+    } catch (e: unknown) {
+      alert((e as Error).message || 'Refund failed');
+    } finally {
+      setRefunding(null);
+    }
+  };
 
   return (
     <div>
@@ -54,16 +74,16 @@ export default function AdminOrdersPage() {
         <table className="w-full text-sm">
           <thead className="border-b border-slate-100">
             <tr>
-              {['Order No', 'User', 'Plan', 'Amount', 'Method', 'Promo', 'Status', 'Date'].map((h) => (
+              {['Order No', 'User', 'Plan', 'Amount', 'Method', 'Promo', 'Status', 'Date', ''].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-slate-400">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-400">Loading…</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-400">Loading…</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-400">No orders found</td></tr>
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-400">No orders found</td></tr>
             ) : items.map((o) => (
               <tr key={o.id} className="hover:bg-slate-50/60">
                 <td className="px-4 py-3 font-mono text-xs text-slate-600">{o.orderNo}</td>
@@ -74,6 +94,17 @@ export default function AdminOrdersPage() {
                 <td className="px-4 py-3 text-slate-400">{o.promoCode || '-'}</td>
                 <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                 <td className="px-4 py-3 text-slate-400">{formatDate(o.createdAt)}</td>
+                <td className="px-4 py-3">
+                  {isRefundEligible(o) && (
+                    <button
+                      onClick={() => handleRefund(o.orderNo)}
+                      disabled={refunding === o.orderNo}
+                      className="rounded-full bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                    >
+                      {refunding === o.orderNo ? '…' : 'Refund'}
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

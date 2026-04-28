@@ -187,16 +187,40 @@ class PaymentService:
     @staticmethod
     def expand_duration_option(tier_config: dict[str, Any], option: dict[str, Any]) -> dict[str, Any]:
         months = int(option["months"])
-        original_price_per_month = float(tier_config.get("originalPricePerMonth") or 0.0)
-        sale_price_per_month = float(option["salePricePerMonth"])
+        original_price_per_month = float(
+            tier_config.get("originPricePerMonth", tier_config.get("originalPricePerMonth")) or 0.0
+        )
         original_price = round(original_price_per_month * months, 2)
-        sale_price = round(sale_price_per_month * months, 2)
+
+        if option.get("salePricePerMonth") is not None:
+            sale_price_per_month = float(option["salePricePerMonth"])
+            sale_price = round(sale_price_per_month * months, 2)
+            referral_price = sale_price
+            direct_discount_rate = (
+                round(sale_price_per_month / original_price_per_month, 4)
+                if original_price_per_month > 0
+                else 1.0
+            )
+            referral_discount_rate = direct_discount_rate
+            commission_rate = float(option.get("commissionRate") or 0.0)
+        else:
+            direct_discount_rate = float(option.get("directDiscountRate") or 1.0)
+            referral_discount_rate = float(option.get("referralDiscountRate") or direct_discount_rate)
+            commission_rate = float(option.get("commissionRate") or 0.0)
+            sale_price = round(original_price * direct_discount_rate, 2)
+            referral_price = round(original_price * referral_discount_rate, 2)
+            sale_price_per_month = round(sale_price / months, 2) if months else 0.0
+
         return {
             "months": months,
             "originalPricePerMonth": original_price_per_month,
             "salePricePerMonth": sale_price_per_month,
             "originalPrice": original_price,
             "salePrice": sale_price,
+            "referralPrice": referral_price,
+            "directDiscountRate": direct_discount_rate,
+            "referralDiscountRate": referral_discount_rate,
+            "commissionRate": commission_rate,
             "savings": PaymentService.calculate_savings_percentage(original_price, sale_price),
             "default": bool(option.get("default", False)),
         }
@@ -236,7 +260,9 @@ class PaymentService:
             )
             return row_to_dict(cursor.fetchone())
 
-    def has_successful_order(self, user_id: int) -> bool:
+    def has_successful_order(self, user_id: int | None) -> bool:
+        if user_id is None:
+            return False
         with db_cursor() as cursor:
             cursor.execute(
                 """
@@ -249,10 +275,18 @@ class PaymentService:
             row = row_to_dict(cursor.fetchone()) or {}
         return int(row.get("count", 0)) > 0
 
-    def validate_coupon(self, promo_code: str | None, *, user_id: int, sale_amount: float) -> tuple[dict | None, float]:
+    def validate_coupon(
+        self,
+        promo_code: str | None,
+        *,
+        user_id: int | None,
+        sale_amount: float,
+    ) -> tuple[dict | None, float]:
         coupon = self.get_coupon(promo_code)
         if not coupon:
             return None, 0.0
+        if user_id is None:
+            raise ValueError("Please sign in to use coupon codes.")
         if not coupon.get("active"):
             raise ValueError("This coupon code is not active.")
 
@@ -300,8 +334,54 @@ class PaymentService:
 
         return coupon, round(max(coupon_discount, 0.0), 2)
 
-    def resolve_promo_code(self, promo_code: str | None, *, user_id: int, sale_amount: float) -> dict[str, Any]:
+    def resolve_promo_code(
+        self,
+        promo_code: str | None,
+        *,
+        user_id: int | None,
+        sale_amount: float,
+        referral_discount_amount: float = 0.0,
+    ) -> dict[str, Any]:
         normalized = self._normalize_promo_code(promo_code)
+        if normalized:
+            coupon = self.get_coupon(normalized)
+            if coupon:
+                coupon, coupon_discount_amount = self.validate_coupon(
+                    normalized,
+                    user_id=user_id,
+                    sale_amount=sale_amount,
+                )
+                return {
+                    "promoCode": normalized,
+                    "coupon": coupon,
+                    "couponDiscountAmount": round(coupon_discount_amount, 2),
+                    "referrer": None,
+                    "referralDiscountAmount": 0.0,
+                }
+
+        referrer = self.get_user_referrer(user_id) if user_id is not None else None
+        if not referrer and normalized:
+            referrer = self.get_user_by_referral_code(normalized)
+
+        if referrer:
+            if user_id is not None and referrer["id"] == user_id:
+                raise ValueError("You cannot use your own promo code.")
+            if user_id is not None and self.has_successful_order(user_id):
+                raise ValueError("Referral promo codes are only available for a first purchase.")
+            if referral_discount_amount <= 0:
+                referral_rate = float(getattr(settings, "referral_discount_rate", 0.0) or 0.0)
+                referral_cap = getattr(settings, "referral_discount_cap", None)
+                referral_discount_amount = round(sale_amount * referral_rate, 2)
+                if referral_cap is not None:
+                    referral_discount_amount = min(referral_discount_amount, float(referral_cap))
+            return {
+                "promoCode": referrer.get("referral_code") or normalized,
+                "coupon": None,
+                "couponDiscountAmount": 0.0,
+                "referrer": referrer,
+                "referralDiscountAmount": round(max(referral_discount_amount, 0.0), 2),
+            }
+
         if not normalized:
             return {
                 "promoCode": None,
@@ -311,42 +391,12 @@ class PaymentService:
                 "referralDiscountAmount": 0.0,
             }
 
-        coupon = self.get_coupon(normalized)
-        if coupon:
-            coupon, coupon_discount_amount = self.validate_coupon(
-                normalized,
-                user_id=user_id,
-                sale_amount=sale_amount,
-            )
-            return {
-                "promoCode": normalized,
-                "coupon": coupon,
-                "couponDiscountAmount": round(coupon_discount_amount, 2),
-                "referrer": None,
-                "referralDiscountAmount": 0.0,
-            }
-
-        referrer = self.get_user_by_referral_code(normalized)
-        if referrer:
-            if referrer["id"] == user_id:
-                raise ValueError("You cannot use your own promo code.")
-            if self.has_successful_order(user_id):
-                raise ValueError("Referral promo codes are only available for a first purchase.")
-            referral_discount_amount = round(sale_amount * settings.referral_discount_rate, 2)
-            return {
-                "promoCode": normalized,
-                "coupon": None,
-                "couponDiscountAmount": 0.0,
-                "referrer": referrer,
-                "referralDiscountAmount": min(referral_discount_amount, settings.referral_discount_cap),
-            }
-
         raise ValueError("This promo code is invalid.")
 
     def quote_pricing(
         self,
         *,
-        user_id: int,
+        user_id: int | None,
         tier: str,
         duration: int,
         promo_code: str | None = None,
@@ -354,19 +404,22 @@ class PaymentService:
         option = self.get_duration_option(tier, duration)
         original_amount = float(option["originalPrice"])
         sale_amount = float(option["salePrice"])
+        referral_price = float(option.get("referralPrice") or sale_amount)
+        per_duration_referral_discount = round(max(sale_amount - referral_price, 0.0), 2)
         base_discount_amount = round(max(original_amount - sale_amount, 0.0), 2)
 
-        resolved_promo = self.resolve_promo_code(promo_code, user_id=user_id, sale_amount=sale_amount)
+        resolved_promo = self.resolve_promo_code(
+            promo_code,
+            user_id=user_id,
+            sale_amount=sale_amount,
+            referral_discount_amount=per_duration_referral_discount,
+        )
         referrer = resolved_promo["referrer"]
         referral_discount_amount = float(resolved_promo["referralDiscountAmount"])
         coupon = resolved_promo["coupon"]
         coupon_discount_amount = float(resolved_promo["couponDiscountAmount"])
         final_amount = round(max(sale_amount - referral_discount_amount - coupon_discount_amount, 0.0), 2)
-        effective_commission_rate = (
-            float(referrer["commission_rate"])
-            if referrer and referrer.get("commission_rate") is not None
-            else settings.commission_rate
-        )
+        effective_commission_rate = float(option.get("commissionRate") or 0.0) if referrer else 0.0
         commission_amount = round(final_amount * effective_commission_rate, 2) if referrer else 0.0
 
         return {
@@ -398,7 +451,9 @@ class PaymentService:
             original_monthly_price = None
             sale_monthly_price = None
             if duration_options:
-                original_monthly_price = float(config.get("originalPricePerMonth") or 0.0)
+                original_monthly_price = float(
+                    config.get("originPricePerMonth", config.get("originalPricePerMonth")) or 0.0
+                )
                 sale_monthly_price = min(option["salePricePerMonth"] for option in duration_options)
             tiers.append(
                 {

@@ -15,17 +15,21 @@ DEFAULT_ENV_PATH = ROOT_DIR / ".env"
 DEFAULT_PRICING_TIERS = {
     "free": {
         "isPopular": False,
-        "originalPricePerMonth": 0.0,
+        "originPricePerMonth": 0.0,
         "durationOptions": [],
     },
     "pro": {
         "isPopular": True,
-        "originalPricePerMonth": 59.0,
+        # Base price per month (CNY). All other prices are derived from rates below.
+        "originPricePerMonth": 59.0,
         "durationOptions": [
-            {"months": 1, "salePricePerMonth": 39.0},
-            {"months": 3, "salePricePerMonth": 33.0, "default": True},
-            {"months": 6, "salePricePerMonth": 28.0},
-            {"months": 12, "salePricePerMonth": 24.0},
+            # directDiscountRate  : fraction of originPrice charged to direct (non-referral) users
+            # referralDiscountRate: fraction of originPrice charged to referral users
+            # commissionRate      : fraction of the actual paid amount paid as referrer commission
+            {"months": 1,  "directDiscountRate": 0.90, "referralDiscountRate": 0.80, "commissionRate": 0.30, "default": False},
+            {"months": 3,  "directDiscountRate": 0.85, "referralDiscountRate": 0.75, "commissionRate": 0.33, "default": True},
+            {"months": 6,  "directDiscountRate": 0.80, "referralDiscountRate": 0.70, "commissionRate": 0.36, "default": False},
+            {"months": 12, "directDiscountRate": 0.75, "referralDiscountRate": 0.65, "commissionRate": 0.40, "default": False},
         ],
     },
 }
@@ -101,9 +105,8 @@ class Settings:
     free_translation_daily_limit: int = int(os.getenv("FREE_TRANSLATION_DAILY_LIMIT", "20"))
     free_tts_daily_limit: int = int(os.getenv("FREE_TTS_DAILY_LIMIT", "10"))
     pricing_tiers: dict[str, Any] = field(default_factory=load_pricing_tiers)
-    referral_discount_rate: float = float(os.getenv("REFERRAL_DISCOUNT_RATE", "0.10"))
-    referral_discount_cap: float = float(os.getenv("REFERRAL_DISCOUNT_CAP", "50.0"))
-    commission_rate: float = float(os.getenv("COMMISSION_RATE", "0.15"))
+    refund_window_days: int = int(os.getenv("REFUND_WINDOW_DAYS", "7"))
+    commission_lock_days: int = int(os.getenv("COMMISSION_LOCK_DAYS", "7"))
 
     smtp_host: str = os.getenv("SMTP_HOST", "")
     smtp_port: int = int(os.getenv("SMTP_PORT", "587"))

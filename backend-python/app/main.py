@@ -40,6 +40,7 @@ from .models import (
     PricingTierResponse,
     ReadingHistoryItemModel,
     ReadingHistorySyncRequest,
+    RefundRequest,
     RegisterRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
@@ -60,6 +61,8 @@ from .models import (
     TranslateRequest,
     TranslateResponse,
     UpdateProfileRequest,
+    UserOrderItem,
+    UserOrdersResponse,
     UserPayload,
     VocabBookSettingsRequest,
     VocabBookSettingsResponse,
@@ -172,6 +175,7 @@ def serialize_user(user: dict) -> UserPayload:
         email=user.get("email"),
         fullName=user.get("full_name"),
         referralCode=user.get("referral_code"),
+        hasReferrer=bool(user.get("referred_by_user_id")),
         isAdmin=bool(user.get("is_admin")),
         subscriptionTier=effective_tier,
         subscriptionExpires=subscription_expires,
@@ -214,9 +218,9 @@ def pricing_catalog() -> list[PricingTierResponse]:
 
 
 @app.post("/api/pricing/quote", response_model=PricingQuoteResponse)
-def pricing_quote(payload: PricingQuoteRequest, user: dict = Depends(require_user)) -> PricingQuoteResponse:
+def pricing_quote(payload: PricingQuoteRequest, user: dict | None = Depends(get_current_user)) -> PricingQuoteResponse:
     quote = payment_service.quote_pricing(
-        user_id=user["id"],
+        user_id=user["id"] if user else None,
         tier=payload.tier,
         duration=payload.duration,
         promo_code=payload.promoCode,
@@ -647,6 +651,29 @@ def referral_commissions(
     return ReferralCommissionsResponse(**result)
 
 
+@app.get("/api/orders", response_model=UserOrdersResponse)
+def user_orders(
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=50),
+    user: dict = Depends(require_user),
+) -> UserOrdersResponse:
+    result = payment_service.get_user_orders(user["id"], page=page, page_size=pageSize)
+    return UserOrdersResponse(**result)
+
+
+@app.post("/api/orders/{order_no}/refund")
+def request_refund(
+    order_no: str,
+    payload: RefundRequest,
+    user: dict = Depends(require_user),
+) -> dict:
+    try:
+        payment_service.process_refund(order_no, user_id=user["id"], is_admin=False)
+        return {"success": True}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/api/subscription/cancel", response_model=SubscriptionResponse)
 def cancel_subscription(user: dict = Depends(require_user)) -> SubscriptionResponse:
     try:
@@ -1045,12 +1072,25 @@ def admin_list_orders(
             duration=r["duration"],
             paymentMethod=r["payment_method"],
             promoCode=r.get("coupon_code") or r.get("referral_code"),
+            refundedAt=r.get("refunded_at"),
             createdAt=r.get("created_at"),
         )
         for r in rows
     ]
     total_pages = max(1, (total + pageSize - 1) // pageSize)
     return AdminOrdersResponse(items=items, page=page, pageSize=pageSize, total=total, totalPages=total_pages)
+
+
+@app.post("/api/admin/orders/{order_no}/refund")
+def admin_refund_order(
+    order_no: str,
+    _admin: dict = Depends(require_admin),
+) -> dict:
+    try:
+        payment_service.process_refund(order_no, is_admin=True)
+        return {"success": True}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/admin/commissions", response_model=AdminCommissionsResponse)
@@ -1095,6 +1135,7 @@ def admin_list_commissions(
             commissionAmount=float(r["commission_amount"]),
             commissionRate=float(r["commission_rate"]),
             status=r["status"],
+            unlocksAt=r.get("unlocks_at"),
             orderAmount=float(r["order_amount"]),
             createdAt=r.get("created_at"),
         )
@@ -1110,7 +1151,7 @@ def admin_update_commission(
     payload: AdminUpdateCommissionRequest,
     _admin: dict = Depends(require_admin),
 ) -> dict:
-    allowed = {"pending", "paid"}
+    allowed = {"pending", "available", "paid", "cancelled"}
     if payload.status not in allowed:
         raise HTTPException(status_code=400, detail=f"status must be one of {allowed}")
     now = utcnow_iso()

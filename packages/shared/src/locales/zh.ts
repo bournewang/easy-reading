@@ -248,6 +248,8 @@ export const zh = {
       durationLabel: "时长",
       userLabel: "用户",
       originalPriceLabel: "原价",
+      referralPriceLabel: "推广价",
+      salePriceLabel: "优惠价",
       discountLabel: "优惠",
       promoLabel: "优惠码",
       promoPlaceholder: "输入优惠码或推广码",

@@ -2,6 +2,7 @@ export interface DurationOption {
   months: number;
   originalPrice: number;
   salePrice: number;
+  referralPrice?: number;
   savings?: number;
   default?: boolean;
 }

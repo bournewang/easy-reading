@@ -19,6 +19,7 @@ interface User {
   email?: string | null;
   fullName?: string;
   referralCode?: string;
+  hasReferrer?: boolean;
   isAdmin?: boolean;
   subscriptionTier?: string;
   subscriptionExpires?: string;

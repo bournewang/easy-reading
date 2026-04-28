@@ -248,6 +248,8 @@ export const en = {
       durationLabel: "Duration",
       userLabel: "User",
       originalPriceLabel: "Original price",
+      referralPriceLabel: "Referral price",
+      salePriceLabel: "Sale price",
       discountLabel: "Discount",
       promoLabel: "Promo code",
       promoPlaceholder: "Enter promo code",

@@ -6,6 +6,7 @@ export interface ReferralSummary {
   totalReferrals: number;
   successfulReferrals: number;
   pendingCommission: number;
+  availableCommission: number;
   paidCommission: number;
   totalCommission: number;
 }
@@ -19,6 +20,7 @@ export interface ReferralCommissionItem {
   commissionRate: number;
   commissionAmount: number;
   status: string;
+  unlocksAt: string | null;
   orderTier: string | null;
   orderDuration: number | null;
   orderAmount: number;

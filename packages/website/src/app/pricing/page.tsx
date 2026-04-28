@@ -1,16 +1,16 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { calculateMonthlyPrice, type PricingTier, type DurationOption, formatPrice, getDefaultDurationOption, getPopularTier } from '@easy-reading/shared';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocaleContext } from '@easy-reading/shared/contexts/LocaleContext';
-import { fetchPricingCatalog } from '@/lib/api/pricing';
+import { fetchPricingCatalog, fetchPricingQuote, type PricingQuote } from '@/lib/api/pricing';
+import { getActiveReferralCode } from '@/utils/referral';
 
 function PricingPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { t } = useLocaleContext();
   const pricing = (key: string) => t(`website.pricingPage.${key}`);
   const common = (key: string) => t(`website.common.${key}`);
@@ -48,6 +48,24 @@ function PricingPageContent() {
   const [selectedDuration, setSelectedDuration] = useState<DurationOption | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // hasReferral: server-side flag wins (user.hasReferrer); localStorage is fallback for
+  // unauthenticated visitors who arrived via a referral link.
+  const hasReferral = Boolean(user?.hasReferrer) || Boolean(getActiveReferralCode());
+
+  // Pre-fill promo code with stored referral code (if any)
+  const [promoCode, setPromoCode] = useState<string>(() => getActiveReferralCode());
+
+  const [quote, setQuote] = useState<PricingQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const effectivePrice = (d: DurationOption) =>
+    hasReferral && d.referralPrice != null ? d.referralPrice : d.salePrice;
+
+  const showReferralPrice = (d: DurationOption) => hasReferral && d.referralPrice != null;
+  const hasActiveReferral = hasReferral || Boolean(quote?.referralDiscountAmount);
+
   useEffect(() => {
     let mounted = true;
 
@@ -80,6 +98,7 @@ function PricingPageContent() {
     setSelectedTier(tier);
     if (duration) {
       setSelectedDuration(duration);
+      console.log(duration)
     } else if (tier.durationOptions) {
       // If no duration is specified, select the default duration option
       const defaultDuration = getDefaultDurationOption(tier);
@@ -88,6 +107,41 @@ function PricingPageContent() {
       }
     }
   };
+
+  // Fetch a live quote whenever plan/duration/promo changes (debounced).
+  useEffect(() => {
+    if (!selectedTier || !selectedDuration || selectedTier.id === 'free') {
+      setQuote(null);
+      setQuoteError(null);
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setQuoteLoading(true);
+      setQuoteError(null);
+      try {
+        const q = await fetchPricingQuote({
+          tier: selectedTier.id,
+          duration: selectedDuration.months,
+          promoCode: promoCode || undefined,
+        });
+        console.log("fetched quote: ")
+        console.log(q)
+        setQuote(q);
+        if (q.promoCode && !promoCode) {
+          setPromoCode(q.promoCode);
+        }
+      } catch (e: unknown) {
+        const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+          || (e as Error).message || 'Invalid promo code';
+        setQuoteError(msg);
+        setQuote(null);
+      } finally {
+        setQuoteLoading(false);
+      }
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [selectedTier, selectedDuration, promoCode]);
 
   const getDisplayedDuration = (tier: PricingTier) => {
     if (selectedTier?.id === tier.id && selectedDuration) {
@@ -98,18 +152,15 @@ function PricingPageContent() {
 
   const handleProceedToCheckout = () => {
     if (selectedTier && selectedDuration && user?.id) {
-      const referralCode = searchParams.get('ref');
       const nextParams = new URLSearchParams({
         tier: selectedTier.id,
         duration: String(selectedDuration.months),
         userId: String(user.id),
       });
-      if (referralCode) {
-        nextParams.set('ref', referralCode);
-      }
+      const refCode = promoCode || getActiveReferralCode();
+      if (refCode) nextParams.set('ref', refCode);
       router.push(`/checkout?${nextParams.toString()}`);
     } else {
-      // If no user ID, redirect to login
       router.push('/login');
     }
   };
@@ -169,21 +220,31 @@ function PricingPageContent() {
                     displayedDuration.originalPrice,
                     displayedDuration.months,
                   );
-                  const saleMonthlyPrice = calculateMonthlyPrice(
-                    displayedDuration.salePrice,
-                    displayedDuration.months,
-                  );
+                  const activePrice = effectivePrice(displayedDuration);
+                  const activeMonthlyPrice = calculateMonthlyPrice(activePrice, displayedDuration.months);
 
                   return (
-                    <p className="mt-6">
-                      <span className="mr-2 text-lg text-gray-400 line-through">
-                        ¥{originalMonthlyPrice.toFixed(2)}
-                      </span>
-                      <span className="text-4xl font-bold text-gray-900">
-                        ¥{saleMonthlyPrice.toFixed(2)}
-                      </span>
-                      <span className="text-gray-600">{pricing('perMonth')}</span>
-                    </p>
+                    <>
+                      {hasActiveReferral ? (
+                        <p className="mt-4">
+                          <span className="mr-2 text-lg text-gray-400">&nbsp;</span>
+                          <span className="text-4xl font-bold text-gray-900">
+                            ¥{originalMonthlyPrice.toFixed(2)}
+                          </span>
+                          <span className="text-gray-600">{pricing('perMonth')}</span>
+                        </p>
+                      ) : (
+                        <p className="mt-4">
+                          <span className="mr-2 text-lg text-gray-400 line-through">
+                            ¥{originalMonthlyPrice.toFixed(2)}
+                          </span>
+                          <span className="text-4xl font-bold text-gray-900">
+                            ¥{activeMonthlyPrice.toFixed(2)}
+                          </span>
+                          <span className="text-gray-600">{pricing('perMonth')}</span>
+                        </p>
+                      )}
+                    </>
                   );
                 })()}
               </div>
@@ -207,10 +268,18 @@ function PricingPageContent() {
                         </span>
                         <div className="flex items-center gap-2">
                           <div className="text-right">
-                            <div className="font-semibold">{formatPrice(duration.salePrice)}</div>
-                            <div className="text-xs text-gray-400 line-through">{formatPrice(duration.originalPrice)}</div>
+                            <div className="font-semibold">
+                              {hasActiveReferral
+                                ? formatPrice(duration.originalPrice)
+                                : formatPrice(effectivePrice(duration))}
+                            </div>
+                            {/* {!showReferralPrice(duration) && ( */}
+                              <div className="text-xs text-gray-400 line-through">
+                                {hasActiveReferral ? "" : formatPrice(duration.originalPrice)}
+                              </div>
+                            {/* )} */}
                           </div>
-                          {duration.savings && (
+                          {duration.savings && !showReferralPrice(duration) && (
                             <span className="text-green-600 text-xs">
                               {common('save')} {duration.savings}%
                             </span>
@@ -250,23 +319,84 @@ function PricingPageContent() {
         </div>
 
         {showCheckoutBar && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-            <div className="max-w-7xl mx-auto flex justify-between items-center">
-              <div>
-                <p className="text-sm text-gray-600">
-                  {pricing('selectedPlan')}: {getTierContent(selectedTier).name} - {selectedDuration.months}{' '}
-                  {selectedDuration.months === 1 ? pricing('month') : pricing('months')}
-                </p>
-                <p className="text-lg font-semibold text-gray-900">
-                  {pricing('total')}: {formatPrice(selectedDuration.salePrice)}
-                </p>
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+            <div className="max-w-3xl mx-auto px-4 py-4">
+              {/* Plan label  */}
+              <p className="text-xs text-gray-400 mb-3">
+                {getTierContent(selectedTier).name} &middot; {selectedDuration.months}{' '}
+                {selectedDuration.months === 1 ? pricing('month') : pricing('months')}
+              </p>
+
+              <div className="flex flex-wrap items-end gap-4">
+                {/* Promo code input */}
+                <div className="flex-1 min-w-48">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    {pricing('promoLabel')}
+                  </label>
+                  <input
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value.trim().toUpperCase());
+                      setQuoteError(null);
+                    }}
+                    placeholder={pricing('promoPlaceholder')}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                  />
+                  {quoteError && (
+                    <p className="mt-1 text-xs text-red-500">{quoteError}</p>
+                  )}
+                </div>
+
+                {/* Price summary */}
+                <div className="flex-1 min-w-0">
+                  {quoteLoading && <p className="text-sm text-gray-400 pb-2">Calculating…</p>}
+                  {hasActiveReferral ? (quote && 
+                    <div className="space-y-0.5 text-sm pb-1">
+                      {quote.originalAmount > quote.finalAmount && (
+                        <div className="flex justify-between text-gray-400">
+                          <span>{pricing('originalPriceLabel')}</span>
+                          <span className="">{formatPrice(quote.originalAmount)}</span>
+                        </div>
+                      )}
+                      {quote.discountAmount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>{pricing('discountLabel')}</span>
+                          <span>{formatPrice(quote.discountAmount)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-base text-blue-600">
+                        <span>{quote.referralDiscountAmount > 0 ? pricing('referralPriceLabel') : pricing('salePriceLabel')}</span>
+                        <span>{formatPrice(quote.finalAmount)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                      <div className="space-y-0.5 text-sm pb-1">
+                        <div className="flex justify-between text-gray-400">
+                          <span>{pricing('originalPriceLabel')}</span>
+                          <span className="line-through">{formatPrice(selectedDuration['originalPrice'])}</span>
+                        </div>
+                      
+                        {/* <div className="flex justify-between text-green-600">
+                          <span>{pricing('discountLabel')}</span>
+                          <span>{formatPrice(selectedDuration['discount'])}</span>
+                        </div> */}
+                      
+                      <div className="flex justify-between font-bold text-base text-blue-600">
+                        <span>{pricing('salePriceLabel')}</span>
+                        <span>{formatPrice(selectedDuration['salePrice'])}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* CTA */}
+                <button
+                  onClick={handleProceedToCheckout}
+                  className="shrink-0 bg-blue-500 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-600"
+                >
+                  {pricing('proceedToCheckout')}
+                </button>
               </div>
-              <button
-                onClick={handleProceedToCheckout}
-                className="bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-600"
-              >
-                {pricing('proceedToCheckout')}
-              </button>
             </div>
           </div>
         )}

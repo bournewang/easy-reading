@@ -95,4 +95,35 @@ export function generateWxPayParameters(prepayId: string, appId: string): Record
     signType: 'RSA',
     paySign: 'mock_signature', // This would be a real signature in production
   };
-} 
+}
+
+export interface UserOrder {
+  id: number;
+  orderNo: string;
+  tier: string;
+  duration: number;
+  amount: number;
+  originalAmount: number;
+  status: string;
+  paymentMethod: string;
+  promoCode: string | null;
+  refundedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface UserOrdersResponse {
+  items: UserOrder[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export async function getUserOrders(page = 1, pageSize = 20): Promise<UserOrdersResponse> {
+  const res = await api.get('/orders', { params: { page, pageSize } });
+  return res.data;
+}
+
+export async function requestRefund(orderNo: string): Promise<void> {
+  await api.post(`/orders/${orderNo}/refund`, {});
+}
