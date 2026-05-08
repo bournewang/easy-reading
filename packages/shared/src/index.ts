@@ -4,7 +4,7 @@ export { default as ToastViewport } from './components/ToastViewport';
 export { default as WordList } from './components/WordList';
 export { default as UrlReader } from './pages/UrlReader';
 export { SharedServicesProvider, useSharedServices } from './contexts/SharedServicesContext';
-export { defaultServices } from './services/defaultServices';
+export { dashScopeTts, defaultServices, edgeTts } from './services/defaultServices';
 export * from './types';
 export * from './types/services';
 export * from './utils/helper';

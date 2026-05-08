@@ -79,6 +79,7 @@ from .services.dictionary import dictionary_service
 from .services.dictionary import DictionaryFetchError
 from .services.news import NewsSyncError, news_service
 from .services.payment import payment_service
+from .services.edge_tts import edge_tts_service
 from .services.tts import TTSError, tts_service
 from .services.translation import TranslationError, translation_service
 from .services.user_data import user_data_service
@@ -318,7 +319,11 @@ def consume_tts_usage(request: Request, amount: int = Query(default=1, ge=1, le=
 @app.post("/api/tts/synthesize", response_model=TtsSynthesizeResponse)
 def synthesize_tts(payload: TtsSynthesizeRequest) -> TtsSynthesizeResponse:
     try:
-        result = tts_service.synthesize(payload.text)
+        provider = payload.provider.strip().lower()
+        if provider == "dashscope":
+            result = tts_service.synthesize(payload.text)
+        else:
+            result = edge_tts_service.synthesize(payload.text)
         return TtsSynthesizeResponse(**result)
     except TTSError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc

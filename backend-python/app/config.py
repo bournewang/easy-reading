@@ -128,6 +128,9 @@ class Settings:
     tts_model: str = os.getenv("TTS_MODEL", "qwen3-tts-flash")
     tts_voice: str = os.getenv("TTS_VOICE", "Cherry")
     tts_language_type: str = os.getenv("TTS_LANGUAGE_TYPE", "auto")
+    edge_tts_voice: str = os.getenv("EDGE_TTS_VOICE", "en-US-EmmaMultilingualNeural")
+    edge_tts_rate: str = os.getenv("EDGE_TTS_RATE", "+0%")
+    edge_tts_volume: str = os.getenv("EDGE_TTS_VOLUME", "+0%")
     dictionary_api_base_url: str = os.getenv(
         "DICTIONARY_API_BASE_URL", "https://api.dictionaryapi.dev/api/v2/entries/en"
     )

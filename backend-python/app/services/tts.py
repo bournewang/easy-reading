@@ -59,6 +59,7 @@ class TTSService:
             "requestId": response.request_id,
             "voice": settings.tts_voice,
             "model": settings.tts_model,
+            "provider": "dashscope",
         }
 
 

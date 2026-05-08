@@ -18,6 +18,7 @@ class TranslateResponse(BaseModel):
 
 class TtsSynthesizeRequest(BaseModel):
     text: str = Field(min_length=1)
+    provider: str = Field(default="edge")
 
 
 class TtsSynthesizeResponse(BaseModel):
@@ -25,6 +26,7 @@ class TtsSynthesizeResponse(BaseModel):
     requestId: str | None = None
     voice: str | None = None
     model: str | None = None
+    provider: str | None = None
 
 
 class RegisterRequest(BaseModel):

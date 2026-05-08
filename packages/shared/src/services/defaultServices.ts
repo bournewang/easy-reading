@@ -572,7 +572,54 @@ const playRemoteAudio = async (audioUrl: string) => {
   await audio.play();
 };
 
-const tts: TTSService = {
+const consumeTtsUsage = async (token: string | null, entitlements: StoredEntitlements | null) => {
+  const shouldConsumeLimitedTts = !token || entitlements?.hasUnlimitedTextToSpeech !== true;
+  if (!shouldConsumeLimitedTts) {
+    return;
+  }
+
+  const anonymousId = token ? null : getOrCreateAnonymousId();
+  try {
+    await axios.post(
+      `${getApiBaseUrl()}/usage/tts`,
+      null,
+      {
+        headers: token
+          ? { Authorization: `Bearer ${token}` }
+          : anonymousId
+            ? { 'X-Anonymous-Id': anonymousId }
+            : undefined,
+      },
+    );
+  } catch (error) {
+    throw new Error(extractApiErrorMessage(error, 'Text to speech failed.'));
+  }
+};
+
+const synthesizeWithProvider = async (
+  text: string,
+  provider: 'edge' | 'dashscope',
+  token: string | null,
+) => {
+  const response = await axios.post<{ audioUrl: string }>(
+    `${getApiBaseUrl()}/tts/synthesize`,
+    { text, provider },
+    {
+      headers: token
+        ? { Authorization: `Bearer ${token}` }
+        : undefined,
+    },
+  );
+
+  const audioUrl = response.data.audioUrl;
+  if (!audioUrl) {
+    throw new Error('Text to speech response did not include audio.');
+  }
+
+  await playRemoteAudio(audioUrl);
+};
+
+const createTtsService = (provider: 'edge' | 'dashscope'): TTSService => ({
   async speak(text: string): Promise<void> {
     const normalizedText = text.trim();
     if (!normalizedText) {
@@ -585,43 +632,10 @@ const tts: TTSService = {
     }
 
     const token = getStoredAuthToken();
-    const shouldConsumeLimitedTts = !token || entitlements?.hasUnlimitedTextToSpeech !== true;
-    if (shouldConsumeLimitedTts) {
-      const anonymousId = token ? null : getOrCreateAnonymousId();
-      try {
-        await axios.post(
-          `${getApiBaseUrl()}/usage/tts`,
-          null,
-          {
-            headers: token
-              ? { Authorization: `Bearer ${token}` }
-              : anonymousId
-                ? { 'X-Anonymous-Id': anonymousId }
-                : undefined,
-          },
-        );
-      } catch (error) {
-        throw new Error(extractApiErrorMessage(error, 'Text to speech failed.'));
-      }
-    }
+    await consumeTtsUsage(token, entitlements);
 
     try {
-      const response = await axios.post<{ audioUrl: string }>(
-        `${getApiBaseUrl()}/tts/synthesize`,
-        { text: normalizedText },
-        {
-          headers: token
-            ? { Authorization: `Bearer ${token}` }
-            : undefined,
-        },
-      );
-
-      const audioUrl = response.data.audioUrl;
-      if (!audioUrl) {
-        throw new Error('Text to speech response did not include audio.');
-      }
-
-      await playRemoteAudio(audioUrl);
+      await synthesizeWithProvider(normalizedText, provider, token);
     } catch (error) {
       if (!hasWindow || !('speechSynthesis' in window)) {
         throw new Error(extractApiErrorMessage(error, 'Text to speech failed.'));
@@ -630,7 +644,11 @@ const tts: TTSService = {
       await browserSpeechFallback(normalizedText);
     }
   },
-};
+});
+
+export const dashScopeTts = createTtsService('dashscope');
+export const edgeTts = createTtsService('edge');
+const tts = edgeTts;
 
 const chat: ChatService = {
   async streamChat(payload: Record<string, unknown>): Promise<Response> {

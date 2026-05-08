@@ -182,7 +182,7 @@ export function InteractiveText({
         const state = sentenceStates[index] || { translation: '', speaking: false, translating: false };
         
         return (
-            <div key={index} className="group mb-4 flex items-start gap-3 last:mb-0">
+            <div key={index} className="group mb-2 flex items-start gap-3 last:mb-0">
                 <div className="min-w-0 flex-1">
                     <div className="prose prose-sm max-w-none leading-relaxed text-slate-800">
                         {splitTextIntoWords(sentence)}
@@ -195,8 +195,8 @@ export function InteractiveText({
                     )}
                 </div>
 
-                <div className="flex w-[68px] shrink-0 justify-end">
-                    <div className="flex flex-row gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="flex w-9 shrink-0 justify-end self-start">
+                    <div className="flex flex-col gap-1 opacity-01 transition-opacity1 group-hover:opacity-100">
                         <button
                             onClick={() => handleSpeak(index, sentence)}
                             className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm transition-all duration-200 hover:bg-gray-50 hover:text-gray-800"
@@ -223,7 +223,7 @@ export function InteractiveText({
     };
 
     return (
-        <div ref={elementRef} className="bg-white p-1 rounded-lg1 shadow-sm1">
+        <div ref={elementRef} className="bg-white p-1">
             {isLoadingSentences ? (
                 <div className="flex items-center justify-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-blue-600"></div>
