@@ -1,8 +1,15 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocaleContext } from '../contexts/LocaleContext';
 import type { VocabularyBookWordDetails } from '../types/vocabularyBook';
+import {
+  getStoredPreferredPhonetic,
+  playYoudaoAudio,
+  setStoredPreferredPhonetic,
+  type YoudaoAccent,
+} from '../utils/helper';
+import { DefaultSpeechSwitch, getSpeechAccentLabel, getSpeechAccentTitle } from './Tips';
 
 interface VocabularyBookPanelProps {
   selectedWord?: string | null;
@@ -11,25 +18,20 @@ interface VocabularyBookPanelProps {
 
 export default function VocabularyBookPanel({ selectedWord, details }: VocabularyBookPanelProps) {
   const { locale } = useLocaleContext();
+  const [preferredPhonetic, setPreferredPhonetic] = useState<YoudaoAccent>(() => getStoredPreferredPhonetic());
   const lastAutoPlayedKeyRef = useRef<string | null>(null);
   const sfDisplay = '"SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
   const sfText = '"SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
 
-  const playYoudaoAudio = useCallback((speech: string | undefined, fallbackWord: string) => {
-    const rawSpeech = (speech || '').trim();
-    const rawFallbackWord = fallbackWord.trim();
-    const payload = rawSpeech || rawFallbackWord;
-    if (!payload) {
-      return;
-    }
-
-    const url = rawSpeech
-      ? `https://dict.youdao.com/dictvoice?audio=${rawSpeech}`
-      : `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(rawFallbackWord)}`;
-    const audio = new Audio(url);
-    void audio.play().catch((error) => {
+  const handlePlayYoudaoAudio = useCallback((word: string, accent: YoudaoAccent) => {
+    void playYoudaoAudio(word, accent).catch((error: unknown) => {
       console.error('Failed to play vocabulary audio:', error);
     });
+  }, []);
+
+  const handlePreferredPhoneticChange = useCallback((accent: YoudaoAccent) => {
+    setPreferredPhonetic(accent);
+    setStoredPreferredPhonetic(accent);
   }, []);
 
   useEffect(() => {
@@ -44,20 +46,34 @@ export default function VocabularyBookPanel({ selectedWord, details }: Vocabular
       return;
     }
 
-    // Auto-play US speech first; if missing, use UK speech.
-    playYoudaoAudio(first.usSpeech || first.ukSpeech, first.headWord);
+    handlePlayYoudaoAudio(first.headWord, preferredPhonetic);
     lastAutoPlayedKeyRef.current = autoPlayKey;
-  }, [details, playYoudaoAudio, selectedWord]);
+  }, [details, handlePlayYoudaoAudio, preferredPhonetic, selectedWord]);
 
   const hasDetails = details.length > 0;
 
   return (
     <>
       <div
-        className="sticky top-0 z-10 border-b border-black/6 bg-white py-3 text-center text-[12px] font-semibold uppercase text-black/56"
-        style={{ fontFamily: sfText, letterSpacing: '-0.12px', lineHeight: '1.33' }}
+        className="sticky top-0 z-10 border-b border-black/6 bg-white px-3 py-3"
+        style={{ fontFamily: sfText }}
       >
-        {locale === 'zh' ? '单词释义' : 'Vocabulary Details'}
+        <div className="relative flex items-center justify-center">
+          <div
+            className="text-center text-[12px] font-semibold uppercase text-black/56"
+            style={{ letterSpacing: '-0.12px', lineHeight: '1.33' }}
+          >
+            {locale === 'zh' ? '单词释义' : 'Vocabulary Details'}
+          </div>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2">
+            <DefaultSpeechSwitch
+              preferredPhonetic={preferredPhonetic}
+              onChange={handlePreferredPhoneticChange}
+              locale={locale}
+              textClassName="text-[10px] font-semibold uppercase text-black/40"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="bg1-[#f5f5f7] p-2 xl:h-full xl:overflow-y-auto">
@@ -101,38 +117,43 @@ export default function VocabularyBookPanel({ selectedWord, details }: Vocabular
                   >
                     {item.bookTitle}
                   </p>
-                  <span
+                  {/* <span
                     className="rounded-full border border-black/10 bg-[#fafafc] px-2 py-0.5 text-[10px] font-semibold uppercase text-black/52"
                     style={{ fontFamily: sfText, letterSpacing: '-0.08px', lineHeight: '1.47' }}
                   >
                     {item.bookId.replace(/\.json$/i, '')}
-                  </span>
+                  </span> */}
                 </div>
                 <p
                   className="mt-1 text-[12px] text-black/48"
                   style={{ fontFamily: sfText, letterSpacing: '-0.12px', lineHeight: '1.33' }}
                 >
-                  {[item.ukPhone ? `UK ${item.ukPhone}` : '', item.usPhone ? `US ${item.usPhone}` : '']
+                  {[
+                    item.ukPhone ? `${getSpeechAccentLabel(locale, 'uk')} ${item.ukPhone}` : '',
+                    item.usPhone ? `${getSpeechAccentLabel(locale, 'us')} ${item.usPhone}` : '',
+                  ]
                     .filter(Boolean)
-                    .join('  ')}
+                    .join('\n')}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => playYoudaoAudio(item.ukSpeech, item.headWord)}
-                  className="rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1.5 text-[14px] font-normal text-[#0066cc] transition-colors hover:underline"
+                  onClick={() => handlePlayYoudaoAudio(item.headWord, 'uk')}
+                  className="inline-flex items-center gap-1 rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1.5 text-[14px] font-normal text-[#0066cc] transition-colors hover:underline"
                   style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
-                  title={locale === 'zh' ? '英式发音' : 'British pronunciation'}
+                  title={getSpeechAccentTitle(locale, 'uk')}
                 >
-                  UK
+                  <span aria-hidden="true">🔊</span>
+                  <span>{getSpeechAccentLabel(locale, 'uk')}</span>
                 </button>
                 <button
-                  onClick={() => playYoudaoAudio(item.usSpeech, item.headWord)}
-                  className="rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1.5 text-[14px] font-normal text-[#0066cc] transition-colors hover:underline"
+                  onClick={() => handlePlayYoudaoAudio(item.headWord, 'us')}
+                  className="inline-flex items-center gap-1 rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1.5 text-[14px] font-normal text-[#0066cc] transition-colors hover:underline"
                   style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
-                  title={locale === 'zh' ? '美式发音' : 'US pronunciation'}
+                  title={getSpeechAccentTitle(locale, 'us')}
                 >
-                  US
+                  <span aria-hidden="true">🔊</span>
+                  <span>{getSpeechAccentLabel(locale, 'us')}</span>
                 </button>
               </div>
             </div>

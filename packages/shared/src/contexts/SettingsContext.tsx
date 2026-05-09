@@ -1,18 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import type { Settings } from '../types';
-
-const defaultSettings: Settings = {
-  fontSize: 16,
-  lineHeight: 1.5,
-  fontFamily: 'system-ui',
-  autoTranslate: false,
-  translationLanguage: 'zh',
-  theme: 'light',
-  voiceType: 'default',
-  speechRate: 1,
-  autoPronounce: false
-};
+import { defaultSettings } from '../types/settings';
 
 export const SettingsContext = createContext<{
   settings: Settings;
@@ -21,8 +10,8 @@ export const SettingsContext = createContext<{
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<Settings>(() => {
-    const stored = storage.get<Settings | null>('settings', null);
-    return stored || defaultSettings;
+    const stored = storage.get<Partial<Settings> | null>('settings', null);
+    return { ...defaultSettings, ...(stored || {}) };
   });
 
   useEffect(() => {

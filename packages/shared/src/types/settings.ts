@@ -8,6 +8,7 @@ export interface Settings {
   voiceType: string;
   speechRate: number;
   autoPronounce: boolean;
+  preferredPhonetic: 'uk' | 'us';
 }
 
 export const defaultSettings: Settings = {
@@ -19,5 +20,6 @@ export const defaultSettings: Settings = {
   theme: 'light',
   voiceType: 'en-US',
   speechRate: 1,
-  autoPronounce: false
+  autoPronounce: false,
+  preferredPhonetic: 'us'
 };

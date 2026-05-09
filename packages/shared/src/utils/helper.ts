@@ -1,5 +1,10 @@
 // import axios, { AxiosRequestConfig } from 'axios';
 import type { Article, Paragraph } from '../types';
+import type { Settings } from '../types/settings';
+import { defaultSettings } from '../types/settings';
+import { storage } from './storage';
+
+const SETTINGS_STORAGE_KEY = 'settings';
 
 export function fetchArticleElement(): HTMLElement | null {
     // Combine similar searches into a single function
@@ -204,4 +209,55 @@ export function getQueryParams(): Record<string, string> {
         result[key] = value;
     }
     return result;
+}
+
+export type YoudaoAccent = 'uk' | 'us';
+
+let currentYoudaoAudio: HTMLAudioElement | null = null;
+
+export function getStoredSettings(): Settings {
+    const stored = storage.get<Partial<Settings> | null>(SETTINGS_STORAGE_KEY, null);
+    return {
+        ...defaultSettings,
+        ...(stored || {})
+    };
+}
+
+export function getStoredPreferredPhonetic(): YoudaoAccent {
+    return getStoredSettings().preferredPhonetic;
+}
+
+export function setStoredPreferredPhonetic(preferredPhonetic: YoudaoAccent): Settings {
+    const nextSettings: Settings = {
+        ...getStoredSettings(),
+        preferredPhonetic
+    };
+    storage.set(SETTINGS_STORAGE_KEY, nextSettings);
+    return nextSettings;
+}
+
+export function getYoudaoAudioUrl(word: string, accent: YoudaoAccent): string | null {
+    const payload = word.trim();
+    if (!payload) {
+        return null;
+    }
+
+    const accentType = accent === 'us' ? '2' : '1';
+    return `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(payload)}&type=${accentType}`;
+}
+
+export async function playYoudaoAudio(word: string, accent: YoudaoAccent): Promise<void> {
+    const audioUrl = getYoudaoAudioUrl(word, accent);
+    if (!audioUrl || typeof Audio === 'undefined') {
+        return;
+    }
+
+    if (currentYoudaoAudio) {
+        currentYoudaoAudio.pause();
+        currentYoudaoAudio.currentTime = 0;
+    }
+
+    const audio = new Audio(audioUrl);
+    currentYoudaoAudio = audio;
+    await audio.play();
 }
