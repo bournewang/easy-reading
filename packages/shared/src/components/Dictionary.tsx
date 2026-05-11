@@ -125,7 +125,7 @@ const Dictionary: React.FC<DictionaryProps> = ({
         <button
           type="button"
           onClick={() => handleMobileExpandedChange(!isMobileExpanded)}
-          className={`inline-flex h-8 w-8 items-center justify-center text-slate-500 transition-colors hover:text-slate-900 ${mobileExpandButtonClassName}`}
+          className={`inline-flex h-8 w-32 items-center justify-center text-slate-500 transition-colors hover:text-slate-900 ${mobileExpandButtonClassName}`}
           aria-label={isMobileExpanded ? 'Collapse dictionary panel' : 'Expand dictionary panel'}
         >
           <ChevronIcon
