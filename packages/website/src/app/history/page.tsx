@@ -65,7 +65,7 @@ export default function HistoryPage() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.12),_transparent_32%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_100%)] py-8">
       <PageShell>
         <div className="overflow-hidden rounded-[32px] border border-white/70 bg-white/85 shadow-[0_24px_80px_-42px_rgba(15,23,42,0.45)] backdrop-blur">
-          <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#7c2d12_0%,#9a3412_52%,#b45309_100%)] px-6 py-8 text-white sm:px-8 sm:py-10">
+          <section className="hidden lg:block border-b border-slate-100 bg-[linear-gradient(135deg,#7c2d12_0%,#9a3412_52%,#b45309_100%)] px-6 py-8 text-white sm:px-8 sm:py-10">
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_340px] lg:items-end">
               <div className="max-w-3xl">
                 <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-amber-100/90">{history('badge')}</p>
@@ -85,7 +85,7 @@ export default function HistoryPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
           <div className="p-6 sm:p-8">
             {articles.length === 0 ? (
@@ -103,20 +103,20 @@ export default function HistoryPage() {
               </div>
             ) : (
               <>
-                <div className="mb-6 grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-3xl bg-slate-50 px-5 py-4">
+                <div className="mb-6 grid gap-4 grid-cols-3">
+                  <div className="rounded-3xl bg-slate-50 px-2 md:px-4 py-4 text-center">
                     <p className="text-sm text-slate-500">{history('articles')}</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-950">{articles.length}</p>
+                    <p className="mt-2 text-xl md:text-3xl font-semibold text-slate-950">{articles.length}</p>
                   </div>
-                  <div className="rounded-3xl bg-slate-50 px-5 py-4">
+                  <div className="rounded-3xl bg-slate-50 px-2 md:px-4 py-4 text-center">
                     <p className="text-sm text-slate-500">{history('readingTime')}</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-950">
+                    <p className="mt-2 text-xl md:text-3xl font-semibold text-slate-950">
                       {articles.reduce((sum, article) => sum + article.readingTime, 0)} {common('minute_other')}
                     </p>
                   </div>
-                  <div className="rounded-3xl bg-slate-50 px-5 py-4">
+                  <div className="rounded-3xl bg-slate-50 px-2 md:px-4 py-4 text-center">
                     <p className="text-sm text-slate-500">{history('wordsCovered')}</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-950">
+                    <p className="mt-2 text-xl md:text-3xl font-semibold text-slate-950">
                       {articles.reduce((sum, article) => sum + article.wordCount, 0).toLocaleString()}
                     </p>
                   </div>

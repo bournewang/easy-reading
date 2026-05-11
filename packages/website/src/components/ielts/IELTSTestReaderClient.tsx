@@ -234,8 +234,8 @@ export default function IELTSTestReaderClient({
 
   return (
     <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] overflow-hidden bg-gradient-to-br from-sky-50 via-white to-indigo-50">
-      <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-[calc(88px+0.5rem)] sm:py-4 sm:pb-[calc(88px+0.5rem)] xl:pb-4">
-        <div className="mb-3 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-4 shadow-sm sm:p-5">
+      <ReaderShell className="flex h-full min-h-0 flex-col py-1.5 pb-2 sm:py-4 xl:pb-4">
+        <div className="hidden lg:block mb-1.5 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-2.5 shadow-sm sm:mb-3 sm:p-5">
           <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
             <Link href="/ielts" className="hover:text-sky-700">
               {t('website.navigation.ielts')}
@@ -342,6 +342,7 @@ export default function IELTSTestReaderClient({
               disabled: !nextPassage,
             },
             currentLabel: activePassage ? `${readerIndexText('passage')} ${activePassage.passage} / ${passages.length}` : '',
+            hideMobileBar: true,
           }}
           warning={<AnonymousReaderWarning />}
           floatingAction={showMarkAsRead && activeArticle ? (
@@ -360,7 +361,7 @@ export default function IELTSTestReaderClient({
               Select a passage to start reading.
             </div>
           )}
-          panelClassName="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
+          panelClassName="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-4"
           readerContainerClassName="min-h-0 flex-1 overflow-hidden"
           vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
           vocabularyBookIdsByWord={readerVocabularyData.vocabularyBookIdsByWord}

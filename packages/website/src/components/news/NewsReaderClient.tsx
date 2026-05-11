@@ -94,6 +94,7 @@ function NewsReaderWorkspace({
               items,
               desktopClassName: 'hidden h-full min-h-0 xl:block',
               mobileClassName: 'fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden',
+              hideMobileBar: true,
             }
           : undefined
       }
@@ -322,8 +323,8 @@ function NewsReaderContent({
 
   return (
     <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] overflow-hidden bg-[#f5f5f7]">
-      <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-6 sm:py-4 xl:pb-4">
-        <div className="mb-3 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-4 shadow-sm sm:p-5">
+      <ReaderShell className="flex h-full min-h-0 flex-col py-1.5 pb-2 sm:py-4 xl:pb-4">
+        <div className="hidden lg:block mb-1.5 shrink-0 rounded-3xl border border-sky-100 bg-white/90 p-2.5 shadow-sm sm:mb-3 sm:p-5">
           <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
             <Link href={backPath} className="hover:text-sky-700">
               {t('website.navigation.news')}
@@ -371,7 +372,7 @@ function NewsReaderContent({
           </nav>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden pt-3 md:pt-4">
+        <div className="min-h-0 flex-1 overflow-hidden pt-1.5 md:pt-4">
           <NewsReaderWorkspace
             article={article}
             activeNewsId={newsSlug}

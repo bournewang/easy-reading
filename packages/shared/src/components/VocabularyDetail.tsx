@@ -10,19 +10,36 @@ import {
   subscribePreferredPhoneticChange,
   type YoudaoAccent,
 } from '../utils/helper';
-import { DefaultSpeechSwitch, getSpeechAccentLabel, getSpeechAccentTitle } from './Tips';
+import { ChevronIcon } from './icons/ReaderIcons';
+import { DefaultSpeechSwitch } from './Tips';
+import PronunciationAudioRow from './PronunciationAudioRow';
 
-interface VocabularyBookPanelProps {
+interface VocabularyDetailProps {
   selectedWord?: string | null;
   details: VocabularyBookWordDetails[];
+  mobileExpanded?: boolean;
+  onMobileExpandedChange?: (expanded: boolean) => void;
+  mobileExpandButtonClassName?: string;
+  mobileContentHeightClassName?: string;
 }
 
-export default function VocabularyDetail({ selectedWord, details }: VocabularyBookPanelProps) {
+export default function VocabularyDetail({
+  selectedWord,
+  details,
+  mobileExpanded,
+  onMobileExpandedChange,
+  mobileExpandButtonClassName = 'md:hidden',
+  mobileContentHeightClassName,
+}: VocabularyDetailProps) {
   const { locale } = useLocaleContext();
+  const [internalMobileExpanded, setInternalMobileExpanded] = useState(false);
   const [preferredPhonetic, setPreferredPhonetic] = useState<YoudaoAccent>(() => getStoredPreferredPhonetic());
   const lastAutoPlayedKeyRef = useRef<string | null>(null);
   const sfDisplay = '"SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
   const sfText = '"SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
+  const isMobileExpanded = mobileExpanded ?? internalMobileExpanded;
+  const mobileContentClassName = mobileContentHeightClassName
+    ?? (isMobileExpanded ? 'h-[70dvh] md:h-auto' : 'h-[35dvh] md:h-auto');
 
   const handlePlayYoudaoAudio = useCallback((word: string, accent: YoudaoAccent) => {
     void playYoudaoAudio(word, accent).catch((error: unknown) => {
@@ -30,12 +47,29 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
     });
   }, []);
 
+  const handleMobileExpandedChange = useCallback((expanded: boolean) => {
+    if (onMobileExpandedChange) {
+      onMobileExpandedChange(expanded);
+      return;
+    }
+
+    setInternalMobileExpanded(expanded);
+  }, [onMobileExpandedChange]);
+
   const handlePreferredPhoneticChange = useCallback((accent: YoudaoAccent) => {
     setPreferredPhonetic(accent);
     setStoredPreferredPhonetic(accent);
   }, []);
 
   useEffect(() => subscribePreferredPhoneticChange(setPreferredPhonetic), []);
+
+  useEffect(() => {
+    if (mobileExpanded !== undefined) {
+      return;
+    }
+
+    setInternalMobileExpanded(false);
+  }, [details, mobileExpanded, selectedWord]);
 
   useEffect(() => {
     if (!selectedWord || details.length === 0) {
@@ -54,21 +88,32 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
   }, [details, handlePlayYoudaoAudio, preferredPhonetic, selectedWord]);
 
   const hasDetails = details.length > 0;
+  const firstDetail = details[0];
 
   return (
     <>
       <div
-        className="sticky top-0 z-10 border-b border-black/6 bg-white px-3 py-3"
+        className="sticky top-0 z-10 border-b border-black/6 bg-white px-3 py-2"
         style={{ fontFamily: sfText }}
       >
-        <div className="flex flex-col items-start gap-2 sm:relative sm:flex-row sm:items-center sm:justify-center">
+        <div className="relative flex min-h-8 items-center justify-center">
           <div
-            className="text-[12px] font-semibold uppercase text-black/56 sm:flex-1"
+            className="absolute left-0 top-1/2 -translate-y-1/2 text-[12px] font-semibold uppercase text-black/56"
             style={{ letterSpacing: '-0.12px', lineHeight: '1.33' }}
           >
-            {locale === 'zh' ? '单词释义' : 'Vocabulary Details'}
+            {locale === 'zh' ? '单词释义' : 'Vocabulary'}
           </div>
-          <div className="sm:absolute sm:right-0 sm:top-1/2 sm:-translate-y-1/2">
+          <button
+            type="button"
+            onClick={() => handleMobileExpandedChange(!isMobileExpanded)}
+            className={`inline-flex h-8 w-8 items-center justify-center text-slate-500 transition-colors hover:text-slate-900 ${mobileExpandButtonClassName}`}
+            aria-label={isMobileExpanded ? 'Collapse vocabulary panel' : 'Expand vocabulary panel'}
+          >
+            <ChevronIcon
+              className={`h-4 w-4 transition-transform duration-200 ${isMobileExpanded ? 'rotate-0' : 'rotate-180'}`}
+            />
+          </button>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2">
             <DefaultSpeechSwitch
               preferredPhonetic={preferredPhonetic}
               onChange={handlePreferredPhoneticChange}
@@ -79,7 +124,7 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
         </div>
       </div>
 
-      <div className="bg1-[#f5f5f7] p-2 xl:h-full xl:overflow-y-auto">
+      <div className={`bg-white overflow-y-auto p-2 transition-[height] duration-300 xl:h-full ${mobileContentClassName}`}>
         {!selectedWord ? (
           <div
             className="rounded-[12px] bg-white p-4 text-[14px] text-black/56 shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]"
@@ -100,25 +145,25 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
           </div>
         ) : null}
 
-        {details.map((item) => (
+        {firstDetail ? (
           <div
-            key={`${item.bookId}-${item.headWord}`}
-            className="mb-4 rounded-[12px] bg-white p-4 shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]"
+            key={`${firstDetail.bookId}-${firstDetail.headWord}`}
+            className="mb-4 rounded1-[12px] p-2 shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]"
           >
-            <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="mb-3 flex flex-col gap-2">
               <div>
                 <h3
                   className="text-[28px] font-semibold text-[#1d1d1f]"
                   style={{ fontFamily: sfDisplay, letterSpacing: '0.196px', lineHeight: '1.14' }}
                 >
-                  {item.headWord}
+                  {firstDetail.headWord}
                 </h3>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <p
                     className="text-[12px] text-black/56"
                     style={{ fontFamily: sfText, letterSpacing: '-0.12px', lineHeight: '1.33' }}
                   >
-                    {item.bookTitle}
+                    {firstDetail.bookTitle}
                   </p>
                   {/* <span
                     className="rounded-full border border-black/10 bg-[#fafafc] px-2 py-0.5 text-[10px] font-semibold uppercase text-black/52"
@@ -127,41 +172,26 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
                     {item.bookId.replace(/\.json$/i, '')}
                   </span> */}
                 </div>
-                <p
+                {/* <p
                   className="mt-1 text-[12px] text-black/48"
                   style={{ fontFamily: sfText, letterSpacing: '-0.12px', lineHeight: '1.33' }}
                 >
-                  {[
-                    item.ukPhone ? `${getSpeechAccentLabel(locale, 'uk')} ${item.ukPhone}` : '',
-                    item.usPhone ? `${getSpeechAccentLabel(locale, 'us')} ${item.usPhone}` : '',
-                  ]
-                    .filter(Boolean)
-                    .join('\n')}
-                </p>
+                  {item.bookTitle}
+                </p> */}
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePlayYoudaoAudio(item.headWord, 'uk')}
-                  className="inline-flex items-center gap-1 rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1.5 text-[14px] font-normal text-[#0066cc] transition-colors hover:underline"
-                  style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
-                  title={getSpeechAccentTitle(locale, 'uk')}
-                >
-                  <span aria-hidden="true">🔊</span>
-                  <span>{getSpeechAccentLabel(locale, 'uk')}</span>
-                </button>
-                <button
-                  onClick={() => handlePlayYoudaoAudio(item.headWord, 'us')}
-                  className="inline-flex items-center gap-1 rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1.5 text-[14px] font-normal text-[#0066cc] transition-colors hover:underline"
-                  style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
-                  title={getSpeechAccentTitle(locale, 'us')}
-                >
-                  <span aria-hidden="true">🔊</span>
-                  <span>{getSpeechAccentLabel(locale, 'us')}</span>
-                </button>
-              </div>
+              <PronunciationAudioRow
+                word={firstDetail.headWord}
+                locale={locale}
+                entries={[
+                  { accent: 'uk', phonetic: firstDetail.ukPhone },
+                  { accent: 'us', phonetic: firstDetail.usPhone },
+                ]}
+                onPlay={handlePlayYoudaoAudio}
+                style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
+              />
             </div>
 
-            {item.explanation.length > 0 && (
+            {firstDetail.explanation.length > 0 && (
               <div className="mb-3 rounded-[8px] bg-[#f5f5f7] p-3">
                 <p
                   className="mb-1 text-[12px] font-semibold uppercase text-black/48"
@@ -170,7 +200,7 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
                   {locale === 'zh' ? '释义' : 'Explanation'}
                 </p>
                 <ul className="space-y-1">
-                  {item.explanation.slice(0, 4).map((line, index) => (
+                  {firstDetail.explanation.slice(0, 4).map((line, index) => (
                     <li
                       key={index}
                       className="text-[17px] text-black/80"
@@ -183,7 +213,7 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
               </div>
             )}
 
-            {item.examples.length > 0 && (
+            {firstDetail.examples.length > 0 && (
               <div className="mb-3 rounded-[8px] bg-[#f5f5f7] p-3">
                 <p
                   className="mb-1 text-[12px] font-semibold uppercase text-black/48"
@@ -192,7 +222,7 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
                   {locale === 'zh' ? '例句' : 'Examples'}
                 </p>
                 <ul className="space-y-2">
-                  {item.examples.slice(0, 3).map((example, index) => (
+                  {firstDetail.examples.slice(0, 3).map((example, index) => (
                     <li key={index}>
                       <p
                         className="text-[14px] text-black/80"
@@ -214,7 +244,7 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
               </div>
             )}
 
-            {item.phrases.length > 0 && (
+            {firstDetail.phrases.length > 0 && (
               <div className="rounded-[8px] bg-[#f5f5f7] p-3">
                 <p
                   className="mb-1 text-[12px] font-semibold uppercase text-black/48"
@@ -223,7 +253,7 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
                   {locale === 'zh' ? '短语' : 'Phrases'}
                 </p>
                 <ul className="space-y-1">
-                  {item.phrases.slice(0, 5).map((phrase, index) => (
+                  {firstDetail.phrases.slice(0, 5).map((phrase, index) => (
                     <li
                       key={index}
                       className="text-[14px] text-black/72"
@@ -237,7 +267,7 @@ export default function VocabularyDetail({ selectedWord, details }: VocabularyBo
               </div>
             )}
           </div>
-        ))}
+        ) : null}
       </div>
     </>
   );

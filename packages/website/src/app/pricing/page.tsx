@@ -177,7 +177,13 @@ function PricingPageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12'>
+      <div
+        className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 ${
+          showCheckoutBar
+            ? 'pb-[calc(18rem+env(safe-area-inset-bottom))] sm:pb-[calc(10rem+env(safe-area-inset-bottom))]'
+            : 'pb-12'
+        }`}
+      >
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl">
             {pricing('title')}
@@ -319,36 +325,38 @@ function PricingPageContent() {
         </div>
 
         {showCheckoutBar && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-            <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white shadow-lg">
+            <div className="max-w-3xl mx-auto px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               {/* Plan label  */}
               <p className="text-xs text-gray-400 mb-3">
                 {getTierContent(selectedTier).name} &middot; {selectedDuration.months}{' '}
                 {selectedDuration.months === 1 ? pricing('month') : pricing('months')}
               </p>
 
-              <div className="flex flex-wrap items-end gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
                 {/* Promo code input */}
-                <div className="flex-1 min-w-48">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    {pricing('promoLabel')}
-                  </label>
-                  <input
-                    value={promoCode}
-                    onChange={(e) => {
-                      setPromoCode(e.target.value.trim().toUpperCase());
-                      setQuoteError(null);
-                    }}
-                    placeholder={pricing('promoPlaceholder')}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  />
+                <div className="w-full sm:flex-1 sm:min-w-48">
+                  <div className="flex items-center justify-between gap-3 sm:block">
+                    <label className="mb-0 shrink-0 text-xs font-medium text-gray-500 sm:mb-1 sm:block">
+                      {pricing('promoLabel')}
+                    </label>
+                    <input
+                      value={promoCode}
+                      onChange={(e) => {
+                        setPromoCode(e.target.value.trim().toUpperCase());
+                        setQuoteError(null);
+                      }}
+                      placeholder={pricing('promoPlaceholder')}
+                      className="w-40 max-w-[58vw] rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 sm:w-full"
+                    />
+                  </div>
                   {quoteError && (
                     <p className="mt-1 text-xs text-red-500">{quoteError}</p>
                   )}
                 </div>
 
                 {/* Price summary */}
-                <div className="flex-1 min-w-0">
+                <div className="w-full sm:flex-1 sm:min-w-0">
                   {quoteLoading && <p className="text-sm text-gray-400 pb-2">Calculating…</p>}
                   {hasActiveReferral ? (quote && 
                     <div className="space-y-0.5 text-sm pb-1">
@@ -392,7 +400,7 @@ function PricingPageContent() {
                 {/* CTA */}
                 <button
                   onClick={handleProceedToCheckout}
-                  className="shrink-0 bg-blue-500 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-600"
+                  className="w-full rounded-lg bg-blue-500 px-6 py-2.5 font-semibold text-white hover:bg-blue-600 sm:w-auto sm:shrink-0"
                 >
                   {pricing('proceedToCheckout')}
                 </button>

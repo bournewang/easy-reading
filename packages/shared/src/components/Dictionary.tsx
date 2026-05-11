@@ -9,19 +9,33 @@ import {
   getStoredPreferredPhonetic,
   playYoudaoAudio,
   setStoredPreferredPhonetic,
+  subscribePreferredPhoneticChange,
   type YoudaoAccent,
 } from '../utils/helper';
+import { ChevronIcon } from './icons/ReaderIcons';
 import Tips, { DefaultSpeechSwitch, getSpeechAccentLabel, getSpeechAccentTitle } from './Tips';
+import PronunciationAudioRow from './PronunciationAudioRow';
 import '../styles/tailwind.css';
 
 interface DictionaryProps {
   selectedWord?: string | null;
+  mobileExpanded?: boolean;
+  onMobileExpandedChange?: (expanded: boolean) => void;
+  mobileExpandButtonClassName?: string;
+  mobileContentHeightClassName?: string;
 }
 
 type DictionaryLanguage = 'en' | 'zh';
 
-const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
+const Dictionary: React.FC<DictionaryProps> = ({
+  selectedWord,
+  mobileExpanded,
+  onMobileExpandedChange,
+  mobileExpandButtonClassName = 'md:hidden',
+  mobileContentHeightClassName,
+}) => {
   const [result, setResult] = useState<DictResponse | null>(null);
+  const [internalMobileExpanded, setInternalMobileExpanded] = useState(false);
   const [preferredPhonetic, setPreferredPhonetic] = useState<YoudaoAccent>(() => getStoredPreferredPhonetic());
   const { lookupWord, loading, error } = useDictionary();
   const { speak } = useTTS();
@@ -31,8 +45,19 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
   const sfDisplay = '"SF Pro Display", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
   const sfText = '"SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif';
   const showTips = !selectedWord && !result && !loading && !error;
-  const cardClassName = 'rounded-[12px] bg-white p-4 shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]';
+  const cardClassName = 'rounded-[12px] bg-white1 p-2 shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]';
   const sectionClassName = 'rounded-[8px] bg-[#f5f5f7] p-3';
+  const dictionaryPhonetics = result?.phonetics
+    .map((phonetic) => phonetic.text?.trim())
+    .filter((phonetic): phonetic is string => Boolean(phonetic))
+    .slice(0, 2) ?? [];
+  const pronunciationEntries = (['uk', 'us'] as YoudaoAccent[]).map((accent, index) => ({
+    accent,
+    phonetic: dictionaryPhonetics[index],
+  }));
+  const isMobileExpanded = mobileExpanded ?? internalMobileExpanded;
+  const mobileContentClassName = mobileContentHeightClassName
+    ?? (isMobileExpanded ? 'h-[70dvh] md:h-auto' : 'h-[35dvh] md:h-auto');
 
   const handlePlayYoudaoAudio = useCallback((word: string, accent: YoudaoAccent) => {
     void playYoudaoAudio(word, accent).catch((playbackError: unknown) => {
@@ -40,10 +65,29 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
     });
   }, []);
 
+  const handleMobileExpandedChange = useCallback((expanded: boolean) => {
+    if (onMobileExpandedChange) {
+      onMobileExpandedChange(expanded);
+      return;
+    }
+
+    setInternalMobileExpanded(expanded);
+  }, [onMobileExpandedChange]);
+
   const handlePreferredPhoneticChange = useCallback((accent: YoudaoAccent) => {
     setPreferredPhonetic(accent);
     setStoredPreferredPhonetic(accent);
   }, []);
+
+  useEffect(() => subscribePreferredPhoneticChange(setPreferredPhonetic), []);
+
+  useEffect(() => {
+    if (mobileExpanded !== undefined) {
+      return;
+    }
+
+    setInternalMobileExpanded(false);
+  }, [mobileExpanded, selectedWord]);
 
   useEffect(() => {
     if (!selectedWord) {
@@ -68,16 +112,26 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
   return (
     <>
     <div
-      className="sticky top-0 z-10 border-b border-black/6 bg-white px-3 py-3"
+      className="sticky top-0 z-10 border-b border-black/6 bg-white px-3 py-2"
       style={{ fontFamily: sfText }}
     >
-      <div className="relative flex items-center justify-center">
+      <div className="relative flex min-h-8 items-center justify-center">
         <div
-          className="text-center text-[12px] font-semibold uppercase text-black/56"
+          className="absolute left-0 top-1/2 -translate-y-1/2 text-[12px] font-semibold uppercase text-black/56"
           style={{ letterSpacing: '-0.12px', lineHeight: '1.33' }}
         >
           {locale === 'zh' ? '词典' : 'Dictionary'}
         </div>
+        <button
+          type="button"
+          onClick={() => handleMobileExpandedChange(!isMobileExpanded)}
+          className={`inline-flex h-8 w-8 items-center justify-center text-slate-500 transition-colors hover:text-slate-900 ${mobileExpandButtonClassName}`}
+          aria-label={isMobileExpanded ? 'Collapse dictionary panel' : 'Expand dictionary panel'}
+        >
+          <ChevronIcon
+            className={`h-4 w-4 transition-transform duration-200 ${isMobileExpanded ? 'rotate-0' : 'rotate-180'}`}
+          />
+        </button>
         <div className="absolute right-0 top-1/2 -translate-y-1/2">
           <DefaultSpeechSwitch
             preferredPhonetic={preferredPhonetic}
@@ -88,7 +142,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
         </div>
       </div>
     </div>
-    <div className="bg1-[#f5f5f7] p-2 xl:h-full xl:overflow-y-auto">
+    <div className={`bg-white overflow-y-auto p-2 transition-[height] duration-300 xl:h-full ${mobileContentClassName}`}>
       {error && (
         <div
           className="rounded-[12px] bg-white p-4 text-[#8b2b1d] shadow1-[rgba(0,0,0,0.22)_3px_5px_30px_0px]"
@@ -107,7 +161,7 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
       {result && (
         <div className="">
           <div className={`${cardClassName}`}>
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-2">
               <div>
                 <h3
                   className="text-[28px] font-semibold text-[#1d1d1f]"
@@ -115,36 +169,14 @@ const Dictionary: React.FC<DictionaryProps> = ({ selectedWord }) => {
                 >
                   {result.word}
                 </h3>
-                <p
-                  className="mt-1 text-[12px] text-black/48"
-                  style={{ fontFamily: sfText, letterSpacing: '-0.12px', lineHeight: '1.33' }}
-                >
-                  {result.phonetics
-                    .filter((phonetic) => phonetic.text)
-                    .map((phonetic) => phonetic.text)
-                    .join('  ')}
-                </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => handlePlayYoudaoAudio(result.word, 'uk')}
-                  className="inline-flex items-center gap-1 rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1.5 text-[14px] font-normal text-[#0066cc] transition-colors hover:underline"
-                  style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
-                  title={getSpeechAccentTitle(locale, 'uk')}
-                >
-                  <span aria-hidden="true">🔊</span>
-                  <span>{getSpeechAccentLabel(locale, 'uk')}</span>
-                </button>
-                <button
-                  onClick={() => handlePlayYoudaoAudio(result.word, 'us')}
-                  className="inline-flex items-center gap-1 rounded-[980px] border border-[#0066cc] bg-transparent px-3 py-1.5 text-[14px] font-normal text-[#0066cc] transition-colors hover:underline"
-                  style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
-                  title={getSpeechAccentTitle(locale, 'us')}
-                >
-                  <span aria-hidden="true">🔊</span>
-                  <span>{getSpeechAccentLabel(locale, 'us')}</span>
-                </button>
-              </div>
+              <PronunciationAudioRow
+                word={result.word}
+                locale={locale}
+                entries={pronunciationEntries}
+                onPlay={handlePlayYoudaoAudio}
+                style={{ fontFamily: sfText, letterSpacing: '-0.224px', lineHeight: '1.43' }}
+              />
             </div>
           </div>
 

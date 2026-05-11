@@ -271,7 +271,7 @@ export default function UserCenterPage() {
       <div className="min-h-[60vh] bg-slate-50 px-4 py-20">
         <div className="mx-auto max-w-6xl animate-pulse space-y-6">
           <div className="h-64 rounded-[36px] bg-white shadow-sm" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <div key={index} className="h-32 rounded-[28px] bg-white shadow-sm" />
             ))}
@@ -328,7 +328,7 @@ export default function UserCenterPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
                 {stats.map((stat, index) => (
                   <div
                     key={stat.label}
@@ -408,7 +408,7 @@ export default function UserCenterPage() {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 grid-cols-2">
                 <div className="rounded-[24px] bg-white px-4 py-4 ring-1 ring-slate-200/70">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('totalReferrals')}</p>
                   <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{referralInfo?.totalReferrals ?? 0}</p>
@@ -466,7 +466,7 @@ export default function UserCenterPage() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 grid-cols-2">
                 <div className="rounded-[24px] bg-white px-4 py-4 ring-1 ring-slate-200/70">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{userText('renewalDate')}</p>
                   <p className="mt-3 text-base font-semibold text-slate-950">

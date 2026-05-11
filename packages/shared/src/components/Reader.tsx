@@ -9,8 +9,8 @@ import type { Article } from '../types';
 import { cleanWord } from '../utils/helper';
 import { ChatWindow } from './ChatWindow';
 import { InteractiveText } from './InteractiveText';
-import VocabularyBookPanel from './VocabularyBookPanel';
-import { BookIcon, ClockIcon } from './icons/ReaderIcons';
+import VocabularyDetail from './VocabularyDetail';
+import { BookIcon, ClockIcon, CloseIcon } from './icons/ReaderIcons';
 import type { VocabularyBookWordDetails } from '../types/vocabularyBook';
 import '../styles/tailwind.css';
 
@@ -114,6 +114,43 @@ const Reader: React.FC<ReaderProps> = ({
     ? vocabularyWordDetailsByWord[cleanWord(selectedWord)] || []
     : [];
   const isVocabularyWord = selectedWordDetails.length > 0;
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
+  const [isMobilePanelExpanded, setIsMobilePanelExpanded] = useState(false);
+  const mobilePanelHiddenClass = containedScroll ? 'min-[800px]:hidden' : 'xl:hidden';
+
+  useEffect(() => {
+    if (selectedWord) {
+      setIsMobilePanelOpen(true);
+      setIsMobilePanelExpanded(false);
+      return;
+    }
+
+    setIsMobilePanelOpen(false);
+    setIsMobilePanelExpanded(false);
+  }, [selectedWord]);
+
+  const mobileExpandButtonClassName = containedScroll ? 'min-[800px]:hidden' : 'xl:hidden';
+  const mobileContentHeightClassName = isMobilePanelExpanded
+    ? containedScroll ? 'h-[70dvh] min-[800px]:h-auto' : 'h-[70dvh] xl:h-auto'
+    : containedScroll ? 'h-[35dvh] min-[800px]:h-auto' : 'h-[35dvh] xl:h-auto';
+  const panelContent = isVocabularyWord ? (
+    <VocabularyDetail
+      selectedWord={selectedWord}
+      details={selectedWordDetails}
+      mobileExpanded={isMobilePanelExpanded}
+      onMobileExpandedChange={setIsMobilePanelExpanded}
+      mobileExpandButtonClassName={mobileExpandButtonClassName}
+      mobileContentHeightClassName={mobileContentHeightClassName}
+    />
+  ) : (
+    <Dictionary
+      selectedWord={selectedWord}
+      mobileExpanded={isMobilePanelExpanded}
+      onMobileExpandedChange={setIsMobilePanelExpanded}
+      mobileExpandButtonClassName={mobileExpandButtonClassName}
+      mobileContentHeightClassName={mobileContentHeightClassName}
+    />
+  );
 
   return (
     <>
@@ -201,14 +238,59 @@ const Reader: React.FC<ReaderProps> = ({
             )}
           </div>
         </div>
-        <div className={`${containedScroll ? 'hidden h-full min-h-0 overflow-y-auto border-l border-black/6 bg-white min-[800px]:block min-[800px]:w-2/5 min-[800px]:flex-none lg:w-1/3' : 'fixed bottom-0 left-0 right-0 z-10 h-[220px] overflow-y-auto border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:static md:h-auto md:w-full md:shadow-none xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:w-[640px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]'} ${!selectedWord ? 'hidden md:block min-[800px]:block' : ''}`}>
-          {isVocabularyWord ? (
-            <VocabularyBookPanel selectedWord={selectedWord} details={selectedWordDetails} />
-          ) : (
-            <Dictionary selectedWord={selectedWord} />
-          )}
+        <div className={`${containedScroll ? 'hidden h-full min-h-0 overflow-y-auto border-l border-black/6 bg-white min-[800px]:block min-[800px]:w-2/5 min-[800px]:flex-none lg:w-1/3' : 'hidden xl:sticky xl:top-6 xl:block xl:max-h-[calc(100vh-3rem)] xl:w-[640px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:bg-white xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]'} ${!selectedWord ? 'hidden min-[800px]:block' : ''}`}>
+          {panelContent}
         </div>
       </div>
+
+      {selectedWord ? (
+        <>
+          <div
+            className={`fixed inset-0 z-20 bg-slate-950/18 transition-opacity duration-200 ${mobilePanelHiddenClass} ${isMobilePanelOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+            onClick={() => setIsMobilePanelOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            className={`fixed inset-x-0 bottom-0 z-30 ${mobilePanelHiddenClass} ${isMobilePanelOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+            aria-hidden={!isMobilePanelOpen}
+          >
+            <div className="mx-auto max-w-3xl px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4">
+              <div
+                className={`overflow-hidden rounded-t-[28px] border border-black/8 bg-[#f5f5f7] shadow-[0_-20px_50px_rgba(15,23,42,0.22)] transition-transform duration-300 ${isMobilePanelOpen ? 'translate-y-0' : 'translate-y-[calc(100%+1rem)]'}`}
+              >
+                {/* <div className="flex items-center justify-between border-b border-black/6 bg-white/92 px-4 py-3 backdrop-blur">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                      {isVocabularyWord ? 'Vocabulary' : 'Dictionary'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsMobilePanelOpen(false)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900"
+                      aria-label="Close word panel"
+                    >
+                      <CloseIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div> */}
+                {panelContent}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {selectedWord && !isMobilePanelOpen ? (
+        <button
+          type="button"
+          onClick={() => setIsMobilePanelOpen(true)}
+          className={`fixed bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] right-4 z-20 inline-flex max-w-[calc(100vw-2rem)] items-center rounded-full bg-slate-950 px-4 py-3 text-sm font-medium text-white shadow-[0_16px_36px_rgba(15,23,42,0.28)] transition-transform hover:-translate-y-0.5 ${mobilePanelHiddenClass}`}
+        >
+          <span className="truncate">{selectedWord}</span>
+        </button>
+      ) : null}
     </>
   );
 };

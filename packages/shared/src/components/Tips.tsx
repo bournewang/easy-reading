@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocaleContext } from '../contexts/LocaleContext';
 import type { YoudaoAccent } from '../utils/helper';
 
@@ -41,31 +42,109 @@ export const DefaultSpeechSwitch: React.FC<DefaultSpeechSwitchProps> = ({
   locale,
   textClassName,
 }) => {
-  const label = locale === 'zh' ? '默认发音' : 'Default';
+  const [isOpen, setIsOpen] = useState(false);
+  const label = locale === 'zh' ? '默认发音' : 'Default Accent';
+  const dialogTitle = locale === 'zh' ? '设置默认发音' : 'Set Default Accent';
+  const dialogDescription = locale === 'zh'
+    ? '选择你希望优先使用的发音。'
+    : 'Choose which pronunciation should be used by default.';
+  const cancelLabel = locale === 'zh' ? '取消' : 'Cancel';
   const baseTextClassName = textClassName || 'text-[11px] font-semibold uppercase text-black/48';
+  const currentAccentLabel = getSpeechAccentLabel(locale, preferredPhonetic);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  const handleSelectAccent = (accent: YoudaoAccent) => {
+    onChange(accent);
+    setIsOpen(false);
+  };
 
   return (
-    <div className="inline-flex items-center gap-2">
-      <span className={baseTextClassName}>{label}</span>
-      <div className="inline-flex rounded-[980px] border border-black/10 bg-[#fafafc] p-0.5">
-        <button
-          onClick={() => onChange('uk')}
-          className={`rounded-[980px] px-2.5 py-1 text-[11px] font-semibold transition-colors ${preferredPhonetic === 'uk' ? 'bg-white text-[#0066cc] shadow-sm' : 'text-black/56'}`}
-          title={getDefaultSpeechAccentTitle(locale, 'uk')}
-          type="button"
-        >
-          {getSpeechAccentLabel(locale, 'uk')}
-        </button>
-        <button
-          onClick={() => onChange('us')}
-          className={`rounded-[980px] px-2.5 py-1 text-[11px] font-semibold transition-colors ${preferredPhonetic === 'us' ? 'bg-white text-[#0066cc] shadow-sm' : 'text-black/56'}`}
-          title={getDefaultSpeechAccentTitle(locale, 'us')}
-          type="button"
-        >
-          {getSpeechAccentLabel(locale, 'us')}
-        </button>
-      </div>
-    </div>
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded-[980px] border border-black/10 bg-[#fafafc] px-2.5 py-1 text-left"
+        title={label}
+        type="button"
+      >
+        <span className={baseTextClassName}>{label}</span>
+        <span className="rounded-[980px] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#0066cc] shadow-sm">
+          {currentAccentLabel}
+        </span>
+      </button>
+
+      {isOpen && typeof document !== 'undefined'
+        ? createPortal(
+          <div
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/30 px-4"
+            onClick={() => setIsOpen(false)}
+            role="presentation"
+          >
+            <div
+              className="w-full max-w-[320px] rounded-[20px] bg-white p-4 shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="default-accent-dialog-title"
+            >
+              <div className="mb-3">
+                <h4 id="default-accent-dialog-title" className="text-[16px] font-semibold text-[#1d1d1f]">
+                  {dialogTitle}
+                </h4>
+                <p className="mt-1 text-[13px] leading-[1.45] text-black/56">
+                  {dialogDescription}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleSelectAccent('uk')}
+                  className={`flex w-full items-center justify-between rounded-[14px] border px-3 py-2.5 text-left text-[13px] font-semibold transition-colors ${preferredPhonetic === 'uk' ? 'border-[#0066cc] bg-[#f0f7ff] text-[#0066cc]' : 'border-black/10 bg-[#fafafc] text-[#1d1d1f]'}`}
+                  title={getDefaultSpeechAccentTitle(locale, 'uk')}
+                  type="button"
+                >
+                  <span>{getSpeechAccentLabel(locale, 'uk')}</span>
+                  {preferredPhonetic === 'uk' ? <span className="text-[12px]">✓</span> : null}
+                </button>
+                <button
+                  onClick={() => handleSelectAccent('us')}
+                  className={`flex w-full items-center justify-between rounded-[14px] border px-3 py-2.5 text-left text-[13px] font-semibold transition-colors ${preferredPhonetic === 'us' ? 'border-[#0066cc] bg-[#f0f7ff] text-[#0066cc]' : 'border-black/10 bg-[#fafafc] text-[#1d1d1f]'}`}
+                  title={getDefaultSpeechAccentTitle(locale, 'us')}
+                  type="button"
+                >
+                  <span>{getSpeechAccentLabel(locale, 'us')}</span>
+                  {preferredPhonetic === 'us' ? <span className="text-[12px]">✓</span> : null}
+                </button>
+              </div>
+
+              <div className="mt-3 flex justify-end">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-[980px] border border-black/10 px-3 py-1.5 text-[12px] font-semibold text-black/60 transition-colors hover:bg-black/[0.03]"
+                  type="button"
+                >
+                  {cancelLabel}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+        : null}
+    </>
   );
 };
 

@@ -194,7 +194,7 @@ function UrlReaderContent() {
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
       <PageShell className="pb-10 pt-4 md:pb-14 md:pt-6">
-        <section className="mb-6 rounded-[36px] bg-[linear-gradient(135deg,#1e3a8a_0%,#0f4c81_52%,#0b7285_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
+        <section className="hidden lg:block mb-6 rounded-[36px] bg-[linear-gradient(135deg,#1e3a8a_0%,#0f4c81_52%,#0b7285_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_340px] lg:items-end">
             <div className="max-w-3xl">
               <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-sky-100/90">{news('badge')}</p>
@@ -242,7 +242,7 @@ function UrlReaderContent() {
                 ))}
               </div>
 
-              <div className="relative w-48">
+              <div className="hidden relative w-48">
                 <input
                   type="text"
                   placeholder={news('searchPlaceholder')}
@@ -273,7 +273,7 @@ function UrlReaderContent() {
             </div>
 
             {featuredWithImages.length > 0 && (
-              <div className="mb-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="mb-12 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
                 {featuredWithImages.map(article => (
                   <ArticleCardWithImage
                     key={article.url}

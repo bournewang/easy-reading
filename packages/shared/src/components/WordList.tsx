@@ -301,7 +301,7 @@ function WordList() {
 
   const newRenderGridView = () => (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {currentWordsForDisplay.map(word => renderWordItem(word))}
       </div>
     </>
@@ -870,7 +870,7 @@ function WordList() {
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
       <div className="w-full pb-8 pt-4 md:pb-12 md:pt-6">
-        <header className="mb-6 rounded-[36px] bg-[linear-gradient(135deg,#1f2937_0%,#166534_52%,#0f766e_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
+        <section className="hidden lg:block mb-6 rounded-[36px] bg-[linear-gradient(135deg,#1f2937_0%,#166534_52%,#0f766e_100%)] px-6 py-8 text-white shadow-[0_24px_70px_rgba(0,0,0,0.18)] md:px-8 md:py-10">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_220px] lg:items-end">
             <div className="max-w-3xl">
               <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-emerald-100/90">{wordList('title')}</p>
@@ -887,9 +887,9 @@ function WordList() {
               </div>
             </div>
           </div>
-        </header>
+        </section>
         
-        <div className="relative flex min-h-screen w-full flex-col gap-5 xl:flex-row xl:items-start">
+        <div className="relative flex min-h-screen w-full flex-col gap-5 md:flex-row md:items-start">
           <div className="flex-1">
             <div className="mb-4 flex flex-wrap justify-end gap-2">
               {!isPracticeModeActive && !isStoryModeActive && (
@@ -933,7 +933,7 @@ function WordList() {
             {!isPracticeModeActive && !isStoryModeActive && renderWordBook()}
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 z-50 h-[220px] overflow-y-auto border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:static md:h-auto md:max-h-[calc(100vh-2.5rem)] md:w-full xl:sticky xl:top-6 xl:w-[360px] xl:flex-none xl:overflow-hidden xl:rounded-[32px] xl:border xl:border-black/6 xl:bg-white xl:shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
+          <div className="fixed bottom-0 left-0 right-0 z-50 overflow-hidden border-t border-black/8 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.12)] md:sticky md:top-6 md:max-h-[calc(100vh-2.5rem)] md:w-[360px] md:flex-none md:rounded-[32px] md:border md:border-black/6 md:bg-white md:shadow-[0_20px_60px_rgba(0,0,0,0.10)]">
             <Dictionary selectedWord={selectedWord} />
           </div>
         </div>

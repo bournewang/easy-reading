@@ -4,6 +4,12 @@ const CloseIcon = ({ className = "w-6 h-6" }) => (
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
     </svg>
   );
+
+  const ChevronIcon = ({ className = "w-6 h-6" }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 9l6 6 6-6" />
+    </svg>
+  );
   
   const BookIcon = ({ className = "w-6 h-6" }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,4 +35,4 @@ const CloseIcon = ({ className = "w-6 h-6" }) => (
     <svg className={className}  viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" fill="none"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 5L8 15l-5-4"></path> </g></svg>
   );
 
-  export { CloseIcon, BookIcon, ClockIcon, BackIcon, CheckIcon };
+  export { CloseIcon, ChevronIcon, BookIcon, ClockIcon, BackIcon, CheckIcon };

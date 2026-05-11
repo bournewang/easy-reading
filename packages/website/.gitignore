@@ -2,12 +2,13 @@ node_modules
 dist
 .next
 .env
-public/books
 resource
 tsconfig.tsbuildinfo
 vocabulary-books
-public/vocabulary-books
 tsconfig.tsbuildinfo
 books
 chapters
 playwright-report
+public/vocabulary-books
+public/books
+public/covers

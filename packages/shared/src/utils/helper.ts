@@ -213,6 +213,8 @@ export function getQueryParams(): Record<string, string> {
 
 export type YoudaoAccent = 'uk' | 'us';
 
+const PREFERRED_PHONETIC_EVENT = 'easy-reading:preferred-phonetic-change';
+
 let currentYoudaoAudio: HTMLAudioElement | null = null;
 
 export function getStoredSettings(): Settings {
@@ -233,7 +235,42 @@ export function setStoredPreferredPhonetic(preferredPhonetic: YoudaoAccent): Set
         preferredPhonetic
     };
     storage.set(SETTINGS_STORAGE_KEY, nextSettings);
+
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent<YoudaoAccent>(PREFERRED_PHONETIC_EVENT, {
+            detail: preferredPhonetic
+        }));
+    }
+
     return nextSettings;
+}
+
+export function subscribePreferredPhoneticChange(
+    callback: (preferredPhonetic: YoudaoAccent) => void
+): () => void {
+    if (typeof window === 'undefined') {
+        return () => undefined;
+    }
+
+    const handlePreferredPhoneticChange = (event: Event) => {
+        callback((event as CustomEvent<YoudaoAccent>).detail);
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+        if (event.key !== SETTINGS_STORAGE_KEY) {
+            return;
+        }
+
+        callback(getStoredPreferredPhonetic());
+    };
+
+    window.addEventListener(PREFERRED_PHONETIC_EVENT, handlePreferredPhoneticChange as EventListener);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+        window.removeEventListener(PREFERRED_PHONETIC_EVENT, handlePreferredPhoneticChange as EventListener);
+        window.removeEventListener('storage', handleStorage);
+    };
 }
 
 export function getYoudaoAudioUrl(word: string, accent: YoudaoAccent): string | null {

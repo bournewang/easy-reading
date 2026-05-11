@@ -33,7 +33,7 @@ export function BooksIndexPageClient({ levels }: { levels: Level[] }) {
             <div className="max-w-3xl">
               <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-indigo-100/90">{booksText('badge')}</p>
               <h1 className="text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] md:text-[48px]">{booksText('title')}</h1>
-              <p className="mt-3 text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 md:text-[16px]">{booksText('subtitle')}</p>
+              <p className="mt-3 hidden text-[15px] leading-[1.5] tracking-[-0.24px] text-white/72 lg:block md:text-[16px]">{booksText('subtitle')}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-[24px] bg-indigo-100/15 p-3.5 ring-1 ring-indigo-100/30">

@@ -27,6 +27,7 @@ type ReaderIndexNavigationProps = {
   persistScrollKey?: string;
   desktopClassName?: string;
   mobileClassName?: string;
+  hideMobileBar?: boolean;
 };
 
 const desktopClassNames =
@@ -75,6 +76,7 @@ export default function ReaderIndexNavigation({
   persistScrollKey,
   desktopClassName,
   mobileClassName,
+  hideMobileBar = false,
 }: ReaderIndexNavigationProps) {
   const activeItemIndex = items.findIndex((item) => item.active);
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -218,7 +220,7 @@ export default function ReaderIndexNavigation({
         </div>
       </aside>
 
-      {(effectivePrevious || effectiveNext || effectiveCurrentLabel) && (
+      {!hideMobileBar && (effectivePrevious || effectiveNext || effectiveCurrentLabel) && (
         <div className={mobileClassName || mobileClassNames}>
           <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-3 py-3 sm:px-4 lg:px-5">
             {renderNavigationButton(effectivePrevious, 'previous', 'h-11 min-w-[96px] px-4 text-2xl', persistScrollPosition)}

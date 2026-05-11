@@ -20,6 +20,7 @@ type ReaderNavigationConfig = {
   persistScrollKey?: string;
   desktopClassName?: string;
   mobileClassName?: string;
+  hideMobileBar?: boolean;
 };
 
 type ReaderWorkspaceProps = {
@@ -103,6 +104,7 @@ export default function ReaderWorkspace({
           persistScrollKey={navigation.persistScrollKey}
           desktopClassName={navigation.desktopClassName}
           mobileClassName={navigation.mobileClassName}
+          hideMobileBar={navigation.hideMobileBar}
         />
         {readerArea}
       </div>

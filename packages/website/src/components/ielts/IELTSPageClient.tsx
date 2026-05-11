@@ -193,7 +193,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
       <div className="w-full py-4 sm:py-5">
-        <div className="mb-6 overflow-hidden rounded-[36px] bg-[linear-gradient(135deg,#1f2937_0%,#0f766e_52%,#155e75_100%)] shadow-[0_24px_70px_rgba(0,0,0,0.18)]">
+        <section className="hidden lg:block mb-6 overflow-hidden rounded-[36px] bg-[linear-gradient(135deg,#1f2937_0%,#0f766e_52%,#155e75_100%)] shadow-[0_24px_70px_rgba(0,0,0,0.18)]">
           <div className="grid gap-5 px-6 py-8 text-white sm:px-8 sm:py-9 lg:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)] lg:items-end lg:px-10">
             <div>
               <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.16em] text-teal-100/90">{ieltsText('badge')}</p>
@@ -238,7 +238,7 @@ export default function IELTSPageClient({ articles }: IELTSPageClientProps) {
               )}
             </div>
           )}
-        </div>
+        </section>
 
         <div className="mb-5 grid gap-4 lg:grid-cols-[0.85fr_1.3fr_0.85fr]">
           <section className="rounded-[28px] border border-sky-100 bg-sky-50/55 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">

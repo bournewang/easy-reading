@@ -133,8 +133,8 @@ export default function BookReaderClient({
 
   return (
     <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] overflow-hidden bg-gray-50">
-      <ReaderShell className="flex h-full min-h-0 flex-col py-3 pb-[calc(88px+0.5rem)] sm:py-4 sm:pb-[calc(88px+0.5rem)] xl:pb-4">
-        <nav className="mb-3 shrink-0 text-sm text-gray-500">
+      <ReaderShell className="flex h-full min-h-0 flex-col py-1.5 pb-2 sm:py-4 xl:pb-4">
+        <nav className="hidden lg:block mb-1.5 shrink-0 overflow-x-auto whitespace-nowrap text-sm text-gray-500 sm:mb-3">
           <Link href="/books" className="hover:text-blue-600">
             {t('website.navigation.books')}
           </Link>
@@ -191,6 +191,7 @@ export default function BookReaderClient({
             currentLabel: `${readerIndexText('chapter')} ${currentChapter + 1} / ${chapters.length}`,
             desktopClassName: 'hidden h-full min-h-0 xl:block',
             mobileClassName: 'fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur xl:hidden',
+            hideMobileBar: true,
           }}
           warning={(
             <>
@@ -216,7 +217,7 @@ export default function BookReaderClient({
               {isRead ? t('website.common.completed') : t('website.common.markAsRead')}
             </button>
           ) : null}
-          panelClassName="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-sm"
+          panelClassName="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-white p-2.5 shadow-sm sm:p-4"
           readerContainerClassName="min-h-0 flex-1 overflow-hidden"
           vocabularyHighlightColorByWord={readerVocabularyData.vocabularyHighlightColorByWord}
           vocabularyBookIdsByWord={readerVocabularyData.vocabularyBookIdsByWord}
