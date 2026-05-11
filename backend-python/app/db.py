@@ -399,12 +399,14 @@ def init_db() -> None:
                 word_count INT NOT NULL DEFAULT 0,
                 reading_time INT NOT NULL DEFAULT 0,
                 article_payload LONGTEXT NULL,
+                status VARCHAR(32) NOT NULL DEFAULT 'active',
                 synced_at VARCHAR(64) NOT NULL,
                 created_at VARCHAR(64) NOT NULL,
                 updated_at VARCHAR(64) NOT NULL,
                 INDEX idx_news_category (category),
                 INDEX idx_news_source (source),
-                INDEX idx_news_synced_at (synced_at)
+                INDEX idx_news_synced_at (synced_at),
+                INDEX idx_news_status (status)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
             """
         )
@@ -412,6 +414,7 @@ def init_db() -> None:
         ensure_column(cursor, "news", "site_name", "ALTER TABLE news ADD COLUMN site_name VARCHAR(255) NULL")
         ensure_column(cursor, "news", "word_count", "ALTER TABLE news ADD COLUMN word_count INT NOT NULL DEFAULT 0")
         ensure_column(cursor, "news", "article_payload", "ALTER TABLE news ADD COLUMN article_payload LONGTEXT NULL")
+        ensure_column(cursor, "news", "status", "ALTER TABLE news ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'active'")
         ensure_auto_increment_bigint_primary_key(cursor, "orders", "id")
 
 

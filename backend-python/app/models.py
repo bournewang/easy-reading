@@ -376,6 +376,31 @@ class AdminUpdateCommissionRequest(BaseModel):
     status: str
 
 
+class AdminNewsItem(BaseModel):
+    id: int
+    articleId: str
+    title: str
+    url: str
+    category: str
+    source: str
+    wordCount: int = 0
+    readingTime: int = 0
+    status: str
+    createdAt: str | None = None
+
+
+class AdminNewsResponse(BaseModel):
+    items: list[AdminNewsItem] = Field(default_factory=list)
+    page: int = 1
+    pageSize: int = 20
+    total: int = 0
+    totalPages: int = 0
+
+
+class AdminNewsUpdateStatusRequest(BaseModel):
+    status: str
+
+
 class UserOrderItem(BaseModel):
     id: int
     orderNo: str

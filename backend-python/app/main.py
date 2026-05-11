@@ -54,6 +54,9 @@ from .models import (
     AdminCommissionItem,
     AdminCommissionsResponse,
     AdminUpdateCommissionRequest,
+    AdminNewsItem,
+    AdminNewsResponse,
+    AdminNewsUpdateStatusRequest,
     SubscriptionResponse,
     SubscriptionEntitlementsResponse,
     TtsSynthesizeRequest,
@@ -1167,4 +1170,68 @@ def admin_update_commission(
         )
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Commission not found")
+    return {"success": True}
+
+
+@app.get("/api/admin/news", response_model=AdminNewsResponse)
+def admin_list_news(
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+    status_filter: str | None = Query(default=None, alias="status"),
+    search: str | None = Query(default=None),
+    _admin: dict = Depends(require_admin),
+) -> AdminNewsResponse:
+    result = news_service.admin_list_news(
+        status=status_filter,
+        search=search,
+        page=page,
+        page_size=pageSize,
+    )
+    items = [
+        AdminNewsItem(
+            id=item["id"],
+            articleId=item["articleId"],
+            title=item["title"],
+            url=item["url"],
+            category=item["category"],
+            source=item["source"],
+            wordCount=item["wordCount"],
+            readingTime=item["readingTime"],
+            status=item["status"],
+            createdAt=item.get("createdAt"),
+        )
+        for item in result["items"]
+    ]
+    return AdminNewsResponse(
+        items=items,
+        page=result["page"],
+        pageSize=result["pageSize"],
+        total=result["total"],
+        totalPages=result["totalPages"],
+    )
+
+
+@app.patch("/api/admin/news/{news_id}/status")
+def admin_update_news_status(
+    news_id: int,
+    payload: AdminNewsUpdateStatusRequest,
+    _admin: dict = Depends(require_admin),
+) -> dict:
+    allowed = {"active", "inactive", "draft"}
+    if payload.status not in allowed:
+        raise HTTPException(status_code=400, detail=f"status must be one of {allowed}")
+    updated = news_service.admin_update_news_status(news_id, payload.status)
+    if not updated:
+        raise HTTPException(status_code=404, detail="News not found")
+    return updated
+
+
+@app.delete("/api/admin/news/{news_id}")
+def admin_delete_news(
+    news_id: int,
+    _admin: dict = Depends(require_admin),
+) -> dict:
+    deleted = news_service.admin_delete_news(news_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="News not found")
     return {"success": True}

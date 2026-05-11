@@ -254,8 +254,8 @@ class NewsService:
                         INSERT INTO news (
                             article_id, slug, title, url, category, description, image_url, source,
                             site_name, word_count, reading_time, article_payload,
-                            synced_at, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            status, synced_at, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             article["id"],
@@ -270,6 +270,7 @@ class NewsService:
                             article_payload["word_count"],
                             article_payload["reading_time"] or article["readingTime"],
                             dumps_json(article_payload),
+                            "active",
                             synced_at,
                             synced_at,
                             synced_at,
@@ -302,7 +303,7 @@ class NewsService:
     ) -> dict[str, Any]:
         last_synced_at = self.get_last_synced_at()
 
-        filters: list[str] = []
+        filters: list[str] = ["status = 'active'"]
         params: list[Any] = []
 
         normalized_category = (category or "").strip()
@@ -334,7 +335,7 @@ class NewsService:
             cursor.execute(
                 f"""
                 SELECT article_id, title, url, category, description, image_url, source, site_name, word_count, reading_time, synced_at
-                       , slug
+                       , slug, status
                 FROM news
                 {where_clause}
                 ORDER BY synced_at DESC, slug ASC, article_id ASC
@@ -451,6 +452,103 @@ class NewsService:
             "article": article,
             "syncedAt": row.get("synced_at"),
         }
+
+    def admin_list_news(
+        self,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict[str, Any]:
+        filters: list[str] = []
+        params: list[Any] = []
+
+        if status:
+            filters.append("status = ?")
+            params.append(status)
+
+        normalized_search = (search or "").strip().lower()
+        if normalized_search:
+            filters.append("(LOWER(title) LIKE ? OR LOWER(description) LIKE ?)")
+            search_term = f"%{normalized_search}%"
+            params.extend([search_term, search_term])
+
+        where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+        safe_page = max(1, page)
+        safe_page_size = max(1, min(100, page_size))
+        offset = (safe_page - 1) * safe_page_size
+
+        with db_cursor() as cursor:
+            cursor.execute(f"SELECT COUNT(*) AS total FROM news {where_clause}", tuple(params))
+            total_row = row_to_dict(cursor.fetchone()) or {}
+            total = int(total_row.get("total") or 0)
+
+            cursor.execute(
+                f"""
+                SELECT id, article_id, slug, title, url, category, source, word_count,
+                       reading_time, status, synced_at, created_at
+                FROM news
+                {where_clause}
+                ORDER BY id DESC
+                LIMIT ? OFFSET ?
+                """,
+                tuple([*params, safe_page_size, offset]),
+            )
+            rows = cursor.fetchall()
+
+        items = [
+            {
+                "id": row.get("id"),
+                "articleId": row.get("slug") or row.get("article_id"),
+                "title": row.get("title"),
+                "url": row.get("url"),
+                "category": row.get("category"),
+                "source": row.get("source"),
+                "wordCount": int(row.get("word_count") or 0),
+                "readingTime": int(row.get("reading_time") or 0),
+                "status": row.get("status") or "active",
+                "createdAt": row.get("created_at"),
+            }
+            for raw_row in rows
+            for row in [row_to_dict(raw_row) or {}]
+        ]
+
+        total_pages = max(1, (total + safe_page_size - 1) // safe_page_size) if total else 0
+
+        return {
+            "items": items,
+            "page": safe_page,
+            "pageSize": safe_page_size,
+            "total": total,
+            "totalPages": total_pages,
+        }
+
+    def admin_update_news_status(self, news_id: int, new_status: str) -> dict[str, Any] | None:
+        now = utcnow_iso()
+        with db_cursor() as cursor:
+            cursor.execute(
+                "UPDATE news SET status = ?, updated_at = ? WHERE id = ?",
+                (new_status, now, news_id),
+            )
+            cursor.execute(
+                "SELECT id, article_id, slug, title, status FROM news WHERE id = ?",
+                (news_id,),
+            )
+            row = row_to_dict(cursor.fetchone()) or {}
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "articleId": row.get("slug") or row.get("article_id"),
+            "title": row.get("title"),
+            "status": row.get("status"),
+        }
+
+    def admin_delete_news(self, news_id: int) -> bool:
+        with db_cursor() as cursor:
+            cursor.execute("DELETE FROM news WHERE id = ?", (news_id,))
+            return (cursor.rowcount or 0) > 0
 
 
 news_service = NewsService()

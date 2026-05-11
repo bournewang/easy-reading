@@ -102,3 +102,45 @@ export async function adminUpdateCommission(id: number, status: string): Promise
 export async function adminRefundOrder(orderNo: string): Promise<void> {
   await api.post(`/admin/orders/${orderNo}/refund`, {});
 }
+
+export interface AdminNewsItem {
+  id: number;
+  articleId: string;
+  title: string;
+  url: string;
+  category: string;
+  source: string;
+  wordCount: number;
+  readingTime: number;
+  status: string;
+  createdAt: string | null;
+}
+
+export interface AdminNewsResponse {
+  items: AdminNewsItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export async function adminListNews(
+  page = 1,
+  pageSize = 20,
+  status?: string,
+  search?: string,
+): Promise<AdminNewsResponse> {
+  const params: Record<string, string | number> = { page, pageSize };
+  if (status) params.status = status;
+  if (search) params.search = search;
+  const res = await api.get('/admin/news', { params });
+  return res.data;
+}
+
+export async function adminUpdateNewsStatus(id: number, status: string): Promise<void> {
+  await api.patch(`/admin/news/${id}/status`, { status });
+}
+
+export async function adminDeleteNews(id: number): Promise<void> {
+  await api.delete(`/admin/news/${id}`);
+}
